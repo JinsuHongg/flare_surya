@@ -1,6 +1,6 @@
 # README #
 
-This README would normally document whatever steps are necessary to get your application up and running.
+This is the flare forecasting experiments using Surya, Terratorch-Surya, and Terratorch.
 
 ### What is this repository for? ###
 

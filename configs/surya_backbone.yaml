@@ -1,0 +1,46 @@
+
+model_type: spectformer # New model type for PEFT LoRA finetuning
+# Spectformer options
+img_size: 4096
+patch_size: 16
+in_channels: 13
+time_embedding:
+  type: linear      # Options: linear, fourier, perceiver
+  n_queries: null   # Integer for perceiver; otherwise null
+  time_dim: 2       # Integer for linear and fourier; otherwise null
+unet_embed_dim: null
+unet_blocks: null
+unet_concat_activations: false # Whether to concatenate activations (UNet) or not (Autoencoder/bottleneck) in the decoder
+embed_dim: 1280
+depth: 10
+spectral_blocks: 2
+num_heads: 16
+mlp_ratio: 4.0
+rpe: false
+drop_rate: 0.0
+window_size: 2
+dp_rank: 4
+learned_flow: false
+epochs_to_learn_flow: 0 # Start by training flow model only before freezing
+init_weights: false
+checkpoint_layers: [0,1,2,3,4,5,6,7,8,9]
+ensemble: null
+finetune: true
+nglo: 1
+global_average_pooling: False
+global_max_pooling: False
+attention_pooling: False
+transformer_pooling: False
+global_class_token: True
+penultimate_linear_layer: True
+freeze_backbone: false  # Set to False for full model finetuning with LoRA
+dropout: 0.2
+# PEFT LoRA configuration
+use_lora: true
+lora_config:
+  r: 8  # LoRA rank
+  lora_alpha: 8  # LoRA alpha parameter
+  target_modules: ['q_proj', 'v_proj', 'k_proj', 'out_proj', 'fc1', 'fc2']  # Target modules for LoRA
+  lora_dropout: 0.1
+  bias: 'none'
+  # task_type: 'SEQ_CLS'

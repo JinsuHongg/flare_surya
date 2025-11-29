@@ -1,4 +1,6 @@
 import os
+from loguru import logger
+
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -8,6 +10,7 @@ from terratorch_surya.models.helio_spectformer import HelioSpectFormer
 from flare_surya.models.heads import SuryaHead
 from flare_surya.models.base import BaseModule
 from terratorch_surya.downstream_examples.solar_flare_forecasting.metrics import DistributedClassificationMetrics
+
 
 class FlareSurya(BaseModule):
     def __init__(
@@ -33,6 +36,7 @@ class FlareSurya(BaseModule):
             ensemble,
             finetune,
             nglo,
+            weight_path,
             # head parameters
             token_type,
             in_feature,
@@ -72,6 +76,11 @@ class FlareSurya(BaseModule):
             ensemble=ensemble,
             finetune=finetune,
         )
+
+        # load pretrained weights for backbone
+        if weight_path:
+            logger.info(f"Pretrained weights loaded: {weight_path}")
+            self.backbone.load_state_dict(weight_path, strict=True)
 
         if freeze_backbone:
             for name, param in self.backbone.named_parameters():
@@ -159,7 +168,7 @@ class FlareSurya(BaseModule):
         self.log_dict({f"val_{k}": v for k, v in metrics.items()}, sync_dist=True)
         
         # You can also log a single key metric for checkpointing
-        self.log("val_f1", metrics["f1"], prog_bar=True, sync_dist=True)
+        self.log("prog_bar/val_f1", metrics["f1"], prog_bar=True, sync_dist=True)
 
     def test_step(self, batch, batch_idx):
         # 1. Prepare Data

@@ -36,6 +36,7 @@ def build_model(config):
         ensemble=config["backbone"]["ensemble"],
         finetune=config["backbone"]["finetune"],
         nglo=config["backbone"]["nglo"],
+        weight_path=config["backbone"]["weight_path"],
         # Put finetuning additions below this line
         token_type=config["head"]["token_type"],
         in_feature=config["head"]["hyper_parameters"]["in_feature"][config["head"]["token_type"]],

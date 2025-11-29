@@ -49,7 +49,7 @@ class FlareDataModule(L.LightningDataModule):
                 )
 
         # Assign validation dataset for use in dataloader(s)
-        if stage in (None, "validate"):
+        if stage in (None, "fit"):
             self.val_ds = self._get_dataset(
                 "validation",
                 self.config["data"]["valid_data_path"],

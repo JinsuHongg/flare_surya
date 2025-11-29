@@ -14,11 +14,9 @@ def build_wandb(cfg, model):
         save_code=cfg["wandb"]["save_code"],
         notes=cfg["wandb"]["notes"],
         tags=cfg["wandb"]["tag"],
-        name=name
+        name=name,
+        config=cfg
     )
-
-    # full config
-    wandb_logger.experiment.config.update(cfg, allow_val_change=True)
 
     # selected hparams for WandB
     wandb_logger.log_hyperparams({
@@ -27,7 +25,6 @@ def build_wandb(cfg, model):
         "batch_size": cfg["data"]["batch_size"],
         
         # model backbone
-        # "model_type": cfg["backbone"]["model_type"],
         "embed_dim": cfg["backbone"]["embed_dim"],
         "depth": cfg["backbone"]["depth"],
         "num_heads": cfg["backbone"]["num_heads"],
@@ -37,10 +34,6 @@ def build_wandb(cfg, model):
         "dp_rank": cfg["backbone"]["dp_rank"],
         "learned_flow": cfg["backbone"]["learned_flow"],
         "finetune": cfg["backbone"]["finetune"],
-        # "use_lora": cfg["backbone"]["use_lora"],
-        # "lora_r": cfg["backbone"]["lora_config"]["r"],
-        # "lora_alpha": cfg["backbone"]["lora_config"]["lora_alpha"],
-        # "lora_dropout": cfg["backbone"]["lora_config"]["lora_dropout"],
         
         # head
         "head_type": cfg["head"]["type"],

@@ -11,6 +11,8 @@ from flare_surya.utils.config import load_config
 from flare_surya.utils.logging import build_wandb
 from flare_surya.utils.callbacks import build_callbacks
 
+torch.set_float32_matmul_precision('medium')
+
 
 def build_model(config):
 
@@ -36,7 +38,7 @@ def build_model(config):
         ensemble=config["backbone"]["ensemble"],
         finetune=config["backbone"]["finetune"],
         nglo=config["backbone"]["nglo"],
-        weight_path=config["backbone"]["weight_path"],
+        path_weights=config["backbone"]["path_weights"],
         # Put finetuning additions below this line
         token_type=config["head"]["token_type"],
         in_feature=config["head"]["hyper_parameters"]["in_feature"][config["head"]["token_type"]],

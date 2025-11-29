@@ -36,7 +36,7 @@ class FlareSurya(BaseModule):
             ensemble,
             finetune,
             nglo,
-            weight_path,
+            path_weights,
             # head parameters
             token_type,
             in_feature,
@@ -78,9 +78,12 @@ class FlareSurya(BaseModule):
         )
 
         # load pretrained weights for backbone
-        if weight_path:
-            logger.info(f"Pretrained weights loaded: {weight_path}")
-            self.backbone.load_state_dict(weight_path, strict=True)
+        if path_weights:
+            logger.info(f"Pretrained weights loaded from: {path_weights}")
+            weights = torch.load(
+                path_weights, map_location=torch.device("cpu"), weights_only=True
+            )
+            self.backbone.load_state_dict(weights, strict=False)
 
         if freeze_backbone:
             for name, param in self.backbone.named_parameters():
@@ -153,7 +156,7 @@ class FlareSurya(BaseModule):
         loss = F.binary_cross_entropy_with_logits(x_hat, target)
 
         # 2. Log Training Loss
-        self.log("val_loss", loss, prog_bar=True)
+        self.log("val_loss", loss, prog_bar=True, sync_dist=True)
         
         # 3. Update Metrics (x_hat contains the logits)
         self.val_metrics.update(torch.sigmoid(x_hat), data["label"])

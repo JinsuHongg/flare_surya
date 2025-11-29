@@ -42,7 +42,7 @@ backbone:
   nglo: 0
   dtype: float32
   freeze_backbone: True
-  weight_path: ../data/Surya-1.0/surya.366m.v1.pt
+  path_weights: ../data/Surya-1.0/surya.366m.v1.pt
 
 head:
   type: mlp

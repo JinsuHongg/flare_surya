@@ -1,8 +1,9 @@
-import yaml
+
 import lightning as L
 from torch.utils.data import DataLoader
 from terratorch_surya.downstream_examples.solar_flare_forecasting.dataset import SolarFlareDataset
 from terratorch_surya.utils.data import build_scalers
+from flare_surya.utils.config import load_config
 
 
 class FlareDataModule(L.LightningDataModule):
@@ -13,12 +14,10 @@ class FlareDataModule(L.LightningDataModule):
         super().__init__()
 
         # load config
-        with open(config_path, "r") as f:
-            self.config = yaml.safe_load(f)
+        self.config = load_config(config_path)
         
         # load scalers
-        with open(self.config["data"]["scalers_path"], "r") as f:
-            self.config["data"]["scalers"] = yaml.safe_load(f)
+        self.config["data"]["scalers"] = load_config(self.config["data"]["scalers_path"])
         self.scalers = build_scalers(info=self.config["data"]["scalers"])
 
     def _get_dataset(self, phase, index_path, flare_index_path):
@@ -27,7 +26,7 @@ class FlareDataModule(L.LightningDataModule):
             index_path=index_path,
             time_delta_input_minutes=self.config["data"]["time_delta_input_minutes"],
             time_delta_target_minutes=self.config["data"]["time_delta_target_minutes"],
-            n_input_timestamps=self.config["model"]["time_embedding"]["time_dim"],
+            n_input_timestamps=self.config["backbone"]["time_embedding"]["time_dim"],
             rollout_steps=self.config["rollout_steps"],
             channels=self.config["data"]["channels"],
             drop_hmi_probability=self.config["drop_hmi_probability"],

@@ -3,7 +3,7 @@ from lightning.pytorch.callbacks import (
     RichProgressBar,
     LearningRateMonitor,
     EarlyStopping,
-    ModelSummary
+    # ModelSummary
 )
 
 
@@ -21,7 +21,7 @@ def build_callbacks(cfg, wandb_logger):
         LearningRateMonitor(logging_interval="epoch"),
         EarlyStopping(monitor="val_loss", patience=10, mode="min"),
         ModelCheckpoint(
-            monitor="val_loss",
+            monitor=cfg["optimizer"]["scheduler"]["monitor"],
             dirpath=cfg["etc"]["ckpt_dir"],
             filename=ckpt_name,
             save_top_k=3,

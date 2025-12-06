@@ -1,11 +1,12 @@
-import os
+# import os
 from loguru import logger
 
 import torch
-from torch import nn
+# from torch import nn
 import torch.nn.functional as F
-import lightning as L
-from terratorch_surya.downstream_examples.solar_flare_forecasting.models import HelioSpectformer1D
+from peft import LoraConfig, get_peft_model
+# import lightning as L
+# from terratorch_surya.downstream_examples.solar_flare_forecasting.models import HelioSpectformer1D
 from terratorch_surya.models.helio_spectformer import HelioSpectFormer
 from flare_surya.models.heads import SuryaHead
 from flare_surya.models.base import BaseModule
@@ -43,6 +44,7 @@ class FlareSurya(BaseModule):
             head_type,
             head_layer_dict,
             freeze_backbone,
+            lora_dict,
             optimizer_dict,
             threshold=0.5,
             log_step_size=100,
@@ -52,6 +54,8 @@ class FlareSurya(BaseModule):
             )
         self.token_type = token_type
         self.log_step_size = log_step_size
+        self.freeze_backbone = freeze_backbone
+        self.lora_dict = lora_dict
 
         self.backbone = HelioSpectFormer(
             img_size=img_size,
@@ -85,9 +89,14 @@ class FlareSurya(BaseModule):
             )
             self.backbone.load_state_dict(weights, strict=False)
 
-        if freeze_backbone:
+        if self.freeze_backbone:
             for name, param in self.backbone.named_parameters():
                 param.requires_grad = False
+
+        if self.lora_dict["use"]:
+            config = LoraConfig(**self.lora_dict["config"])
+            # get peft model
+            self.backbone = get_peft_model(self.backbone, config)
 
         # define head
         self.head = SuryaHead(
@@ -102,20 +111,39 @@ class FlareSurya(BaseModule):
         self.test_metrics = DistributedClassificationMetrics(threshold=threshold)
         self.threshold = threshold
 
+    def forward_features(self, data):
+            """
+            Helper method to handle backbone forward pass and pooling.
+            Reduces repetition across train/val/test steps.
+            """
+            tokens = self.backbone(data)
+            
+            match self.token_type:
+                case "cls_token":
+                    return tokens[:, 0, :]
+                case "avg_pooling":
+                    return tokens.mean(dim=1)
+                case "max_pooling":
+                    return tokens.max(dim=1).values
+                case _:
+                    raise ValueError(f"Unknown token_type: {self.token_type}")
+
+    def train(self, mode=True):
+        """
+        Override train mode to ensure frozen backbone stays in eval mode 
+        (disabling Dropout/Batchnorm updates) during finetuning.
+        """
+        super().train(mode)
+        if self.freeze_backbone and mode:
+            self.backbone.eval()
+
     def training_step(self, batch, batch_idx):
         # training_step defines the train loop.
         data, metadata = batch
         target = data["label"].float().unsqueeze(1)
-        tokens = self.backbone(data)
-        match self.token_type:
-            case "cls_token":
-                tokens = tokens[:, 0, :]
-            case "avg_pooling":
-                tokens = tokens.mean(dim=1)
-            case "max_pooling":
-                tokens = tokens.max(dim=1).values
-
+        tokens = self.forward_features(data)
         x_hat = self.head(tokens)
+
         loss = F.binary_cross_entropy_with_logits(x_hat, target)
 
         # 2. Update Metrics
@@ -140,23 +168,13 @@ class FlareSurya(BaseModule):
     def validation_step(self, batch, batch_idx):
         data, metadata = batch
         target = data["label"].float().unsqueeze(1)
-        
-        # 1. Forward Pass
-        tokens = self.backbone(data)
-        # Apply pooling logic
-        match self.token_type:
-            case "cls_token":
-                tokens = tokens[:, 0, :]
-            case "avg_pooling":
-                tokens = tokens.mean(dim=1)
-            case "max_pooling":
-                tokens = tokens.max(dim=1).values
+        tokens = self.forward_features(data)
         x_hat = self.head(tokens)
         
         loss = F.binary_cross_entropy_with_logits(x_hat, target)
 
         # 2. Log Training Loss
-        self.log("val_loss", loss, prog_bar=True, sync_dist=True)
+        self.log("val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
         
         # 3. Update Metrics (x_hat contains the logits)
         self.val_metrics.update(torch.sigmoid(x_hat), data["label"])
@@ -174,23 +192,9 @@ class FlareSurya(BaseModule):
         self.log("prog_bar/val_f1", metrics["f1"], prog_bar=True, sync_dist=True)
 
     def test_step(self, batch, batch_idx):
-        # 1. Prepare Data
         data, metadata = batch
-        # Ensure target is float for loss calculation
         target = data["label"].float().unsqueeze(1) 
-        
-        # 2. Forward Pass
-        tokens = self.backbone(data)
-        
-        # Apply Pooling (Matching logic from training/validation)
-        match self.token_type:
-            case "cls_token":
-                tokens = tokens[:, 0, :]
-            case "avg_pooling":
-                tokens = tokens.mean(dim=1)
-            case "max_pooling":
-                tokens = tokens.max(dim=1).values
-
+        tokens = self.forward_features(data)
         x_hat = self.head(tokens)
         
         # 3. Calculate Loss

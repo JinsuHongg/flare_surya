@@ -45,6 +45,7 @@ def build_model(config):
         head_type=config["head"]["type"],
         head_layer_dict=config["head"]["hyper_parameters"],
         freeze_backbone=config["backbone"]["freeze_backbone"],
+        lora_dict=config["lora"],
         optimizer_dict=config["optimizer"]["hyper_parameters"],
         threshold=config["head"]["threshold"],
         log_step_size=config["head"]["log_step_size"]
@@ -62,8 +63,11 @@ def train(config_path):
     )
 
     # Load model
-    model = build_model(config=config)
-
+    if config["pretrained_downstream_model_path"]:
+        model = FlareSurya.load_from_checkpoint(config["pretrained_downstream_model_path"])
+    else: 
+        model = build_model(config=config)
+    
     # Create wandb obejct
     wandb_logger = build_wandb(cfg=config, model=model)
 
@@ -72,6 +76,7 @@ def train(config_path):
     trainer = Trainer(
         accelerator=config["etc"]["accelerator"],
         devices=config["etc"]["devices"],
+        num_nodes=config["etc"]["num_nodes"],
         max_epochs=config["etc"]["max_epochs"],
         precision=config["etc"]["precision"],
         logger=wandb_logger,

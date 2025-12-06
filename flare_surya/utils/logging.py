@@ -3,7 +3,7 @@ from lightning.pytorch.loggers import WandbLogger
 
 
 def build_wandb(cfg, model):
-    name = f"{cfg['head']['type']}_lr{cfg['optimizer']['hyper_parameters']['lr']}_{datetime.datetime.now().strftime('%Y%m%d')}"
+    name = f"{cfg['head']['type']}_lr{cfg['optimizer']['hyper_parameters']['lr']}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
     
     wandb_logger = WandbLogger(
         entity=cfg["wandb"]["entity"],
@@ -43,5 +43,5 @@ def build_wandb(cfg, model):
         "dropout_head": cfg["head"]["hyper_parameters"]["dropout"]
     })
 
-    wandb_logger.watch(model, log="parameters", log_freq=2000)
+    # wandb_logger.watch(model, log="parameters", log_freq=2000)
     return wandb_logger

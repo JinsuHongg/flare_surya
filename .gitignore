@@ -12,6 +12,8 @@ dist/
 results/
 *egg-info/
 wandb/
+scripts/
+logs/
 
 # Compiled Java class files
 *.class

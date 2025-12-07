@@ -10,9 +10,9 @@ data:
   time_delta_target_minutes: +60
   n_input_timestamps: 2 # must be equal to time_delta_input_minutes
   batch_size: 2
-  num_data_workers: 4
-  pin_memory: True
-  prefetch_factor: 2
+  num_data_workers: 2
+  pin_memory: false
+  prefetch_factor: 1
   pooling: 1
   random_vert_flip: false
   scalers_path: ../data/scalers.yaml

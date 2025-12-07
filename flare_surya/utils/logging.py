@@ -3,7 +3,7 @@ from lightning.pytorch.loggers import WandbLogger
 
 
 def build_wandb(cfg, model):
-    name = f"{cfg['head']['type']}_lr{cfg['optimizer']['hyper_parameters']['lr']}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    name = f"{cfg['head']['type']}_lr{cfg['optimizer']['lr']}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
     
     wandb_logger = WandbLogger(
         entity=cfg["wandb"]["entity"],
@@ -21,7 +21,7 @@ def build_wandb(cfg, model):
     # selected hparams for WandB
     wandb_logger.log_hyperparams({
         # optimizer / training
-        "lr": cfg["optimizer"]["hyper_parameters"]["lr"],
+        "lr": cfg["optimizer"]["lr"],
         "batch_size": cfg["data"]["batch_size"],
         
         # model backbone

@@ -46,7 +46,7 @@ def build_model(config):
         head_layer_dict=config["head"]["hyper_parameters"],
         freeze_backbone=config["backbone"]["freeze_backbone"],
         lora_dict=config["lora"],
-        optimizer_dict=config["optimizer"]["hyper_parameters"],
+        optimizer_dict=config["optimizer"],
         threshold=config["head"]["threshold"],
         log_step_size=config["head"]["log_step_size"]
     )

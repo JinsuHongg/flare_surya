@@ -41,7 +41,7 @@ class BaseModule(L.LightningModule):
             # Check for edge cases where Lightning returns infinity or valid steps are unknown
             if isinstance(total_steps, (float, int)) and (total_steps == float('inf') or total_steps == 0):
                 lgr_logger.warning("Warning: Could not calculate total steps automatically. Defaulting to 1000.")
-                total_steps = 1000 
+                total_steps = hyper_params.get("total_steps", 1000)
 
             num_warmup_steps = int(total_steps * warmup_ratio)
 

@@ -28,7 +28,7 @@ class FlareDataModule(L.LightningDataModule):
             time_delta_target_minutes=self.config["data"]["time_delta_target_minutes"],
             n_input_timestamps=self.config["backbone"]["time_embedding"]["time_dim"],
             rollout_steps=self.config["rollout_steps"],
-            channels=self.config["data"]["channels"],
+            channels = [ch.strip() for ch in self.config["data"]["channels"]],
             drop_hmi_probability=self.config["drop_hmi_probability"],
             num_mask_aia_channels=self.config["num_mask_aia_channels"],
             use_latitude_in_learned_flow=self.config["use_latitude_in_learned_flow"],

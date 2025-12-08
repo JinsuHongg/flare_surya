@@ -18,8 +18,8 @@ def build_callbacks(cfg, wandb_logger):
     return [
         RichProgressBar(),
         # ModelSummary(max_depth=-1),
-        LearningRateMonitor(logging_interval="epoch"),
-        EarlyStopping(monitor="val_loss", patience=10, mode="min"),
+        LearningRateMonitor(logging_interval="step"),
+        # EarlyStopping(monitor="val_loss", patience=10, mode="min"),
         ModelCheckpoint(
             monitor=cfg["optimizer"]["scheduler"]["monitor"],
             dirpath=cfg["etc"]["ckpt_dir"],

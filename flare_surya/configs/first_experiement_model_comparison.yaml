@@ -1,7 +1,7 @@
 data:
-  sdo_data_root_path: /nobackupnfs1/sroy14/processed_data/Helio/nc
-  train_data_path: ../data/hourly_surya_data_nas.csv
-  valid_data_path: ../data/hourly_surya_data_nas.csv
+  sdo_data_root_path: /data/surya-bench 
+  train_data_path: ../data/hourly_surya_data.csv
+  valid_data_path: ../data/hourly_surya_data.csv
   train_flare_data_path: ../data/surya-bench-flare-forecasting/train.csv
   valid_flare_data_path: ../data/surya-bench-flare-forecasting/validation.csv
   test_flare_data_path: ../data/surya-bench-flare-forecasting/test.csv
@@ -9,7 +9,7 @@ data:
   time_delta_input_minutes: [-60,0]
   time_delta_target_minutes: +60
   n_input_timestamps: 2 # must be equal to time_delta_input_minutes
-  batch_size: 2
+  batch_size: 1
   num_data_workers: 2
   pin_memory: false
   prefetch_factor: 1
@@ -87,6 +87,7 @@ optimizer:
       cosine_warmup:
         # T_max: 10
         # eta_min: 1e-6
+        total_steps: 1000
         warmup_ratio: 0.1 # Default 10% warmup
       plateau:
         mode: min
@@ -99,12 +100,12 @@ etc:
   save_score_path: ../results/
   precision: 32 #16-mixed
   accelerator: gpu
-  devices: 4 #[0, 1, 2, 3]
+  devices: 2 #[0, 1, 2, 3]
   num_nodes: 1
   strategy: auto
   max_epochs: 100
   log_every_n_steps: 100
-  limit_train_batches: 1000
+  limit_train_batches: 2000
   limit_val_batches: null
 
 wandb:
@@ -113,7 +114,7 @@ wandb:
   project: helio-fm
   log_model: False
   notes: "simple mlp head"
-  offline: True
+  offline: false
   save_code: False
   tag: ["surya", "mlp", "binary"] # backbone model, head type, task
 

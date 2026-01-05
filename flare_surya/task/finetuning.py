@@ -1,5 +1,7 @@
+import os
 import argparse
-
+import hydra
+from omegaconf import DictConfig, OmegaConf
 from loguru import logger as lgr_logger
 
 import torch
@@ -7,11 +9,12 @@ from lightning.pytorch import Trainer
 
 from flare_surya.datamodule import FlareDataModule
 from flare_surya.models.modules import FlareSurya
-from flare_surya.utils.config import load_config
-from flare_surya.utils.logging import build_wandb
+
+# from flare_surya.utils.config import load_config
+from flare_surya.utils.logger_utils import build_wandb
 from flare_surya.utils.callbacks import build_callbacks
 
-torch.set_float32_matmul_precision('medium')
+torch.set_float32_matmul_precision("medium")
 
 
 def build_model(config):
@@ -41,61 +44,69 @@ def build_model(config):
         path_weights=config["backbone"]["path_weights"],
         # Put finetuning additions below this line
         token_type=config["head"]["token_type"],
-        in_feature=config["head"]["hyper_parameters"]["in_feature"][config["head"]["token_type"]],
+        in_feature=config["head"]["hyper_parameters"]["in_feature"][
+            config["head"]["token_type"]
+        ],
         head_type=config["head"]["type"],
         head_layer_dict=config["head"]["hyper_parameters"],
         freeze_backbone=config["backbone"]["freeze_backbone"],
         lora_dict=config["lora"],
         optimizer_dict=config["optimizer"],
         threshold=config["head"]["threshold"],
-        log_step_size=config["head"]["log_step_size"]
+        log_step_size=config["head"]["log_step_size"],
     )
 
 
-def train(config_path):
+@hydra.main(
+    version_base=None,
+    config_path="../configs",
+    config_name="first_experiement_model_comparison.yaml",
+)
+def train(cfg: OmegaConf):
 
-    # load config
-    config = load_config(config_path)
+    # # load config
+    # config = load_config(config_path)
 
     # Datamodule
-    datamodule = FlareDataModule(
-        config_path=config_path
-    )
+    datamodule = FlareDataModule(cfg=cfg)
 
     # Load model
-    if config["pretrained_downstream_model_path"]:
-        model = FlareSurya.load_from_checkpoint(config["pretrained_downstream_model_path"])
-    else: 
-        model = build_model(config=config)
-    
+    if cfg["pretrained_downstream_model_path"]:
+        model = FlareSurya.load_from_checkpoint(cfg["pretrained_downstream_model_path"])
+    else:
+        model = build_model(config=cfg)
+
     # Create wandb obejct
-    wandb_logger = build_wandb(cfg=config, model=model)
+    wandb_logger = build_wandb(cfg=cfg, model=model)
 
     # Trainer
-    callbacks = build_callbacks(cfg=config, wandb_logger=wandb_logger)
+    callbacks = build_callbacks(cfg=cfg, wandb_logger=wandb_logger)
     trainer = Trainer(
-        accelerator=config["etc"]["accelerator"],
-        devices=config["etc"]["devices"],
-        num_nodes=config["etc"]["num_nodes"],
-        max_epochs=config["etc"]["max_epochs"],
-        precision=config["etc"]["precision"],
+        accelerator=cfg["etc"]["accelerator"],
+        devices=cfg["etc"]["devices"],
+        num_nodes=cfg["etc"]["num_nodes"],
+        max_epochs=cfg["etc"]["max_epochs"],
+        precision=cfg["etc"]["precision"],
         logger=wandb_logger,
         callbacks=callbacks,
-        log_every_n_steps=config["etc"]["log_every_n_steps"],
-        limit_train_batches=config["etc"]["limit_train_batches"],
-        limit_val_batches=config["etc"]["limit_val_batches"],
-        strategy=config["etc"]["strategy"]
+        log_every_n_steps=cfg["etc"]["log_every_n_steps"],
+        limit_train_batches=cfg["etc"]["limit_train_batches"],
+        limit_val_batches=cfg["etc"]["limit_val_batches"],
+        strategy=cfg["etc"]["strategy"],
     )
 
     lgr_logger.info(f"Start training...")
-    trainer.fit(model=model, datamodule=datamodule)
+    trainer.fit(
+        model=model, 
+        datamodule=datamodule,
+        ckpt_path=os.path.join(
+            cfg.etc.ckpt_dir,
+            cfg.etc.ckpt_file
+        ) if cfg.etc.resume else None,
+    )
     # trainer.test(dataloaders=datamodule)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-                    prog='Surya-Flare-finetuning',
-                    description='Finetuning Surya with flare dataset')
-    parser.add_argument('--config-path', default="../configs/first_experiement_model_comparison.yaml")  
-    args = parser.parse_args()
-    train(config_path=args.config_path)
+
+    train()

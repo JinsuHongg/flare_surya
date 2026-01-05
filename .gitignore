@@ -5,6 +5,7 @@
 
 # data
 data/
+.hydra/
 
 # Node artifact files
 node_modules/

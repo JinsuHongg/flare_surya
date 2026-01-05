@@ -112,21 +112,21 @@ class FlareSurya(BaseModule):
         self.threshold = threshold
 
     def forward_features(self, data):
-            """
-            Helper method to handle backbone forward pass and pooling.
-            Reduces repetition across train/val/test steps.
-            """
-            tokens = self.backbone(data)
-            
-            match self.token_type:
-                case "cls_token":
-                    return tokens[:, 0, :]
-                case "avg_pooling":
-                    return tokens.mean(dim=1)
-                case "max_pooling":
-                    return tokens.max(dim=1).values
-                case _:
-                    raise ValueError(f"Unknown token_type: {self.token_type}")
+        """
+        Helper method to handle backbone forward pass and pooling.
+        Reduces repetition across train/val/test steps.
+        """
+        tokens = self.backbone(data)
+        
+        match self.token_type:
+            case "cls_token":
+                return tokens[:, 0, :]
+            case "avg_pooling":
+                return tokens.mean(dim=1)
+            case "max_pooling":
+                return tokens.max(dim=1).values
+            case _:
+                raise ValueError(f"Unknown token_type: {self.token_type}")
 
     def train(self, mode=True):
         """
@@ -146,10 +146,10 @@ class FlareSurya(BaseModule):
 
         loss = F.binary_cross_entropy_with_logits(x_hat, target)
 
-        # 2. Update Metrics
+        # Update Metrics
         self.train_metrics.update(torch.sigmoid(x_hat), data["label"])
 
-        # 3. Step-Wise Logging Logic
+        # Step-Wise Logging Logic
         # Check if the current global step is a multiple of 100
         if (self.trainer.global_step + 1) % self.log_step_size == 0:
             # Compute, log, and reset the metrics accumulated over the last 100 steps
@@ -173,19 +173,19 @@ class FlareSurya(BaseModule):
         
         loss = F.binary_cross_entropy_with_logits(x_hat, target)
 
-        # 2. Log Training Loss
+        # Log Training Loss
         self.log("val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
         
-        # 3. Update Metrics (x_hat contains the logits)
+        # Update Metrics (x_hat contains the logits)
         self.val_metrics.update(torch.sigmoid(x_hat), data["label"])
         
         return loss
     
     def on_validation_epoch_end(self):
-        # 1. Compute and log metrics
+        # Compute and log metrics
         metrics = self.val_metrics.compute_and_reset()
         
-        # 2. Log all computed metrics
+        # Log all computed metrics
         self.log_dict({f"val_{k}": v for k, v in metrics.items()}, sync_dist=True)
         
         # You can also log a single key metric for checkpointing
@@ -197,26 +197,26 @@ class FlareSurya(BaseModule):
         tokens = self.forward_features(data)
         x_hat = self.head(tokens)
         
-        # 3. Calculate Loss
+        # Calculate Loss
         loss = F.binary_cross_entropy_with_logits(x_hat, target)
 
-        # 4. Update Metrics
+        # Update Metrics
         # Pass predicted probabilities (sigmoid(x_hat)) and the target (squeezed to [B])
         # Note: data["label"] is the original integer/long tensor before conversion
         self.test_metrics.update(torch.sigmoid(x_hat), data["label"])
         
-        # 5. Log Test Loss
+        # Log Test Loss
         # Logging on_step=False, on_epoch=True ensures averaging across the test set
         self.log("test/loss", loss, on_step=False, on_epoch=True, sync_dist=True) 
 
         return loss
 
     def on_test_epoch_end(self):
-        # 1. Compute and log metrics
+        # Compute and log metrics
         # The compute_and_reset method handles distributed aggregation (all_reduce)
         metrics = self.test_metrics.compute_and_reset()
         
-        # 2. Log all computed metrics with a 'test/' prefix
+        # Log all computed metrics with a 'test/' prefix
         self.log_dict({f"test/{k}": v for k, v in metrics.items()}, sync_dist=True)
         
         # Optional: Log the primary test metric (e.g., F1 or TSS) prominently

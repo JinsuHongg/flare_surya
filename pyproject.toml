@@ -1,9 +1,13 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "flare-surya"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
     "loguru>=0.7.3",
     "terratorch>=1.1.1",
@@ -13,3 +17,7 @@ dependencies = [
     "peft>=0.4.0",
     "transformers>=4.41,<5.0",
 ]
+
+[tool.setuptools.packages.find]
+include = ["flare_surya*"]
+exclude = ["logs*"]

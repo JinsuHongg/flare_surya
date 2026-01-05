@@ -4,6 +4,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from transformers import get_cosine_schedule_with_warmup
 from loguru import logger as lgr_logger
 
+
 class BaseModule(L.LightningModule):
     def __init__(self, optimizer_dict):
         super().__init__()
@@ -13,7 +14,7 @@ class BaseModule(L.LightningModule):
         opt_type = self.optimizer_dict.get("type", "adamw")
         lr = self.optimizer_dict.get("lr", 1e-4)
         weight_decay = self.optimizer_dict.get("weight_decay", 0.01)
-        
+
         params = filter(lambda p: p.requires_grad, self.parameters())
 
         match opt_type.lower():
@@ -34,21 +35,27 @@ class BaseModule(L.LightningModule):
 
         if sched_use == "cosine_warmup":
             warmup_ratio = hyper_params.get("warmup_ratio", 0.1)
-            
+
             # SAFEGUARD: Calculate steps
             total_steps = self.trainer.estimated_stepping_batches
-            
+            lgr_logger.info(
+                f"DEBUG: Scheduler initialized with TOTAL_STEPS = {total_steps}"
+            )
             # Check for edge cases where Lightning returns infinity or valid steps are unknown
-            if isinstance(total_steps, (float, int)) and (total_steps == float('inf') or total_steps == 0):
-                lgr_logger.warning("Warning: Could not calculate total steps automatically. Defaulting to 1000.")
+            if isinstance(total_steps, (float, int)) and (
+                total_steps == float("inf") or total_steps == 0
+            ):
+                lgr_logger.warning(
+                    "Warning: Could not calculate total steps automatically."
+                )
                 total_steps = hyper_params.get("total_steps", 1000)
 
             num_warmup_steps = int(total_steps * warmup_ratio)
 
             scheduler = get_cosine_schedule_with_warmup(
-                optimizer, 
-                num_warmup_steps=num_warmup_steps, 
-                num_training_steps=total_steps
+                optimizer,
+                num_warmup_steps=num_warmup_steps,
+                num_training_steps=total_steps,
             )
 
             return {
@@ -63,7 +70,7 @@ class BaseModule(L.LightningModule):
         elif sched_use == "plateau":
             # Pass params directly using **kwargs unpacking
             scheduler = ReduceLROnPlateau(optimizer, **hyper_params)
-            
+
             return {
                 "optimizer": optimizer,
                 "lr_scheduler": {
@@ -73,5 +80,5 @@ class BaseModule(L.LightningModule):
                     "frequency": 1,
                 },
             }
-        
+
         return optimizer

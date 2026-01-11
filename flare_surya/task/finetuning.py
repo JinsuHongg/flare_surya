@@ -1,5 +1,4 @@
 import os
-import argparse
 import hydra
 from omegaconf import DictConfig, OmegaConf
 from loguru import logger as lgr_logger
@@ -54,6 +53,7 @@ def build_model(config):
         optimizer_dict=config["optimizer"],
         threshold=config["head"]["threshold"],
         log_step_size=config["head"]["log_step_size"],
+        save_test_results_path=config["etc"]["save_test_results_path"],
     )
 
 
@@ -63,9 +63,6 @@ def build_model(config):
     config_name="first_experiement_model_comparison.yaml",
 )
 def train(cfg: OmegaConf):
-
-    # # load config
-    # config = load_config(config_path)
 
     # Datamodule
     datamodule = FlareDataModule(cfg=cfg)
@@ -96,15 +93,20 @@ def train(cfg: OmegaConf):
     )
 
     lgr_logger.info(f"Start training...")
-    trainer.fit(
-        model=model, 
-        datamodule=datamodule,
-        ckpt_path=os.path.join(
-            cfg.etc.ckpt_dir,
-            cfg.etc.ckpt_file
-        ) if cfg.etc.resume else None,
+    # trainer.fit(
+    #     model=model,
+    #     datamodule=datamodule,
+    #     ckpt_path=os.path.join(
+    #         cfg.etc.ckpt_dir,
+    #         cfg.etc.ckpt_file
+    #     ) if cfg.etc.resume else None,
+    # )
+    trainer.test(
+        model=model,
+        dataloaders=datamodule,
+        ckpt_path=os.path.join(cfg.etc.ckpt_dir, cfg.etc.ckpt_file),
+        verbose=True,
     )
-    # trainer.test(dataloaders=datamodule)
 
 
 if __name__ == "__main__":

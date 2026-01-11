@@ -27,52 +27,16 @@ data:
   use_leaky_validation: true
 
 backbone:
-  img_size: 4096
-  patch_size: 16
-  embed_dim: 1280
-  depth: 10
-  n_spectral_blocks: 2
-  num_heads: 16
-  mlp_ratio: 4.0
-  drop_rate: 0.0
-  window_size: 2
-  dp_rank: 4
-  learned_flow: false
-  use_latitude_in_learned_flow: false
-  rpe: false
-  ensemble: null
-  finetune: True # to get tokkens from attention blocks
+  model_name: resnet18 # resnet18, resnet34, resnet50, alexnet,
+  in_channels: 13
+  time_steps: 2
+  num_classes: 1
+  p_drop: 0.5
+  threshold: 0.5
+  log_step_size: 100
   time_embedding:
     type: linear
-    time_dim: 2 # len(config["data"]["time_delta_input_minutes"])
-  init_weights: false
-  checkpoint_layers: [0,1,2,3,4,5,6,7,8,9]
-  nglo: 0
-  dtype: float32
-  freeze_backbone: True
-  path_weights: ../data/Surya-1.0/surya.366m.v1.pt
-
-head:
-  type: mlp
-  token_type: avg_pooling
-  hyper_parameters:
-    in_feature: {"cls_token": 1280, "avg_pooling": 1280, "max_pooling": 1280}
-    hidden_channels: [1024, 256, 1] #[256, 64, 1]
-    norm_layer: LayerNorm
-    activation_layer: GELU
-    bias: true
-    dropout: 0.1
-  threshold: 0.5 # for thresholding logit
-  log_step_size: 100 # for logging score metrics every n step in training
-
-lora:
-  use: true
-  config:
-    r: 8  # LoRA rank
-    lora_alpha: 8  # LoRA alpha parameter
-    target_modules: ['q_proj', 'v_proj', 'k_proj', 'out_proj', 'fc1', 'fc2']  # Target modules for LoRA
-    lora_dropout: 0.1
-    bias: 'none'
+    time_dim: 2
 
 classifier_metrics:
   task: 'binary'  # ["binary", "multiclass", "multilabel"]
@@ -103,10 +67,10 @@ optimizer:
         patience: 10
 
 etc:
-  resume: true
+  resume: false
   ckpt_dir: ../results/check_point/
-  ckpt_name_tag: surya_flare
-  ckpt_file: last-v1.ckpt
+  ckpt_name_tag: resnet18
+  ckpt_file: null
   save_test_results_path: ../results/
   precision: 32 #16-mixed
   accelerator: gpu

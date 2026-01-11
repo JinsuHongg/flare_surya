@@ -28,5 +28,6 @@ def build_callbacks(cfg, wandb_logger):
             save_last=True,
             verbose=True,
             mode="min",
+            enable_version_counter=False,
         ),
     ]

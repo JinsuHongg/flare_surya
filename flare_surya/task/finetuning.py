@@ -68,10 +68,21 @@ def train(cfg: OmegaConf):
     datamodule = FlareDataModule(cfg=cfg)
 
     # Load model
-    if cfg["pretrained_downstream_model_path"]:
-        model = FlareSurya.load_from_checkpoint(cfg["pretrained_downstream_model_path"])
-    else:
-        model = build_model(config=cfg)
+    model = build_model(config=cfg)
+
+    # Load weights only
+    if cfg.etc.resume and cfg.etc.ckpt_weights_only:
+        ckpt_path = os.path.join(
+            cfg.etc.ckpt_dir,
+            cfg.etc.ckpt_file,
+        )
+        lgr_logger.info(f"Load model weights only...")
+        lgr_logger.info(f"ckpt from: {ckpt_path}")
+        # only pretrained weights are used
+        model = FlareSurya.load_from_checkpoint(
+            ckpt_path,
+            map_location="cpu",
+        )
 
     # Create wandb obejct
     wandb_logger = build_wandb(cfg=cfg, model=model)
@@ -96,15 +107,21 @@ def train(cfg: OmegaConf):
     # trainer.fit(
     #     model=model,
     #     datamodule=datamodule,
-    #     ckpt_path=os.path.join(
-    #         cfg.etc.ckpt_dir,
-    #         cfg.etc.ckpt_file
-    #     ) if cfg.etc.resume else None,
+    #     ckpt_path=(
+    #         os.path.join(cfg.etc.ckpt_dir, cfg.etc.ckpt_file)
+    #         if cfg.etc.resume and not cfg.etc.ckpt_weights_only
+    #         else None
+    #     ),
     # )
     trainer.test(
         model=model,
         dataloaders=datamodule,
-        ckpt_path=os.path.join(cfg.etc.ckpt_dir, cfg.etc.ckpt_file),
+        # resuming from all the training state
+        ckpt_path=(
+            os.path.join(cfg.etc.ckpt_dir, cfg.etc.ckpt_file)
+            if cfg.etc.resume and not cfg.etc.ckpt_weights_only
+            else None
+        ),
         verbose=True,
     )
 

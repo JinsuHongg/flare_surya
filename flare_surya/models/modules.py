@@ -64,7 +64,6 @@ class FlareSurya(BaseModule):
         # misc
         save_test_results_path=None,
     ):
-        super().__init__(optimizer_dict=optimizer_dict)
         self.token_type = token_type
         self.log_step_size = log_step_size
         self.freeze_backbone = freeze_backbone
@@ -75,6 +74,8 @@ class FlareSurya(BaseModule):
             "targets": [],
         }
         self.save_test_results_path = save_test_results_path
+        self.save_hyperparameters()
+        super().__init__(optimizer_dict=optimizer_dict)
 
         self.backbone = HelioSpectFormer(
             img_size=img_size,
@@ -235,13 +236,11 @@ class FlareSurya(BaseModule):
         x_hat = self.head(tokens)
 
         # Store predictions and targets for later analysis
-        self.test_results["timestamps"].extend(
-            metadata["timestamps_input"].detach().cpu().numpy().tolist()
+        self.test_results["timestamps"].append(
+            metadata["timestamps_input"][0].detach().cpu().numpy().tolist()
         )
-        self.test_results["targets"].extend(target.detach().cpu().numpy().tolist())
-        self.test_results["predictions"].extend(
-            torch.sigmoid(x_hat).detach().cpu().numpy().tolist()
-        )
+        self.test_results["targets"].append(target.item())
+        self.test_results["predictions"].append(torch.sigmoid(x_hat).item())
 
         # Calculate Loss
         loss = F.binary_cross_entropy_with_logits(x_hat, target.float().unsqueeze(1))
@@ -267,22 +266,43 @@ class FlareSurya(BaseModule):
         self.log("test/f1_final", metrics["f1"], prog_bar=True, sync_dist=True)
         self.log("test/tss_final", metrics["tss"], prog_bar=True, sync_dist=True)
 
-        # Save test results to csf
-        all_timestamps = self.all_gather(torch.tensor(self.test_results["timestamps"]))
-        all_predictions = self.all_gather(
-            torch.tensor(self.test_results["predictions"])
+        # Gather across all ranks (list of lists)
+        timestamps = torch.as_tensor(
+            self.test_results["timestamps"],
+            dtype=torch.float64,
+            device=self.device,
         )
-        all_targets = self.all_gather(torch.tensor(self.test_results["targets"]))
+        all_timestamps = self.all_gather(timestamps)
+        all_predictions = self.all_gather(self.test_results["predictions"])
+        all_targets = self.all_gather(self.test_results["targets"])
 
-        results = pd.DataFrame(
-            {
-                "timestamps": all_timestamps.flatten().cpu().numpy(),
-                "predictions": all_predictions.flatten().cpu().numpy(),
-                "targets": all_targets.flatten().cpu().numpy(),
-            }
-        )
+        if self.trainer.is_global_zero:
 
-        if self.trainer.global_rank == 0:
+            # Flatten the gathered lists (from multiple ranks) correctly
+            all_timestamps = [
+                ts.detach().cpu().tolist()
+                for rank_ts in all_timestamps
+                for ts in rank_ts
+            ]
+
+            all_predictions = [
+                float(p.detach().cpu().item())
+                for rank_p in all_predictions
+                for p in rank_p
+            ]
+
+            all_targets = [
+                int(y.detach().cpu().item()) for rank_y in all_targets for y in rank_y
+            ]
+
+            results = pd.DataFrame(
+                {
+                    "timestamps": all_timestamps,  # list of lists
+                    "predictions": all_predictions,  # scalar per row
+                    "targets": all_targets,  # scalar per row
+                }
+            )
+
             results = pd.DataFrame(results)
             results.to_csv(
                 os.path.join(self.save_test_results_path, "test_results.csv"),
@@ -428,13 +448,11 @@ class BaseLineModel(BaseModule):
         x_hat = self.backbone(data)
 
         # Store predictions and targets for later analysis
-        self.test_results["timestamps"].extend(
-            metadata["timestamps_input"].detach().cpu().numpy().tolist()
+        self.test_results["timestamps"].append(
+            metadata["timestamps_input"][0].detach().cpu().numpy().tolist()
         )
-        self.test_results["targets"].extend(target.detach().cpu().numpy().tolist())
-        self.test_results["predictions"].extend(
-            torch.sigmoid(x_hat).detach().cpu().numpy().tolist()
-        )
+        self.test_results["targets"].append(target.item())
+        self.test_results["predictions"].append(torch.sigmoid(x_hat).item())
 
         # Calculate Loss
         loss = F.binary_cross_entropy_with_logits(x_hat, target.float().unsqueeze(1))

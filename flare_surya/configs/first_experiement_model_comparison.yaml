@@ -104,9 +104,10 @@ optimizer:
 
 etc:
   resume: true
-  ckpt_dir: ../results/check_point/
+  ckpt_dir: ../results/check_point/surya_flare/
   ckpt_name_tag: surya_flare
-  ckpt_file: last-v1.ckpt
+  ckpt_file: uvrguynx_surya_flare_mlp_epoch=28-val_loss=0.2831.ckpt 
+  ckpt_weights_only: false
   save_test_results_path: ../results/
   precision: 32 #16-mixed
   accelerator: gpu
@@ -130,7 +131,6 @@ wandb:
 
 
 use_latitude_in_learned_flow: false
-pretrained_downstream_model_path: null
 loss_weights: [] # [] or list of weights per channel
 rollout_steps: 0
 num_mask_aia_channels: 0

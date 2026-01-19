@@ -4,9 +4,9 @@ hydra:
 
 data:
   sdo_data_root_path: /nobackupnfs1/sroy14/processed_data/Helio/nc 
-  train_data_path: ../data/surya_input_data_nas.csv
-  valid_data_path: ../data/surya_input_data_nas.csv
-  test_data_path: ../data/surya_input_data_nas.csv
+  train_data_path: ../data/surya-bench_sdo.csv
+  valid_data_path: ../data/surya-bench_sdo.csv
+  test_data_path: ../data/surya-bench_sdo.csv
   train_flare_data_path: ../data/surya-bench-flare-forecasting/train.csv
   valid_flare_data_path: ../data/surya-bench-flare-forecasting/validation.csv
   leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/leaky_validation.csv
@@ -67,15 +67,15 @@ optimizer:
         patience: 10
 
 etc:
-  resume: false
+  resume: true
   ckpt_dir: ../results/check_point/
   ckpt_name_tag: resnet18
-  ckpt_file: null
+  ckpt_file: 17e9amug_resnet18_resnet18_epoch=3-val_loss=0.3585.ckpt
   save_test_results_path: ../results/
   precision: 32 #16-mixed
   accelerator: gpu
   devices: 4 #[0, 1, 2, 3]
-  num_nodes: 1
+  num_nodes: 2
   strategy: ddp #auto
   max_epochs: 100
   log_every_n_steps: 100

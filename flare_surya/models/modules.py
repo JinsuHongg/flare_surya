@@ -64,6 +64,8 @@ class FlareSurya(BaseModule):
         # misc
         save_test_results_path=None,
     ):
+        super().__init__(optimizer_dict=optimizer_dict)
+        self.save_hyperparameters()
         self.token_type = token_type
         self.log_step_size = log_step_size
         self.freeze_backbone = freeze_backbone
@@ -74,8 +76,6 @@ class FlareSurya(BaseModule):
             "targets": [],
         }
         self.save_test_results_path = save_test_results_path
-        self.save_hyperparameters()
-        super().__init__(optimizer_dict=optimizer_dict)
 
         self.backbone = HelioSpectFormer(
             img_size=img_size,
@@ -326,14 +326,14 @@ class BaseLineModel(BaseModule):
         save_test_results_path=None,
     ):
         super().__init__(optimizer_dict=optimizer_dict)
+        self.save_hyperparameters()
         self.log_step_size = log_step_size
+        self.save_test_results_path = save_test_results_path
         self.test_results = {
             "timestamps": [],
             "predictions": [],
             "targets": [],
         }
-        self.save_test_results_path = save_test_results_path
-
         match model_name:
             case "alexnet":
                 self.backbone = AlexNetClassifier(

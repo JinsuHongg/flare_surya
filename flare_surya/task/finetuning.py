@@ -16,45 +16,66 @@ from flare_surya.utils.callbacks import build_callbacks
 torch.set_float32_matmul_precision("medium")
 
 
-def build_model(config):
+def build_model(cfg):
 
-    return FlareSurya(
-        img_size=config["backbone"]["img_size"],
-        patch_size=config["backbone"]["patch_size"],
-        in_chans=len(config["data"]["channels"]),
-        embed_dim=config["backbone"]["embed_dim"],
-        time_embedding=config["backbone"]["time_embedding"],
-        depth=config["backbone"]["depth"],
-        num_heads=config["backbone"]["num_heads"],
-        mlp_ratio=config["backbone"]["mlp_ratio"],
-        drop_rate=config["backbone"]["drop_rate"],
-        dtype=torch.bfloat16,
-        window_size=config["backbone"]["window_size"],
-        dp_rank=config["backbone"]["dp_rank"],
-        learned_flow=config["backbone"]["learned_flow"],
-        use_latitude_in_learned_flow=config["use_latitude_in_learned_flow"],
-        init_weights=config["backbone"]["init_weights"],
-        checkpoint_layers=config["backbone"]["checkpoint_layers"],
-        n_spectral_blocks=config["backbone"]["n_spectral_blocks"],
-        rpe=config["backbone"]["rpe"],
-        ensemble=config["backbone"]["ensemble"],
-        finetune=config["backbone"]["finetune"],
-        nglo=config["backbone"]["nglo"],
-        path_weights=config["backbone"]["path_weights"],
+    model_hyperparameter = {
+        "img_size": cfg.backbone.img_size,
+        "patch_size": cfg.backbone.patch_size,
+        "in_chans": len(cfg.data.channels),
+        "embed_dim": cfg.backbone.embed_dim,
+        "time_embedding": cfg.backbone.time_embedding,
+        "depth": cfg.backbone.depth,
+        "num_heads": cfg.backbone.num_heads,
+        "mlp_ratio": cfg.backbone.mlp_ratio,
+        "drop_rate": cfg.backbone.drop_rate,
+        "dtype": torch.bfloat16,
+        "window_size": cfg.backbone.window_size,
+        "dp_rank": cfg.backbone.dp_rank,
+        "learned_flow": cfg.backbone.learned_flow,
+        "use_latitude_in_learned_flow": cfg.use_latitude_in_learned_flow,
+        "init_weights": cfg.backbone.init_weights,
+        "checkpoint_layers": cfg.backbone.checkpoint_layers,
+        "n_spectral_blocks": cfg.backbone.n_spectral_blocks,
+        "rpe": cfg.backbone.rpe,
+        "ensemble": cfg.backbone.ensemble,
+        "finetune": cfg.backbone.finetune,
+        "nglo": cfg.backbone.nglo,
+        "path_weights": cfg.backbone.path_weights,
         # Put finetuning additions below this line
-        token_type=config["head"]["token_type"],
-        in_feature=config["head"]["hyper_parameters"]["in_feature"][
-            config["head"]["token_type"]
-        ],
-        head_type=config["head"]["type"],
-        head_layer_dict=config["head"]["hyper_parameters"],
-        freeze_backbone=config["backbone"]["freeze_backbone"],
-        lora_dict=config["lora"],
-        optimizer_dict=config["optimizer"],
-        threshold=config["head"]["threshold"],
-        log_step_size=config["head"]["log_step_size"],
-        save_test_results_path=config["etc"]["save_test_results_path"],
-    )
+        "token_type": cfg.head.token_type,
+        "in_feature": cfg.head.hyper_parameters.in_feature[cfg.head.token_type],
+        "head_type": cfg.head.type,
+        "head_layer_dict": cfg.head.hyper_parameters,
+        "freeze_backbone": cfg.backbone.freeze_backbone,
+        "lora": cfg.lora,
+        "optimizer": cfg.optimizer,
+        "threshold": cfg.head.threshold,
+        "log_step_size": cfg.head.log_step_size,
+        "save_test_results_path": cfg.etc.save_test_results_path,
+    }
+    if cfg.etc.resume and cfg.etc.ckpt_weights_only:
+
+        ckpt_path = os.path.join(
+            cfg.etc.ckpt_dir,
+            cfg.etc.ckpt_file,
+        )
+
+        ckpt = torch.load(
+            ckpt_path,
+            weights_only=True,
+            map_location="cpu",
+        )
+
+        lgr_logger.info("Resuming from checkpoint weights only...")
+        lgr_logger.info(f"ckpt: {cfg.etc.ckpt_file}")
+
+        # load weights and hyperparameters
+        model = FlareSurya(**model_hyperparameter)
+        model.load_state_dict(ckpt["state_dict"], strict=False)
+    else:
+        model = FlareSurya(model_hyperparameter)
+
+    return model
 
 
 @hydra.main(
@@ -103,27 +124,27 @@ def train(cfg: OmegaConf):
         strategy=cfg["etc"]["strategy"],
     )
 
-    lgr_logger.info(f"Start training...")
-    # trainer.fit(
-    #     model=model,
-    #     datamodule=datamodule,
-    #     ckpt_path=(
-    #         os.path.join(cfg.etc.ckpt_dir, cfg.etc.ckpt_file)
-    #         if cfg.etc.resume and not cfg.etc.ckpt_weights_only
-    #         else None
-    #     ),
-    # )
-    trainer.test(
+    lgr_logger.info("Start training...")
+    trainer.fit(
         model=model,
-        dataloaders=datamodule,
-        # resuming from all the training state
+        datamodule=datamodule,
         ckpt_path=(
             os.path.join(cfg.etc.ckpt_dir, cfg.etc.ckpt_file)
             if cfg.etc.resume and not cfg.etc.ckpt_weights_only
             else None
         ),
-        verbose=True,
     )
+    # trainer.test(
+    #     model=model,
+    #     dataloaders=datamodule,
+    #     # resuming from all the training state
+    #     ckpt_path=(
+    #         os.path.join(cfg.etc.ckpt_dir, cfg.etc.ckpt_file)
+    #         if cfg.etc.resume and not cfg.etc.ckpt_weights_only
+    #         else None
+    #     ),
+    #     verbose=True,
+    # )
 
 
 if __name__ == "__main__":

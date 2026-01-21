@@ -68,10 +68,12 @@ optimizer:
 
 etc:
   resume: true
-  ckpt_dir: ../results/check_point/
+  ckpt_dir: ../results/check_point/baselines/
   ckpt_name_tag: resnet18
   ckpt_file: 17e9amug_resnet18_resnet18_epoch=3-val_loss=0.3585.ckpt
+  ckpt_weights_only: false
   save_test_results_path: ../results/
+  every_n_train_steps: 2000
   precision: 32 #16-mixed
   accelerator: gpu
   devices: 4 #[0, 1, 2, 3]

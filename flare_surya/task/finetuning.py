@@ -89,7 +89,7 @@ def train(cfg: OmegaConf):
     datamodule = FlareDataModule(cfg=cfg)
 
     # Load model
-    model = build_model(config=cfg)
+    model = build_model(cfg=cfg)
 
     # Load weights only
     if cfg.etc.resume and cfg.etc.ckpt_weights_only:
@@ -111,17 +111,17 @@ def train(cfg: OmegaConf):
     # Trainer
     callbacks = build_callbacks(cfg=cfg, wandb_logger=wandb_logger)
     trainer = Trainer(
-        accelerator=cfg["etc"]["accelerator"],
-        devices=cfg["etc"]["devices"],
-        num_nodes=cfg["etc"]["num_nodes"],
-        max_epochs=cfg["etc"]["max_epochs"],
-        precision=cfg["etc"]["precision"],
+        accelerator=cfg.etc.accelerator,
+        devices=cfg.etc.devices,
+        num_nodes=cfg.etc.num_nodes,
+        max_epochs=cfg.etc.max_epochs,
+        precision=cfg.etc.precision,
         logger=wandb_logger,
         callbacks=callbacks,
-        log_every_n_steps=cfg["etc"]["log_every_n_steps"],
-        limit_train_batches=cfg["etc"]["limit_train_batches"],
-        limit_val_batches=cfg["etc"]["limit_val_batches"],
-        strategy=cfg["etc"]["strategy"],
+        log_every_n_steps=cfg.etc.log_every_n_steps,
+        limit_train_batches=cfg.etc.limit_train_batches,
+        limit_val_batches=cfg.etc.limit_val_batches,
+        strategy=cfg.etc.strategy,
     )
 
     lgr_logger.info("Start training...")

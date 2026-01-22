@@ -47,8 +47,8 @@ def build_model(cfg):
         "head_type": cfg.head.type,
         "head_layer_dict": cfg.head.hyper_parameters,
         "freeze_backbone": cfg.backbone.freeze_backbone,
-        "lora": cfg.lora,
-        "optimizer": cfg.optimizer,
+        "lora_dict": cfg.lora,
+        "optimizer_dict": cfg.optimizer,
         "threshold": cfg.head.threshold,
         "log_step_size": cfg.head.log_step_size,
         "save_test_results_path": cfg.etc.save_test_results_path,
@@ -90,20 +90,6 @@ def train(cfg: OmegaConf):
 
     # Load model
     model = build_model(cfg=cfg)
-
-    # Load weights only
-    if cfg.etc.resume and cfg.etc.ckpt_weights_only:
-        ckpt_path = os.path.join(
-            cfg.etc.ckpt_dir,
-            cfg.etc.ckpt_file,
-        )
-        lgr_logger.info(f"Load model weights only...")
-        lgr_logger.info(f"ckpt from: {ckpt_path}")
-        # only pretrained weights are used
-        model = FlareSurya.load_from_checkpoint(
-            ckpt_path,
-            map_location="cpu",
-        )
 
     # Create wandb obejct
     wandb_logger = build_wandb(cfg=cfg, model=model)

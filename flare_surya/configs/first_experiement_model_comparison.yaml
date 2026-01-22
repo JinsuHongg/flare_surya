@@ -7,7 +7,7 @@ data:
   train_data_path: ../data/surya-bench_sdo.csv
   valid_data_path: ../data/surya-bench_sdo.csv
   test_data_path: ../data/surya-bench_sdo.csv
-  train_flare_data_path: ../data/surya-bench-flare-forecasting/train.csv
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/train_hour_24.csv
   valid_flare_data_path: ../data/surya-bench-flare-forecasting/validation.csv
   leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/leaky_validation.csv
   test_flare_data_path: ../data/surya-bench-flare-forecasting/test.csv
@@ -15,8 +15,8 @@ data:
   time_delta_input_minutes: [-60,0]
   time_delta_target_minutes: +60
   n_input_timestamps: 2 # must be equal to time_delta_input_minutes
-  batch_size: 1
-  num_data_workers: 6
+  batch_size: 2
+  num_data_workers: 3
   pin_memory: false
   prefetch_factor: 1
   pooling: 1
@@ -24,7 +24,7 @@ data:
   scalers_path: ../data/scalers.yaml
   scalers: null
   class_names: ["FL", "NFL"]
-  use_leaky_validation: true
+  use_leaky_validation: false
 
 backbone:
   img_size: 4096
@@ -103,17 +103,17 @@ optimizer:
         patience: 10
 
 etc:
-  resume: true
+  resume: false
   ckpt_dir: ../results/check_point/surya_flare/
   ckpt_name_tag: surya_flare
-  ckpt_file: uvrguynx_surya_flare_mlp_epoch=28-val_loss=0.2831.ckpt 
+  ckpt_file: null
   ckpt_weights_only: true
   save_test_results_path: ../results/
   every_n_train_steps: 2000
   precision: 32 #16-mixed
   accelerator: gpu
   devices: 4 #[0, 1, 2, 3]
-  num_nodes: 2
+  num_nodes: 1
   strategy: ddp #auto
   max_epochs: 100
   log_every_n_steps: 100

@@ -15,7 +15,7 @@ data:
   time_delta_input_minutes: [-60,0]
   time_delta_target_minutes: +60
   n_input_timestamps: 2 # must be equal to time_delta_input_minutes
-  batch_size: 2
+  batch_size: 8
   num_data_workers: 3
   pin_memory: false
   prefetch_factor: 1
@@ -103,18 +103,18 @@ optimizer:
         patience: 10
 
 etc:
-  resume: false
+  resume: true
   ckpt_dir: ../results/check_point/surya_flare/
   ckpt_name_tag: surya_flare
-  ckpt_file: null
-  ckpt_weights_only: true
+  ckpt_file: 12twg8k9_surya_flare_mlp_epoch=6-val_loss=0.3233.ckpt
+  ckpt_weights_only: false
   save_test_results_path: ../results/
   every_n_train_steps: 2000
-  precision: 32 #16-mixed
+  precision: 16-mixed #16-mixed
   accelerator: gpu
   devices: 4 #[0, 1, 2, 3]
-  num_nodes: 1
-  strategy: ddp #auto
+  num_nodes: 2
+  strategy: fsdp #auto, ddp, fsdp
   max_epochs: 100
   log_every_n_steps: 100
   limit_train_batches: null

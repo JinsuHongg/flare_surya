@@ -73,7 +73,7 @@ def build_model(cfg):
         model = FlareSurya(**model_hyperparameter)
         model.load_state_dict(ckpt["state_dict"], strict=False)
     else:
-        model = FlareSurya(model_hyperparameter)
+        model = FlareSurya(**model_hyperparameter)
 
     return model
 

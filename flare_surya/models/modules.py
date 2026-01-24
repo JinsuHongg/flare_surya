@@ -478,8 +478,45 @@ class BaseLineModel(BaseModule):
         self.log("test/f1_final", metrics["f1"], prog_bar=True, sync_dist=True)
         self.log("test/tss_final", metrics["tss"], prog_bar=True, sync_dist=True)
 
-        # Save test results to csf
-        results = pd.DataFrame(self.test_results)
-        results.to_csv(
-            os.path.join(self.save_test_results_path, "test_results.csv"), index=False
+        # Gather across all ranks (list of lists)
+        timestamps = torch.as_tensor(
+            self.test_results["timestamps"],
+            dtype=torch.float64,
+            device=self.device,
         )
+        all_timestamps = self.all_gather(timestamps)
+        all_predictions = self.all_gather(self.test_results["predictions"])
+        all_targets = self.all_gather(self.test_results["targets"])
+
+        if self.trainer.is_global_zero:
+
+            # Flatten the gathered lists (from multiple ranks) correctly
+            all_timestamps = [
+                ts.detach().cpu().tolist()
+                for rank_ts in all_timestamps
+                for ts in rank_ts
+            ]
+
+            all_predictions = [
+                float(p.detach().cpu().item())
+                for rank_p in all_predictions
+                for p in rank_p
+            ]
+
+            all_targets = [
+                int(y.detach().cpu().item()) for rank_y in all_targets for y in rank_y
+            ]
+
+            results = pd.DataFrame(
+                {
+                    "timestamps": all_timestamps,  # list of lists
+                    "predictions": all_predictions,  # scalar per row
+                    "targets": all_targets,  # scalar per row
+                }
+            )
+
+            results = pd.DataFrame(results)
+            results.to_csv(
+                os.path.join(self.save_test_results_path, "test_results.csv"),
+                index=False,
+            )

@@ -134,28 +134,30 @@ def train(cfg: OmegaConf):
         precision=cfg.etc.precision,
         logger=wandb_logger,
         callbacks=callbacks,
-        log_every_n_steps=cfg.etc.log_every_n_steps,
+        log_every_n_steps=cfg.backbone.log_step_size,
         limit_train_batches=cfg.etc.limit_train_batches,
         limit_val_batches=cfg.etc.limit_val_batches,
         strategy=cfg.etc.strategy,
     )
 
     lgr_logger.info("Start training...")
-    trainer.fit(
-        model=model,
-        datamodule=datamodule,
-        ckpt_path=(
-            os.path.join(cfg.etc.ckpt_dir, cfg.etc.ckpt_file)
-            if cfg.etc.resume and not cfg.etc.ckpt_weights_only
-            else None
-        ),
-    )
-    # trainer.test(
-    #     model=model,
-    #     dataloaders=datamodule,
-    #     ckpt_path=os.path.join(cfg.etc.ckpt_dir, cfg.etc.ckpt_file),
-    #     verbose=True,
-    # )
+    if cfg.etc.phase == "train":
+        trainer.fit(
+            model=model,
+            datamodule=datamodule,
+            ckpt_path=(
+                os.path.join(cfg.etc.ckpt_dir, cfg.etc.ckpt_file)
+                if cfg.etc.resume and not cfg.etc.ckpt_weights_only
+                else None
+            ),
+        )
+    elif cfg.etc.phase == "test":
+        trainer.test(
+            model=model,
+            dataloaders=datamodule,
+            ckpt_path=os.path.join(cfg.etc.ckpt_dir, cfg.etc.ckpt_file),
+            verbose=True,
+        )
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ data:
   time_delta_target_minutes: +60
   n_input_timestamps: 2 # must be equal to time_delta_input_minutes
   batch_size: 1
-  num_data_workers: 4
+  num_data_workers: 6
   pin_memory: false
   prefetch_factor: 2
   pooling: 1
@@ -27,16 +27,52 @@ data:
   use_leaky_validation: false
 
 backbone:
-  model_name: resnet50 # resnet18, resnet34, resnet50, alexnet,
-  in_channels: 13
-  time_steps: 2
-  num_classes: 1
-  p_drop: 0.5
-  threshold: 0.5
-  log_step_size: 100
+  img_size: 4096
+  patch_size: 16
+  embed_dim: 1280
+  depth: 10
+  n_spectral_blocks: 2
+  num_heads: 16
+  mlp_ratio: 4.0
+  drop_rate: 0.0
+  window_size: 2
+  dp_rank: 4
+  learned_flow: false
+  use_latitude_in_learned_flow: false
+  rpe: false
+  ensemble: null
+  finetune: True # to get tokkens from attention blocks
   time_embedding:
     type: linear
-    time_dim: 2
+    time_dim: 2 # len(config["data"]["time_delta_input_minutes"])
+  init_weights: false
+  checkpoint_layers: [0,1,2,3,4,5,6,7,8,9]
+  nglo: 0
+  dtype: float32
+  freeze_backbone: True
+  path_weights: ../data/Surya-1.0/surya.366m.v1.pt
+
+head:
+  type: mlp
+  token_type: avg_pooling
+  hyper_parameters:
+    in_feature: {"cls_token": 1280, "avg_pooling": 1280, "max_pooling": 1280}
+    hidden_channels: [1024, 256, 1] #[256, 64, 1]
+    norm_layer: LayerNorm
+    activation_layer: GELU
+    bias: true
+    dropout: 0.1
+  threshold: 0.5 # for thresholding logit
+  log_step_size: 100 # for logging score metrics every n step in training
+
+lora:
+  use: true
+  config:
+    r: 8  # LoRA rank
+    lora_alpha: 8  # LoRA alpha parameter
+    target_modules: ['q_proj', 'v_proj', 'k_proj', 'out_proj', 'fc1', 'fc2']  # Target modules for LoRA
+    lora_dropout: 0.1
+    bias: 'none'
 
 classifier_metrics:
   task: 'binary'  # ["binary", "multiclass", "multilabel"]
@@ -67,10 +103,10 @@ optimizer:
         patience: 10
 
 etc:
-  phase: train
+  phase: test # test
   resume: true
-  ckpt_dir: ../results/check_point/baselines/
-  ckpt_name_tag: baselines
+  ckpt_dir: ../results/check_point/surya_flare/
+  ckpt_name_tag: surya_flare
   ckpt_file: last.ckpt
   ckpt_weights_only: false
   save_test_results_path: ../results/
@@ -78,7 +114,7 @@ etc:
   precision: 16-mixed #16-mixed
   accelerator: gpu
   devices: 4 #[0, 1, 2, 3]
-  num_nodes: 4
+  num_nodes: 1
   strategy: ddp #auto, ddp, fsdp
   max_epochs: 100
   limit_train_batches: null
@@ -96,7 +132,6 @@ wandb:
 
 
 use_latitude_in_learned_flow: false
-pretrained_downstream_model_path: null
 loss_weights: [] # [] or list of weights per channel
 rollout_steps: 0
 num_mask_aia_channels: 0

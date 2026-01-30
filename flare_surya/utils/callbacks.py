@@ -29,7 +29,7 @@ def build_callbacks(cfg, wandb_logger):
             f"{wandb_logger.experiment.id}_"
             f"{cfg.etc.ckpt_name_tag}_"
             f"{cfg.head.type}_"
-            "{epoch}-{step}"
+            "{epoch}-{step}-{val_loss:.4f}"
         ),
         every_n_train_steps=2000,
         save_top_k=-1,

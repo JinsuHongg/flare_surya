@@ -50,7 +50,7 @@ class FlareDataModule(L.LightningDataModule):
             lgr_logger.info(f"Training # samples: {len(self.train_ds)}")
 
         # Assign validation dataset for use in dataloader(s)
-        if stage in (None, "fit"):
+        if stage in (None, "fit", "validate"):
             self.val_ds = self._get_dataset(
                 "validation",
                 self.cfg["data"]["valid_data_path"],

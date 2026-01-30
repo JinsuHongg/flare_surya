@@ -21,9 +21,11 @@ from terratorch_surya.downstream_examples.solar_flare_forecasting.models import 
 from terratorch_surya.models.helio_spectformer import HelioSpectFormer
 from flare_surya.models.heads import SuryaHead
 from flare_surya.models.base import BaseModule
-from terratorch_surya.downstream_examples.solar_flare_forecasting.metrics import (
-    DistributedClassificationMetrics,
-)
+from flare_surya.metrics.classification_metrics import DistributedClassificationMetrics
+
+# from terratorch_surya.downstream_examples.solar_flare_forecasting.metrics import (
+#     DistributedClassificationMetrics,
+# )
 
 
 class FlareSurya(BaseModule):
@@ -163,17 +165,18 @@ class FlareSurya(BaseModule):
         target = data["label"].float().unsqueeze(1)
         tokens = self.forward_features(data)
         x_hat = self.head(tokens)
+        probs = torch.sigmoid(x_hat)
 
         loss = F.binary_cross_entropy_with_logits(x_hat, target)
 
         # Update Metrics
-        self.train_metrics.update(torch.sigmoid(x_hat), data["label"])
+        self.train_metrics.update(probs, target)
 
         # Step-Wise Logging Logic
         # Check if the current global step is a multiple of 100
         if (self.trainer.global_step + 1) % self.log_step_size == 0:
             # Compute, log, and reset the metrics accumulated over the last 100 steps
-            metrics = self.train_metrics.compute_and_reset()
+            metrics = self.train_metrics.compute()
 
             # Log the computed metrics
             self.log_dict(
@@ -183,6 +186,8 @@ class FlareSurya(BaseModule):
                 prog_bar=True,
                 sync_dist=True,
             )
+
+            self.train_metrics.reset()
 
         # Log training loss every step
         self.log(
@@ -201,53 +206,44 @@ class FlareSurya(BaseModule):
         target = data["label"].float().unsqueeze(1)
         tokens = self.forward_features(data)
         x_hat = self.head(tokens)
+        probs = torch.sigmoid(x_hat)
 
+        # Update states
+        self.val_metrics.update(probs, target)
+
+        # Log step loss normally
         loss = F.binary_cross_entropy_with_logits(x_hat, target)
-
-        # Log Training Loss
-        self.log(
-            "val_loss",
-            loss,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-            sync_dist=True,
-        )
-
-        # Update Metrics (x_hat contains the logits)
-        self.val_metrics.update(torch.sigmoid(x_hat), data["label"])
-
-        return loss
+        self.log("val_loss", loss, sync_dist=True)
 
     def on_validation_epoch_end(self):
-        # Compute and log metrics
-        metrics = self.val_metrics.compute_and_reset()
+        # Compute global metrics (Auto-synced across GPUs)
+        metrics = self.val_metrics.compute()
 
-        # Log all computed metrics
-        self.log_dict({f"val_{k}": v for k, v in metrics.items()}, sync_dist=True)
+        self.log_dict({f"val_{k}": v for k, v in metrics.items()})
 
-        # You can also log a single key metric for checkpointing
-        self.log("prog_bar/val_f1", metrics["f1"], prog_bar=True, sync_dist=True)
+        # Reset for next epoch
+        self.val_metrics.reset()
 
     def test_step(self, batch, batch_idx):
         data, metadata = batch
-        target = data["label"]
+        target = data["label"].float().unsqueeze(1)
         tokens = self.forward_features(data)
         x_hat = self.head(tokens)
+        probs = torch.sigmoid(x_hat)
 
         # Store predictions and targets for later analysis
         self.test_results["timestamps"].append(
             metadata["timestamps_input"][0].detach().cpu().numpy().tolist()
         )
         self.test_results["targets"].append(target.item())
-        self.test_results["predictions"].append(torch.sigmoid(x_hat).item())
+        self.test_results["predictions"].append(probs.item())
 
         # Calculate Loss
-        loss = F.binary_cross_entropy_with_logits(x_hat, target.float().unsqueeze(1))
+        loss = F.binary_cross_entropy_with_logits(x_hat, target)
 
         # Update Metrics
         # Pass predicted probabilities (sigmoid(x_hat)) and the target (squeezed to [B])
-        self.test_metrics.update(torch.sigmoid(x_hat), data["label"])
+        self.test_metrics.update(probs, target)
 
         # Log Test Loss
         self.log("test/loss", loss, on_step=False, on_epoch=True, sync_dist=True)
@@ -257,14 +253,12 @@ class FlareSurya(BaseModule):
     def on_test_epoch_end(self):
         # Compute and log metrics
         # The compute_and_reset method handles distributed aggregation (all_reduce)
-        metrics = self.test_metrics.compute_and_reset()
+        metrics = self.test_metrics.compute()
 
         # Log all computed metrics with a 'test/' prefix
         self.log_dict({f"test/{k}": v for k, v in metrics.items()}, sync_dist=True)
 
-        # Optional: Log the primary test metric (e.g., F1 or TSS) prominently
-        self.log("test/f1_final", metrics["f1"], prog_bar=True, sync_dist=True)
-        self.log("test/tss_final", metrics["tss"], prog_bar=True, sync_dist=True)
+        self.test_metrics.reset()
 
         # Gather across all ranks (list of lists)
         timestamps = torch.as_tensor(
@@ -334,6 +328,8 @@ class BaseLineModel(BaseModule):
             "predictions": [],
             "targets": [],
         }
+        self.model_name = model_name
+
         match model_name:
             case "alexnet":
                 self.backbone = AlexNetClassifier(
@@ -377,17 +373,18 @@ class BaseLineModel(BaseModule):
         data, metadata = batch
         target = data["label"].float()
         x_hat = self.backbone(data)
+        probs = torch.sigmoid(x_hat)
 
         loss = F.binary_cross_entropy_with_logits(x_hat, target)
 
         # Update Metrics
-        self.train_metrics.update(torch.sigmoid(x_hat), data["label"])
+        self.train_metrics.update(probs, target)
 
         # Step-Wise Logging Logic
         # Check if the current global step is a multiple of 100
         if (self.trainer.global_step + 1) % self.log_step_size == 0:
             # Compute, log, and reset the metrics accumulated over the last 100 steps
-            metrics = self.train_metrics.compute_and_reset()
+            metrics = self.train_metrics.compute()
 
             # Log the computed metrics
             self.log_dict(
@@ -397,6 +394,8 @@ class BaseLineModel(BaseModule):
                 prog_bar=True,
                 sync_dist=True,
             )
+
+            self.train_metrics.reset()
 
         # Log training loss every step
         self.log(
@@ -414,6 +413,7 @@ class BaseLineModel(BaseModule):
         data, metadata = batch
         target = data["label"].float()
         x_hat = self.backbone(data)
+        probs = torch.sigmoid(x_hat)
 
         loss = F.binary_cross_entropy_with_logits(x_hat, target)
 
@@ -428,38 +428,38 @@ class BaseLineModel(BaseModule):
         )
 
         # Update Metrics (x_hat contains the logits)
-        self.val_metrics.update(torch.sigmoid(x_hat), data["label"])
+        self.val_metrics.update(probs, target)
 
         return loss
 
     def on_validation_epoch_end(self):
         # Compute and log metrics
-        metrics = self.val_metrics.compute_and_reset()
+        metrics = self.val_metrics.compute()
 
         # Log all computed metrics
         self.log_dict({f"val_{k}": v for k, v in metrics.items()}, sync_dist=True)
 
-        # You can also log a single key metric for checkpointing
-        self.log("prog_bar/val_f1", metrics["f1"], prog_bar=True, sync_dist=True)
+        self.val_metrics.reset()
 
     def test_step(self, batch, batch_idx):
         data, metadata = batch
-        target = data["label"]
+        target = data["label"].float()
         x_hat = self.backbone(data)
+        probs = torch.sigmoid(x_hat)
 
         # Store predictions and targets for later analysis
         self.test_results["timestamps"].append(
             metadata["timestamps_input"][0].detach().cpu().numpy().tolist()
         )
         self.test_results["targets"].append(target.item())
-        self.test_results["predictions"].append(torch.sigmoid(x_hat).item())
+        self.test_results["predictions"].append(probs.item())
 
         # Calculate Loss
-        loss = F.binary_cross_entropy_with_logits(x_hat, target.float().unsqueeze(1))
+        loss = F.binary_cross_entropy_with_logits(x_hat, target)
 
         # Update Metrics
         # Pass predicted probabilities (sigmoid(x_hat)) and the target (squeezed to [B])
-        self.test_metrics.update(torch.sigmoid(x_hat), data["label"])
+        self.test_metrics.update(probs, target)
 
         # Log Test Loss
         self.log("test/loss", loss, on_step=False, on_epoch=True, sync_dist=True)
@@ -469,14 +469,12 @@ class BaseLineModel(BaseModule):
     def on_test_epoch_end(self):
         # Compute and log metrics
         # The compute_and_reset method handles distributed aggregation (all_reduce)
-        metrics = self.test_metrics.compute_and_reset()
+        metrics = self.test_metrics.compute()
 
         # Log all computed metrics with a 'test/' prefix
         self.log_dict({f"test/{k}": v for k, v in metrics.items()}, sync_dist=True)
 
-        # Optional: Log the primary test metric (e.g., F1 or TSS) prominently
-        self.log("test/f1_final", metrics["f1"], prog_bar=True, sync_dist=True)
-        self.log("test/tss_final", metrics["tss"], prog_bar=True, sync_dist=True)
+        self.test_metrics.reset()
 
         # Gather across all ranks (list of lists)
         timestamps = torch.as_tensor(
@@ -517,6 +515,8 @@ class BaseLineModel(BaseModule):
 
             results = pd.DataFrame(results)
             results.to_csv(
-                os.path.join(self.save_test_results_path, "test_results.csv"),
+                os.path.join(
+                    self.save_test_results_path, f"{self.model_name}_test_results.csv"
+                ),
                 index=False,
             )

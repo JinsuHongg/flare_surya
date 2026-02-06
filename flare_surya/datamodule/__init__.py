@@ -1,3 +1,1 @@
-from .datamodule import FlareDataModule
-
-__all__ = ["FlareDataModule"]
+from .datamodule import FlareDataModule, FlareDataModuleAWS

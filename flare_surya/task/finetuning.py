@@ -6,7 +6,7 @@ from loguru import logger as lgr_logger
 import torch
 from lightning.pytorch import Trainer
 
-from flare_surya.datamodule import FlareDataModule
+from flare_surya.datamodule import FlareDataModule, FlareDataModuleAWS
 from flare_surya.models.modules import FlareSurya
 
 # from flare_surya.utils.config import load_config

@@ -16,7 +16,7 @@ data:
   time_delta_target_minutes: +60
   n_input_timestamps: 2 # must be equal to time_delta_input_minutes
   batch_size: 1
-  num_data_workers: 4
+  num_data_workers: 8
   pin_memory: false
   prefetch_factor: 2
   pooling: 1
@@ -25,6 +25,8 @@ data:
   scalers: null
   class_names: ["FL", "NFL"]
   use_leaky_validation: false
+  use_simplecache: true
+  s3_cache_dir: /tmp/helio_s3_cache
 
 backbone:
   img_size: 4096
@@ -113,7 +115,7 @@ etc:
   every_n_train_steps: 2000
   precision: 16-mixed #16-mixed
   accelerator: gpu
-  devices: 4 #[0, 1, 2, 3]
+  devices: 1 #[0, 1, 2, 3]
   num_nodes: 4
   strategy: ddp #auto, ddp, fsdp
   max_epochs: 100

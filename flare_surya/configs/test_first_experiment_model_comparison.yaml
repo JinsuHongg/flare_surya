@@ -10,7 +10,7 @@ data:
   train_flare_data_path: ../data/surya-bench-flare-forecasting/train_hour_24.csv
   valid_flare_data_path: ../data/surya-bench-flare-forecasting/validation.csv
   leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/leaky_validation.csv
-  test_flare_data_path: ../data/surya-bench-flare-forecasting/test.csv
+  test_flare_data_path: ../data/surya-bench-flare-forecasting/validation.csv
   channels: ['aia94', 'aia131', 'aia171', 'aia193', 'aia211', 'aia304', 'aia335', 'aia1600', 'hmi_m', 'hmi_bx', 'hmi_by', 'hmi_bz', 'hmi_v']
   time_delta_input_minutes: [-60,0]
   time_delta_target_minutes: +60
@@ -107,7 +107,7 @@ etc:
   resume: true
   ckpt_dir: ../results/check_point/surya_flare/
   ckpt_name_tag: surya_flare
-  ckpt_file: last.ckpt
+  ckpt_file: zm7ipdoe_surya_flare_mlp_epoch=45-val_loss=0.2799.ckpt
   ckpt_weights_only: false
   save_test_results_path: ../results/
   every_n_train_steps: 2000

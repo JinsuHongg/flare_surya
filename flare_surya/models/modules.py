@@ -23,10 +23,6 @@ from flare_surya.models.heads import SuryaHead
 from flare_surya.models.base import BaseModule
 from flare_surya.metrics.classification_metrics import DistributedClassificationMetrics
 
-# from terratorch_surya.downstream_examples.solar_flare_forecasting.metrics import (
-#     DistributedClassificationMetrics,
-# )
-
 
 class FlareSurya(BaseModule):
     def __init__(
@@ -158,6 +154,13 @@ class FlareSurya(BaseModule):
         super().train(mode)
         if self.freeze_backbone and mode:
             self.backbone.eval()
+
+            # Re-enable training ONLY for the trainable adapters
+            for name, module in self.backbone.named_modules():
+                if hasattr(module, "training") and any(
+                    p.requires_grad for p in module.parameters()
+                ):
+                    module.train()
 
     def training_step(self, batch, batch_idx):
         # training_step defines the train loop.
@@ -299,7 +302,7 @@ class FlareSurya(BaseModule):
 
             results = pd.DataFrame(results)
             results.to_csv(
-                os.path.join(self.save_test_results_path, "test_results.csv"),
+                os.path.join(self.save_test_results_path, "surya_test_results.csv"),
                 index=False,
             )
 

@@ -85,8 +85,8 @@ classifier_metrics:
 
 optimizer:
   type: adamw
-  lr: 0.00001
-  weight_decay: 0.01
+  lr: 1e-3
+  weight_decay: 0
   scheduler:
       use: cosine_warmup # The switch
       monitor: val_loss 
@@ -104,7 +104,7 @@ optimizer:
 
 etc:
   phase: train # test
-  resume: true
+  resume: false
   ckpt_dir: ../results/check_point/surya_flare/
   ckpt_name_tag: surya_flare
   ckpt_file: last.ckpt

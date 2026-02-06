@@ -27,7 +27,7 @@ data:
   use_leaky_validation: false
 
 backbone:
-  model_name: resnet50 # resnet18, resnet34, resnet50, alexnet,
+  model_name: alexnet # resnet18, resnet34, resnet50, alexnet,
   in_channels: 13
   time_steps: 2
   num_classes: 1
@@ -78,7 +78,7 @@ etc:
   precision: 16-mixed #16-mixed
   accelerator: gpu
   devices: 4 #[0, 1, 2, 3]
-  num_nodes: 4
+  num_nodes: 2
   strategy: ddp #auto, ddp, fsdp
   max_epochs: 100
   limit_train_batches: null

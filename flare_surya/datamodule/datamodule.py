@@ -96,6 +96,7 @@ class FlareDataModule(L.LightningDataModule):
             batch_size=self.cfg["data"]["batch_size"],
             shuffle=True,
             pin_memory=self.cfg["data"]["pin_memory"],
+            drop_last=True,
         )
 
     def val_dataloader(self):

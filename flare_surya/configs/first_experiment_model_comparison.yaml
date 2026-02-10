@@ -16,8 +16,8 @@ data:
   time_delta_target_minutes: +60
   n_input_timestamps: 2 # must be equal to time_delta_input_minutes
   batch_size: 1
-  num_data_workers: 8
-  pin_memory: false
+  num_data_workers: 4
+  pin_memory: true
   prefetch_factor: 2
   pooling: 1
   random_vert_flip: false
@@ -109,14 +109,14 @@ etc:
   resume: false
   ckpt_dir: ../results/check_point/surya_flare/
   ckpt_name_tag: surya_flare
-  ckpt_file: last.ckpt
+  ckpt_file: null
   ckpt_weights_only: false
   save_test_results_path: ../results/
   every_n_train_steps: 2000
-  precision: 16-mixed #16-mixed
+  precision: bf16-mixed #16-mixed, bf16-mixed
   accelerator: gpu
   devices: 1 #[0, 1, 2, 3]
-  num_nodes: 4
+  num_nodes: 2
   strategy: ddp #auto, ddp, fsdp
   max_epochs: 100
   limit_train_batches: null
@@ -128,7 +128,7 @@ wandb:
   project: helio-fm
   log_model: false
   notes: "simple mlp head"
-  offline: true
+  offline: false
   save_code: false
   tag: ["surya", "mlp", "binary"] # backbone model, head type, task
 

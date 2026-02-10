@@ -183,7 +183,7 @@ class FlareSurya(BaseModule):
 
             # Log the computed metrics
             self.log_dict(
-                {f"train/step_{k}": v for k, v in metrics.items()},
+                {f"train/step_{k}": v.float() for k, v in metrics.items()},
                 on_step=True,
                 on_epoch=False,
                 prog_bar=True,
@@ -222,7 +222,9 @@ class FlareSurya(BaseModule):
         # Compute global metrics (Auto-synced across GPUs)
         metrics = self.val_metrics.compute()
 
-        self.log_dict({f"val_{k}": v for k, v in metrics.items()})
+        self.log_dict(
+            {f"val_{k}": v.float() for k, v in metrics.items()}, sync_dist=True
+        )
 
         # Reset for next epoch
         self.val_metrics.reset()
@@ -259,7 +261,9 @@ class FlareSurya(BaseModule):
         metrics = self.test_metrics.compute()
 
         # Log all computed metrics with a 'test/' prefix
-        self.log_dict({f"test/{k}": v for k, v in metrics.items()}, sync_dist=True)
+        self.log_dict(
+            {f"test/{k}": v.float() for k, v in metrics.items()}, sync_dist=True
+        )
 
         self.test_metrics.reset()
 
@@ -391,7 +395,7 @@ class BaseLineModel(BaseModule):
 
             # Log the computed metrics
             self.log_dict(
-                {f"train/step_{k}": v for k, v in metrics.items()},
+                {f"train/step_{k}": v.float() for k, v in metrics.items()},
                 on_step=True,
                 on_epoch=False,
                 prog_bar=True,
@@ -440,7 +444,9 @@ class BaseLineModel(BaseModule):
         metrics = self.val_metrics.compute()
 
         # Log all computed metrics
-        self.log_dict({f"val_{k}": v for k, v in metrics.items()}, sync_dist=True)
+        self.log_dict(
+            {f"val_{k}": v.float() for k, v in metrics.items()}, sync_dist=True
+        )
 
         self.val_metrics.reset()
 
@@ -475,7 +481,9 @@ class BaseLineModel(BaseModule):
         metrics = self.test_metrics.compute()
 
         # Log all computed metrics with a 'test/' prefix
-        self.log_dict({f"test/{k}": v for k, v in metrics.items()}, sync_dist=True)
+        self.log_dict(
+            {f"test/{k}": v.float() for k, v in metrics.items()}, sync_dist=True
+        )
 
         self.test_metrics.reset()
 

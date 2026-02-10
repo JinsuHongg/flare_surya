@@ -81,7 +81,7 @@ def build_model(cfg):
 @hydra.main(
     version_base=None,
     config_path="../configs",
-    config_name="first_experiement_model_comparison.yaml",
+    config_name="first_experiment_model_comparison.yaml",
 )
 def train(cfg: OmegaConf):
 

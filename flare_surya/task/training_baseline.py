@@ -44,7 +44,7 @@ def build_model(config):
 @hydra.main(
     version_base=None,
     config_path="../configs",
-    config_name="baseline_experiement.yaml",
+    config_name="baseline_experiment.yaml",
 )
 def train(cfg: OmegaConf):
 

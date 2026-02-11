@@ -3,11 +3,11 @@ hydra:
       dir: .
 
 data:
-  sdo_data_root_path: /anvil/scratch/x-jhong6/data/surya-bench/
-  train_data_path: ../data/surya_input_data.csv
-  valid_data_path: ../data/surya_input_data.csv
-  test_data_path: ../data/surya_input_data.csv
-  train_flare_data_path: ../data/surya-bench-flare-forecasting/train_hour_24.csv
+  zarr_path: /anvil/scratch/x-jhong6/data/surya_bench_8hour.zarr
+  train_data_path: ../data/surya_zarr_index_8hourly.csv
+  valid_data_path: ../data/surya_zarr_index_8hourly.csv
+  test_data_path: ../data/surya_zarr_index_8hourly.csv
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/train.csv
   valid_flare_data_path: ../data/surya-bench-flare-forecasting/validation.csv
   leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/leaky_validation.csv
   test_flare_data_path: ../data/surya-bench-flare-forecasting/test.csv
@@ -16,7 +16,7 @@ data:
   time_delta_target_minutes: +60
   n_input_timestamps: 2 # must be equal to time_delta_input_minutes
   batch_size: 1
-  num_data_workers: 4
+  num_data_workers: 9
   pin_memory: true
   prefetch_factor: 2
   persistent_workers: true

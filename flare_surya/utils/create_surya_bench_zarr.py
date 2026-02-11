@@ -1,0 +1,146 @@
+import os
+import s3fs
+import xarray as xr
+import zarr
+import pandas as pd
+from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor
+import hdf5plugin
+import zarr.codecs
+
+
+def get_dataset(path, is_s3=False, s3=None):
+    """Helper to open dataset efficiently without Dask overhead."""
+    try:
+        if is_s3:
+            return xr.open_dataset(s3.open(path), engine="h5netcdf", chunks=None)
+        return xr.open_dataset(path, engine="h5netcdf", chunks=None)
+    except Exception as e:
+        print(f"\nError loading {path}: {e}")
+        return None
+
+
+def create_zarr_optimized(data_local, data_aws, data_ref, zarr_path):
+    channels = [
+        "aia94",
+        "aia131",
+        "aia171",
+        "aia193",
+        "aia211",
+        "aia304",
+        "aia335",
+        "aia1600",
+        "hmi_m",
+        "hmi_bx",
+        "hmi_by",
+        "hmi_bz",
+        "hmi_v",
+    ]
+
+    s3 = s3fs.S3FileSystem(anon=True)
+
+    # Zarr V3: Use LocalStore for persistent storage on Anvil Scratch
+    store = zarr.storage.LocalStore(zarr_path)
+
+    # Open or create the group
+    try:
+        root = zarr.open_group(store=store)
+        # exists = True
+    except:
+        root = zarr.create_group(store=store)
+        # exists = False
+
+    # Zarr V3: Define Blosc LZ4 compressor
+    blosc_lz4 = zarr.codecs.BloscCodec(cname="lz4", clevel=5, shuffle="shuffle")
+
+    # check total
+    surya_bench_index = data_aws.index
+
+    # define reference timestamps
+    flare_index = data_ref.index
+    shifted_minus = flare_index - pd.Timedelta(minutes=60)
+    shifted_plus = flare_index + pd.Timedelta(minutes=60)
+    expanded_index = flare_index.append([shifted_minus, shifted_plus])
+    expanded_index = expanded_index.drop_duplicates().sort_values()
+
+    # define valid index
+    valid_index = surya_bench_index.intersection(expanded_index)
+    total_len = len(valid_index)
+
+    if "img" not in root:
+        img_arr = root.create_array(
+            "img",
+            shape=(total_len, 13, 4096, 4096),
+            chunks=(1, 13, 1024, 1024),
+            dtype="float32",
+            compressors=[blosc_lz4],
+        )
+        time_arr = root.create_array(
+            "timestep", shape=(total_len,), chunks=(1024,), dtype="int64"
+        )
+        processed_timestamps = set()
+    else:
+        img_arr = root["img"]
+        time_arr = root["timestep"]
+        # Load existing data into a set for O(1) resume logic
+        print("Resuming: Loading existing timestamps...")
+        # .values converts the Zarr array to a numpy array for the set
+        processed_timestamps = set(time_arr[:].tolist())
+        if 0 in processed_timestamps:
+            processed_timestamps.remove(0)
+
+    pbar = tqdm(enumerate(valid_index), total=total_len, desc="Converting to Zarr")
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        for i, idx in pbar:
+
+            # Checkpoint check
+            if int(idx.value) in processed_timestamps:
+                continue
+
+            # Presence check
+            if idx not in data_aws.index or data_aws.loc[idx, "present"] == 0:
+                continue
+
+            local_path = data_local.loc[idx, "path"]
+            aws_path = data_aws.loc[idx, "path"]
+
+            # Load data
+            if os.path.exists(local_path):
+                ds = get_dataset(local_path, is_s3=False, s3=s3)
+            else:
+                ds = get_dataset(aws_path, is_s3=True, s3=s3)
+
+            if ds is not None:
+                # Extract and write data
+                img_data = ds[channels].to_array().values.astype("float32")
+                img_arr[i] = img_data
+                time_arr[i] = int(idx.value)
+
+                ds.close()
+                pbar.set_postfix({"timestamp": idx.strftime("%Y-%m-%d %H:%M")})
+
+
+if __name__ == "__main__":
+    # Load indices
+    df_anvil = pd.read_csv("../data/surya_input_data.csv")
+    df_aws = pd.read_csv("../data/surya_aws_s3_full_index.csv")
+    df_ref = pd.read_csv("../data/surya-bench-flare-forecasting/data_8.csv")
+
+    # Correct datetime parsing
+    df_anvil["timestep"] = pd.to_datetime(
+        df_anvil["timestep"], format="%Y-%m-%d %H:%M:%S"
+    )
+    df_aws["timestep"] = pd.to_datetime(df_aws["timestep"], format="%Y-%m-%d %H:%M:%S")
+    df_ref["timestamp"] = pd.to_datetime(
+        df_ref["timestamp"], format="%Y-%m-%d %H:%M:%S"
+    )
+
+    df_anvil.set_index("timestep", inplace=True)
+    df_aws.set_index("timestep", inplace=True)
+    df_ref.set_index("timestamp", inplace=True)
+
+    # Target path on Anvil scratch
+    zarr_out = "/anvil/scratch/x-jhong6/data/surya_bench_8hourly.zarr"
+
+    create_zarr_optimized(df_anvil, df_aws, df_ref, zarr_out)

@@ -1,1 +1,1 @@
-from .datamodule import FlareDataModule, FlareDataModuleAWS
+from .datamodule import FlareDataModule, FlareDataModuleAWS, FlareDataModuleZarr

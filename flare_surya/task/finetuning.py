@@ -6,7 +6,11 @@ from loguru import logger as lgr_logger
 import torch
 from lightning.pytorch import Trainer
 
-from flare_surya.datamodule import FlareDataModule, FlareDataModuleAWS
+from flare_surya.datamodule import (
+    FlareDataModule,
+    FlareDataModuleAWS,
+    FlareDataModuleZarr,
+)
 from flare_surya.models.modules import FlareSurya
 
 # from flare_surya.utils.config import load_config
@@ -86,7 +90,7 @@ def build_model(cfg):
 def train(cfg: OmegaConf):
 
     # Datamodule
-    datamodule = FlareDataModule(cfg=cfg)
+    datamodule = FlareDataModuleZarr(cfg=cfg)
 
     # Load model
     model = build_model(cfg=cfg)

@@ -107,7 +107,7 @@ def train(cfg: OmegaConf):
             f"{cfg.backbone.model_name}_"
             "{epoch}-{step}"
         ),
-        every_n_train_steps=2000,
+        every_n_train_steps=cfg.etc.every_n_train_steps,
         save_top_k=-1,
         verbose=True,
     )

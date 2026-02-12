@@ -91,7 +91,7 @@ def create_zarr_optimized(data_local, data_aws, data_ref, zarr_path):
 
     pbar = tqdm(enumerate(valid_index), total=total_len, desc="Converting to Zarr")
 
-    with ThreadPoolExecutor(max_workers=8) as executor:
+    with ThreadPoolExecutor(max_workers=16) as executor:
         for i, idx in pbar:
 
             # Checkpoint check
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     # Load indices
     df_anvil = pd.read_csv("../data/surya_input_data.csv")
     df_aws = pd.read_csv("../data/surya_aws_s3_full_index.csv")
-    df_ref = pd.read_csv("../data/surya-bench-flare-forecasting/data_8.csv")
+    df_ref = pd.read_csv("../data/surya-bench-flare-forecasting/validation.csv")
 
     # Correct datetime parsing
     df_anvil["timestep"] = pd.to_datetime(
@@ -141,6 +141,6 @@ if __name__ == "__main__":
     df_ref.set_index("timestamp", inplace=True)
 
     # Target path on Anvil scratch
-    zarr_out = "/anvil/scratch/x-jhong6/data/surya_bench_8hourly.zarr"
+    zarr_out = "/anvil/scratch/x-jhong6/data/surya_bench_val.zarr"
 
     create_zarr_optimized(df_anvil, df_aws, df_ref, zarr_out)

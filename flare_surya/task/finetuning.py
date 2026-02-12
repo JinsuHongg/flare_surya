@@ -90,7 +90,7 @@ def build_model(cfg):
 def train(cfg: OmegaConf):
 
     # Datamodule
-    datamodule = FlareDataModuleZarr(cfg=cfg)
+    datamodule = FlareDataModule(cfg=cfg)
 
     # Load model
     model = build_model(cfg=cfg)

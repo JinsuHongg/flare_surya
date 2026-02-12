@@ -1,0 +1,79 @@
+#!/bin/bash
+#PBS -S /bin/bash
+#PBS -N surya_flare_fintune
+#PBS -q gpu_normal
+#PBS -l select=4:model=sky_gpu:ncpus=12:ngpus=1:mem=50GB
+#PBS -l place=scatter:excl
+#PBS -l walltime=24:00:00
+#PBS -M jhong36@gsu.edu
+#PBS -m abe
+#PBS -k od -k ed
+#PBS -o logs/surya/flaresurya_finetune_multi_node.out
+#PBS -e logs/surya/flaresurya_finetune_multi_node.err
+#PBS -W umask=002
+
+mkdir -p logs/surya
+cd $PBS_O_WORKDIR
+export BASE=$PWD
+
+JOBID=$(echo "$PBS_JOBID" | cut -d. -f1)
+exec > logs/surya/flaresurya_finetune_multi_node.${JOBID}.out
+exec 2> logs/surya/flaresurya_finetune_multi_node.${JOBID}.err
+
+# We use YOUR venv, not sroy14's
+VENV_PATH="$BASE/.venv/bin/activate"
+SCRIPT_DIR="$BASE/flare_surya/task"
+SCRIPT_FILE="finetuning.py"
+
+# Get the Primary IP (Solves 'gai error')
+MASTER_ADDR=$(head -n 1 "$PBS_NODEFILE" | uniq)
+MASTER_PORT=29500
+
+echo "MASTER_ADDR: $MASTER_ADDR"
+echo "MASTER_PORT: $MASTER_PORT"
+
+mapfile -t NODES < <(sort -u "$PBS_NODEFILE")
+NUM_NODES=${#NODES[@]}
+GPUS_PER_NODE=1
+
+for (( i=0; i<$NUM_NODES; i++ )); do
+    NODE_HOSTNAME=${NODES[$i]}
+    NODE_RANK=$i
+    
+    echo "Starting Worker $NODE_RANK on $NODE_HOSTNAME"
+
+    # We build the command to run on each node.
+    # CRITICAL: We export the variables from the script you shared.
+    CMD="cd $SCRIPT_DIR && \
+         source $VENV_PATH && \
+         export NCCL_IB_DISABLE=1 && \
+         export NCCL_SOCKET_FAMILY=AF_INET && \
+         export NCCL_DEBUG=INFO && \
+         export GLOO_SOCKET_FAMILY=AF_INET && \
+         torchrun \
+         --nnodes=$NUM_NODES \
+         --node_rank=$NODE_RANK \
+         --nproc_per_node=$GPUS_PER_NODE \
+         --rdzv_id=$JOBID \
+         --rdzv_backend=c10d \
+         --rdzv_endpoint=${MASTER_ADDR}:${MASTER_PORT} \
+         $SCRIPT_FILE"
+
+    # Launch logic
+    if [ $i -eq 0 ]; then
+        eval $CMD &
+    else
+        ssh -o StrictHostKeyChecking=no \
+        -o BatchMode=yes \
+        -o LogLevel=ERROR \
+        -n $NODE_HOSTNAME "bash -c '$CMD'" &
+    fi
+done
+
+wait
+
+
+        #  export MPI_LAUNCH_TIMEOUT=60 && \
+        #  export CUDA_LAUNCH_BLOCKING=1 && \
+        #  export TORCH_USE_CUDA_DSA=1 && \
+        #  export MPI_UNBUFFERED_STDIO=true && \

@@ -3,10 +3,10 @@ hydra:
       dir: .
 
 data:
-  sdo_data_root_path: /nobackupnfs1/sroy14/processed_data/Helio/nc 
-  train_data_path: ../data/surya-bench_sdo.csv
-  valid_data_path: ../data/surya-bench_sdo.csv
-  test_data_path: ../data/surya-bench_sdo.csv
+  sdo_data_root_path: /anvil/scratch/x-jhong6/data/surya-bench/ 
+  train_data_path: ../data/surya_input_data.csv
+  valid_data_path: ../data/surya_input_data.csv
+  test_data_path: ../data/surya_input_data.csv
   train_flare_data_path: ../data/surya-bench-flare-forecasting/train_hour_24.csv
   valid_flare_data_path: ../data/surya-bench-flare-forecasting/validation.csv
   leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/leaky_validation.csv
@@ -16,9 +16,10 @@ data:
   time_delta_target_minutes: +60
   n_input_timestamps: 2 # must be equal to time_delta_input_minutes
   batch_size: 1
-  num_data_workers: 4
+  num_data_workers: 6
   pin_memory: true
   prefetch_factor: 2
+  persistent_workers: true
   pooling: 1
   random_vert_flip: false
   scalers_path: ../data/scalers.yaml
@@ -27,7 +28,7 @@ data:
   use_leaky_validation: false
 
 backbone:
-  model_name: alexnet # resnet18, resnet34, resnet50, alexnet,
+  model_name: resnet18 # resnet18, resnet34, resnet50, alexnet,
   in_channels: 13
   time_steps: 2
   num_classes: 1
@@ -69,17 +70,17 @@ optimizer:
 etc:
   phase: train
   resume: true
-  ckpt_dir: ../results/check_point/baselines/
+  ckpt_dir: /anvil/projects/x-cis251356/check_point/surya/baselines
   ckpt_name_tag: baselines
-  ckpt_file: last.ckpt
+  ckpt_file: nvs90tqz_baselines_resnet18_epoch=8-step=26000.ckpt
   ckpt_weights_only: false
   save_test_results_path: ../results/
   every_n_train_steps: 2000
   precision: 16-mixed #16-mixed
   accelerator: gpu
   devices: 1 #[0, 1, 2, 3]
-  num_nodes: 4
-  strategy: ddp #auto, ddp, fsdp
+  num_nodes: 1
+  strategy: auto #auto, ddp, fsdp
   max_epochs: 100
   limit_train_batches: null
   limit_val_batches: null

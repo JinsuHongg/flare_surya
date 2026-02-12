@@ -1,0 +1,32 @@
+#!/bin/bash
+#PBS -N test_multinode
+#PBS -l select=2:model=cas_gpu:ncpus=4:ngpus=1:mem=10GB
+#PBS -l place=scatter:excl
+#PBS -l walltime=00:10:00
+#PBS -W group_list=s2917
+#PBS -q gpu_normal
+#PBS -o test_multinode.out
+#PBS -e test_multinode.err
+
+cd $PBS_O_WORKDIR
+
+echo "PBS_NODEFILE contents:"
+cat $PBS_NODEFILE
+echo "---"
+
+NODES=($(uniq $PBS_NODEFILE))
+NUM_NODES=${#NODES[@]}
+
+echo "Number of nodes: $NUM_NODES"
+echo "Unique nodes: ${NODES[@]}"
+
+echo "Testing pbsdsh..."
+
+# Test each node rank
+for i in $(seq 0 $(($NUM_NODES - 1))); do
+    echo "Launching on node rank $i"
+    pbsdsh -n $i -- bash -c "hostname && echo 'Node rank $i OK'" &
+done
+
+wait
+echo "Test complete"

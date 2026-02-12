@@ -31,7 +31,7 @@ def build_callbacks(cfg, wandb_logger):
             f"{cfg.head.type}_"
             "{epoch}-{step}-{val_loss:.4f}"
         ),
-        every_n_train_steps=2000,
+        every_n_train_steps=cfg.etc.every_n_train_steps,
         save_top_k=-1,
         verbose=True,
     )

@@ -1,0 +1,101 @@
+#!/usr/bin/bash
+#######################################################################
+##
+## This is a bash script used by qsub to submit a PBS job on NAS
+##
+##  -N job name displayed in qstat
+##  -m [abe]: send email on job abort, begin and end
+##  -M specifies the email address to which mail should be sent
+##  -S sets the shell to be used in executing this script, login shell is used by default
+##  -o myscript.out : Sends standard output to myscript.out
+##  -e myscript.err : Sends standard error output to myscript.out
+##  -q specified job queue
+##  -j <oe> join standerr and standout to one file
+##  -l select  specified job resources, where:
+##     ncpus: cpu cores per node
+##     ngpus: gpu per node
+##     mem:  total memory per node
+##     place:
+##     walltime:
+##     check https://www.nas.nasa.gov/hecc/support/kb/requesting-gpu-resources_646.html
+##     for detail.  
+##
+##  To submit a PBS job of this script, do
+##
+##     qsub [options] cluster_nas.pbs
+##
+##  where options can be:
+##    -kod -ked -o /path/to/log/file
+##    here the -k option allows the output stream to be written to the specified output file
+##    so we can view and monitor how the job is running instead of the end of job.
+##
+##  Notes:   
+##     * TOTAL_NUM_GPUs=num_of_nodes * ngpus
+##     * update the num_nodes according in AFNO yaml file
+##
+##  ChangeLog:
+##      2023-10-3: initail written by Amy Lin (IMPACT/ESSC/UAH)
+##      2023-11-1: individual node call run_trainer_afno.sh 
+##
+#######################################################################
+
+#PBS -S /usr/bin/bash
+#PBS -N finetune_flaresurya 
+
+## On NAS, model can be sky_gpu, cas_gpu or mil_a100 which have GPUs
+## cas_gpu node: 24/48 cores 384GB, 4 GPUs (each 32GB)
+## sky_gpu node: 18/36 cores 384GB, 4 GPUs (each 32GB)
+## mil_a100 node: 64 cores / host, 16 / vnode, 256 GB / host, 64 / vnode, 4 GPUs / host, 1 / vnode (each 80GB)
+
+#PBS -l select=1:model=mil_a100:ncpus=32:ngpus=1:mem=250GB
+##PBS -l place=scatter:excl
+
+##PBS -q gpu_devel
+#PBS -q gpu_normal
+##PBS -l walltime=00:30:00
+##PBS -l walltime=02:00:00
+#PBS -l walltime=24:00:00
+
+## PBS will email when the job is aborted, begun, ended.
+#PBS -M jhong36@gsu.edu
+#PBS -m abe
+
+## join the stderr output to stdout, by default the output file will be placed in place where
+## the qsub is run.  It can be in a different place with PBS -o /path/to/pbs/log/file
+## by default, the output filename is jobname.oJOBID
+
+#PBS -kod -ked
+#PBS -o logs/surya/flaresurya_finetune.out
+#PBS -e logs/surya/flaresurya_finetune.err
+#PBS -W umask=002
+
+    
+## Note**: 
+##   I think the batch_size here is the size per dataloading, not the effective 
+##   batch_size which will be n_nodes * nGPUs * batch_size
+##   Based on suggetion from Soumya, for DDP in pytorch lightning, the batch_size is per node, 
+##   i.e., batch_size will be distributed over the GPUs on the node. Hence if 4 is the best
+##   per GPU, then batch size of 16 will be the choice for node with 4 GPUs. 
+##   since nodes with GPUs on NAS most have 4-GPUs, therefore batch_size will be set to 16
+##   regardless how many nodes to be used
+##
+## Let each GPU process 4 batches each time, 
+## Make sure the batch size in the AFNO yaml file get updated accordingly     
+#
+
+JOBID=$(echo "$PBS_JOBID" | cut -d. -f1)
+exec > logs/surya/flaresurya_finetune.${JOBID}.out
+exec 2> logs/surya/flaresurya_finetune.${JOBID}.err
+
+mapfile -t NODES < <(sort -u "$PBS_NODEFILE")
+if [[ ${#NODES[@]} -ne 1 ]]; then
+  echo "ERROR: expected 1 node, got ${#NODES[@]}"
+  exit 1
+fi
+
+echo "Changing directory to: $PBS_O_WORKDIR"
+cd $PBS_O_WORKDIR
+
+source .venv/bin/activate
+cd flare_surya/task
+python finetuning.py

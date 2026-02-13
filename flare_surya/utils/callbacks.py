@@ -44,7 +44,7 @@ def build_callbacks(cfg, wandb_logger):
     )
 
     return [
-        RichProgressBar(),
+        # RichProgressBar(),
         LearningRateMonitor(logging_interval="step"),
         best_val_ckpt,
         step_ckpt,

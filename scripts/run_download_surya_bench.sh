@@ -23,17 +23,8 @@ export PYTHONNOUSERSITE=1
 source $SLURM_SUBMIT_DIR/.venv/bin/activate
 cd flare_surya/utils
 
-# --- CRITICAL FIX: TAME THE THREADS ---
-# Force libraries to use only 1 thread per worker
-export OMP_NUM_THREADS=1
-export MKL_NUM_THREADS=1
-export OPENBLAS_NUM_THREADS=1
-export VECLIB_MAXIMUM_THREADS=1
-export NUMEXPR_NUM_THREADS=1
-export BLOSC_NTHREADS=1    # <--- Important for Zarr!
-
 # Prevent the "Ghost Variable" crash
 unset SLURM_CPUS_PER_TASK
 
 # Run Python directly (No srun needed for single node)
-python create_surya_bench_zarr_v2.py
+python download_surya_bench_from_aws.py

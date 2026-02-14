@@ -4,12 +4,14 @@ from omegaconf import OmegaConf
 import lightning as L
 from torch.utils.data import DataLoader
 from torch.utils.data import ConcatDataset
-from terratorch_surya.downstream_examples.solar_flare_forecasting.dataset import (
-    SolarFlareDataset,
-)
+
+# from terratorch_surya.downstream_examples.solar_flare_forecasting.dataset import (
+#     SolarFlareDataset,
+# )
 from terratorch_surya.utils.data import build_scalers
 from flare_surya.utils.config import load_config
 from flare_surya.dataset.flare_cls_dataset import (
+    SolarFlareClsDataset,
     SolarFlareClsDatasetZarr,
     SolarFlareClsDatasetAWS,
 )
@@ -25,7 +27,7 @@ class FlareDataModule(L.LightningDataModule):
         self.scalers = build_scalers(info=self.cfg["data"]["scalers"])
 
     def _get_dataset(self, phase, index_path, flare_index_path):
-        return SolarFlareDataset(
+        return SolarFlareClsDataset(
             sdo_data_root_path=self.cfg["data"]["sdo_data_root_path"],
             index_path=index_path,
             time_delta_input_minutes=self.cfg["data"]["time_delta_input_minutes"],

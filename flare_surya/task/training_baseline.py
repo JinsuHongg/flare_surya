@@ -138,6 +138,7 @@ def train(cfg: OmegaConf):
         limit_train_batches=cfg.etc.limit_train_batches,
         limit_val_batches=cfg.etc.limit_val_batches,
         strategy=cfg.etc.strategy,
+        accumulate_grad_batches=cfg.etc.accumulate_grad_batches,
     )
 
     lgr_logger.info("Start training...")

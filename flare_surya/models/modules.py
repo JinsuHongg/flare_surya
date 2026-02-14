@@ -1,6 +1,8 @@
 import os
+import time
 import pandas as pd
 from loguru import logger
+from pprint import pprint
 
 import torch
 
@@ -165,6 +167,7 @@ class FlareSurya(BaseModule):
     def training_step(self, batch, batch_idx):
         # training_step defines the train loop.
         data, metadata = batch
+        stats = data["debug"]
         target = data["label"].float().unsqueeze(1)
         tokens = self.forward_features(data)
         x_hat = self.head(tokens)
@@ -191,6 +194,16 @@ class FlareSurya(BaseModule):
             )
 
             self.train_metrics.reset()
+
+        self.log_dict(
+            {
+                "perf/file_open_latency_sec": stats["open_time"].float().mean(),
+                "perf/file_read_bandwidth_sec": stats["read_time"].float().mean(),
+            },
+            on_step=True,
+            prog_bar=False,
+            sync_dist=False,
+        )
 
         # Log training loss every step
         self.log(
@@ -309,6 +322,25 @@ class FlareSurya(BaseModule):
                 os.path.join(self.save_test_results_path, "surya_test_results.csv"),
                 index=False,
             )
+
+    def transfer_batch_to_device(self, batch, device, dataloader_idx):
+        t0 = time.perf_counter()
+
+        # the standard move (CPU -> GPU)
+        batch = super().transfer_batch_to_device(batch, device, dataloader_idx)
+
+        t1 = time.perf_counter()
+
+        if self.trainer.is_global_zero and self.logger:
+            try:
+                self.logger.experiment.log(
+                    {"perf/cpu_to_gpu_transfer_sec": t1 - t0},
+                    commit=False,
+                )
+            except AttributeError:
+                pass
+
+        return batch
 
 
 class BaseLineModel(BaseModule):

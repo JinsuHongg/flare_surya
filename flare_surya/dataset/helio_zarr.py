@@ -210,7 +210,6 @@ class HelioNetCDFDatasetZarr(Dataset):
 
     def __init__(
         self,
-        index_path: str,
         time_delta_input_minutes: list[int],
         time_delta_target_minutes: int,
         n_input_timestamps: int,
@@ -268,7 +267,13 @@ class HelioNetCDFDatasetZarr(Dataset):
         ]
 
         # Create the index
-        self.index = pd.read_csv(index_path)
+        ts = self.data_zarr["timestep"][:]
+        self.index = pd.DataFrame(
+            {
+                "timestep": ts,  # no slicing
+                "idx": np.arange(ts.shape[0], dtype=int),
+            }
+        )
         self.index["timestep"] = pd.to_datetime(self.index["timestep"]).values.astype(
             "datetime64[ns]"
         )
@@ -394,7 +399,7 @@ class HelioNetCDFDatasetZarr(Dataset):
 
         sequence_data = [
             self.transform_data(self.data_zarr["img"][idx])
-            for idx in self.data_zarr.loc[required_timesteps, "index"]
+            for idx in self.index.loc[required_timesteps, "idx"]
         ]
 
         # Split sequence_data into inputs and target
@@ -425,10 +430,10 @@ class HelioNetCDFDatasetZarr(Dataset):
         ) / np.timedelta64(1, "h")
         lead_time_delta_float = lead_time_delta_float.astype(np.float32)
 
-        metadata = {
-            "timestamps_input": timestamps_input,
-            "timestamps_targets": timestamps_targets,
-        }
+        # metadata = {
+        #     "timestamps_input": timestamps_input,
+        #     "timestamps_targets": timestamps_targets,
+        # }
 
         if self.random_vert_flip:
             if torch.bernoulli(torch.ones(()) / 2) == 1:
@@ -451,14 +456,14 @@ class HelioNetCDFDatasetZarr(Dataset):
                 "forecast": stacked_targets,
                 "lead_time_delta": lead_time_delta_float,
                 "forecast_latitude": target_latitude,
-            }, metadata
+            }  # , metadata
 
         return {
             "ts": stacked_inputs,
             "time_delta_input": time_delta_input_float,
             "forecast": stacked_targets,
             "lead_time_delta": lead_time_delta_float,
-        }, metadata
+        }  # , metadata
 
     # def load_nc_data(
     #     self, filepath: str, timestep: pd.Timestamp, channels: list[str]

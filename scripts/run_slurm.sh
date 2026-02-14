@@ -37,4 +37,4 @@ source $SLURM_SUBMIT_DIR/.venv/bin/activate
 cd flare_surya/task
 
 # Run your training script
-srun python finetuning.py --config-name="$1"
+srun python finetuning.py

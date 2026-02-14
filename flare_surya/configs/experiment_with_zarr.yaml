@@ -3,10 +3,10 @@ hydra:
       dir: .
 
 data:
-  zarr_path: /anvil/scratch/x-jhong6/data/surya_bench_8hour.zarr
-  train_data_path: ../data/surya_zarr_index_8hourly.csv
-  valid_data_path: ../data/surya_zarr_index_8hourly.csv
-  test_data_path: ../data/surya_zarr_index_8hourly.csv
+  zarr_path: /anvil/scratch/x-jhong6/data/surya_bench_train_daily.zarr
+  # train_data_path: ../data/surya_zarr_index_8hourly.csv
+  # valid_data_path: ../data/surya_zarr_index_8hourly.csv
+  # test_data_path: ../data/surya_zarr_index_8hourly.csv
   train_flare_data_path: ../data/surya-bench-flare-forecasting/train.csv
   valid_flare_data_path: ../data/surya-bench-flare-forecasting/validation.csv
   leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/leaky_validation.csv

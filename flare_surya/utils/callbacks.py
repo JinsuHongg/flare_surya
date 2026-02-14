@@ -1,3 +1,5 @@
+import time
+import lightning.pytorch as pl
 from lightning.pytorch.callbacks import (
     ModelCheckpoint,
     RichProgressBar,
@@ -5,6 +7,51 @@ from lightning.pytorch.callbacks import (
     # EarlyStopping,
     # ModelSummary
 )
+
+
+class PerformanceMonitor(pl.Callback):
+    def __init__(self):
+        self.last_batch_end_time = None
+        self.gpu_start_time = None
+
+    def on_train_batch_start(self, trainer, pl_module, batch, batch_idx):
+        """
+        Runs AFTER data is loaded and moved to GPU.
+        The time since the LAST batch ended is purely Data Loading (I/O).
+        """
+        self.gpu_start_time = time.perf_counter()
+
+        if self.last_batch_end_time is not None:
+            # Calculate the "dead time" the GPU spent waiting for data
+            loading_time = self.gpu_start_time - self.last_batch_end_time
+
+            pl_module.log(
+                "perf/data_loading_seconds",
+                loading_time,
+                on_step=True,
+                prog_bar=False,
+                sync_dist=False,  # Do not sync timers!
+            )
+
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        """
+        Runs after the Forward/Backward pass is done.
+        """
+        now = time.perf_counter()
+
+        # Calculate how long the GPU actually worked
+        compute_time = now - self.gpu_start_time
+
+        pl_module.log(
+            "perf/gpu_compute_seconds",
+            compute_time,
+            on_step=True,
+            prog_bar=False,
+            sync_dist=False,
+        )
+
+        # Mark the end time for the NEXT batch's calculation
+        self.last_batch_end_time = now
 
 
 def build_callbacks(cfg, wandb_logger):
@@ -42,11 +89,12 @@ def build_callbacks(cfg, wandb_logger):
         filename="last",
         verbose=True,
     )
-
+    performance_monitor = PerformanceMonitor()
     return [
         # RichProgressBar(),
         LearningRateMonitor(logging_interval="step"),
         best_val_ckpt,
         step_ckpt,
         last_ckpt,
+        performance_monitor,
     ]

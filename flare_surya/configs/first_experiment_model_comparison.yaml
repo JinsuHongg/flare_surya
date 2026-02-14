@@ -16,9 +16,9 @@ data:
   time_delta_target_minutes: +60
   n_input_timestamps: 2 # must be equal to time_delta_input_minutes
   batch_size: 1
-  num_data_workers: 4
+  num_data_workers: 6
   pin_memory: true
-  prefetch_factor: 2
+  prefetch_factor: 1
   persistent_workers: true
   pooling: 1
   random_vert_flip: false
@@ -88,7 +88,7 @@ classifier_metrics:
 
 optimizer:
   type: adamw
-  lr: 1e-3
+  lr: 3e-4
   weight_decay: 0
   scheduler:
       use: cosine_warmup # The switch
@@ -108,7 +108,7 @@ optimizer:
 etc:
   phase: train # test
   resume: false
-  ckpt_dir: ../results/check_point/surya_flare/
+  ckpt_dir: /anvil/projects/x-cis251356/check_point/surya/flare/
   ckpt_name_tag: surya_flare
   ckpt_file: null
   ckpt_weights_only: false
@@ -122,6 +122,7 @@ etc:
   max_epochs: 100
   limit_train_batches: null
   limit_val_batches: null
+  accumulate_grad_batches: 64
 
 wandb:
   save_dir: ../results

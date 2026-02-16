@@ -107,16 +107,16 @@ optimizer:
 
 etc:
   phase: train # test
-  resume: false
+  resume: true
   ckpt_dir: /anvil/projects/x-cis251356/check_point/surya/flare/
   ckpt_name_tag: surya_flare
-  ckpt_file: null
+  ckpt_file: e7bbit5h_surya_flare_mlp_epoch=5-val_loss=0.2104.ckpt
   ckpt_weights_only: false
   save_test_results_path: ../results/
-  every_n_train_steps: 2000
+  # every_n_train_steps: 2000
   precision: 16-mixed #16-mixed
   accelerator: gpu
-  devices: 1 #[0, 1, 2, 3]
+  devices: 2  #[0, 1, 2, 3]
   num_nodes: 1
   strategy: auto #auto, ddp, fsdp
   max_epochs: 100

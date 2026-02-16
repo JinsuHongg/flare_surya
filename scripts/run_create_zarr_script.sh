@@ -36,4 +36,4 @@ export BLOSC_NTHREADS=1    # <--- Important for Zarr!
 unset SLURM_CPUS_PER_TASK
 
 # Run Python directly (No srun needed for single node)
-python create_surya_bench_zarr_v2.py
+python create_surya_bench_zarr.py

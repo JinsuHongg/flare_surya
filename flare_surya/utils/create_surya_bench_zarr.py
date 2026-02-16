@@ -6,7 +6,7 @@ import pandas as pd
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 import hdf5plugin
-import zarr.codecs
+# import zarr.codecs
 
 
 def get_dataset(path, is_s3=False, s3=None):
@@ -36,22 +36,8 @@ def create_zarr_optimized(data_local, data_aws, data_ref, zarr_path):
         "hmi_bz",
         "hmi_v",
     ]
-
+    num_channels = len(channels)
     s3 = s3fs.S3FileSystem(anon=True)
-
-    # Zarr V3: Use LocalStore for persistent storage on Anvil Scratch
-    store = zarr.storage.LocalStore(zarr_path)
-
-    # Open or create the group
-    try:
-        root = zarr.open_group(store=store)
-        # exists = True
-    except:
-        root = zarr.create_group(store=store)
-        # exists = False
-
-    # Zarr V3: Define Blosc LZ4 compressor
-    blosc_lz4 = zarr.codecs.BloscCodec(cname="lz4", clevel=5, shuffle="shuffle")
 
     # check total
     surya_bench_index = data_aws.index
@@ -67,35 +53,39 @@ def create_zarr_optimized(data_local, data_aws, data_ref, zarr_path):
     valid_index = surya_bench_index.intersection(expanded_index)
     total_len = len(valid_index)
 
+    store = zarr.DirectoryStore(zarr_path)
+    root = zarr.group(store=store)
+    compressor = zarr.Blosc(cname="lz4", clevel=5, shuffle=zarr.Blosc.SHUFFLE)
+
     if "img" not in root:
-        img_arr = root.create_array(
+        img_arr = root.create_dataset(
             "img",
-            shape=(total_len, 13, 4096, 4096),
-            chunks=(1, 13, 1024, 1024),
+            shape=(total_len, num_channels, 4096, 4096),
+            chunks=(1, num_channels, 1024, 1024),
             dtype="float32",
-            compressors=[blosc_lz4],
+            compressor=compressor,
         )
-        time_arr = root.create_array(
+        time_arr = root.create_dataset(
             "timestep", shape=(total_len,), chunks=(1024,), dtype="int64"
         )
-        processed_timestamps = set()
+        root.attrs["channel_names"] = channels
     else:
         img_arr = root["img"]
-        time_arr = root["timestep"]
-        # Load existing data into a set for O(1) resume logic
-        print("Resuming: Loading existing timestamps...")
-        # .values converts the Zarr array to a numpy array for the set
-        processed_timestamps = set(time_arr[:].tolist())
-        if 0 in processed_timestamps:
-            processed_timestamps.remove(0)
+        time_arr = root["timestep"] 
+    
+    # Resume logic: find where we left off
+    existing_times = time_arr[:]
+    processed_set = set(existing_times[existing_times > 0])
 
+    print(f"Starting sequential processing for {total_len} timesteps...")
+     
     pbar = tqdm(enumerate(valid_index), total=total_len, desc="Converting to Zarr")
 
     with ThreadPoolExecutor(max_workers=16) as executor:
         for i, idx in pbar:
 
             # Checkpoint check
-            if int(idx.value) in processed_timestamps:
+            if int(idx.value) in processed_set:
                 continue
 
             # Presence check
@@ -141,6 +131,6 @@ if __name__ == "__main__":
     df_ref.set_index("timestamp", inplace=True)
 
     # Target path on Anvil scratch
-    zarr_out = "/anvil/scratch/x-jhong6/data/surya_bench_val.zarr"
+    zarr_out = "/anvil/scratch/x-jhong6/data/surya_bench_validation.zarr"
 
     create_zarr_optimized(df_anvil, df_aws, df_ref, zarr_out)

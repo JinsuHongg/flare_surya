@@ -4,9 +4,9 @@
 #SBATCH -A cis251356-ai
 #SBATCH -p ai               # the default queue is "shared" queue
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=10
-#SBATCH --gres=gpu:1
+#SBATCH --ntasks-per-node=2
+#SBATCH --cpus-per-task=14
+#SBATCH --gres=gpu:2
 #SBATCH --mem=400G
 #SBATCH --time=24:00:00
 #SBATCH --job-name=surya-flare

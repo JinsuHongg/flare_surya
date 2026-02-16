@@ -1,5 +1,5 @@
 #!/bin/bash -l
-# FILENAME: run_create_zarr_script.sh
+# FILENAME: run_download_surya_bench.sh
 
 ##SBATCH -A cis251356-ai
 #SBATCH -p shared
@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=10G
 #SBATCH --time=24:00:00
-#SBATCH --job-name=creat_zarr
+#SBATCH --job-name=download_surya
 #SBATCH --output=logs/%x_%j.out   # %x = job name, %j = job ID
 #SBATCH --error=logs/%x_%j.err    # separate error log (optional)
 

@@ -1,29 +1,24 @@
 import os
 import time
-import pandas as pd
-from loguru import logger
 from pprint import pprint
 
+import pandas as pd
 import torch
-
 # from torch import nn
 import torch.nn.functional as F
+from loguru import logger
 from peft import LoraConfig, get_peft_model
-
 # import lightning as L
 # from terratorch_surya.downstream_examples.solar_flare_forecasting.models import HelioSpectformer1D
 from terratorch_surya.downstream_examples.solar_flare_forecasting.models import (
-    AlexNetClassifier,
-    MobileNetClassifier,
-    ResNet18Classifier,
-    ResNet34Classifier,
-    ResNet50Classifier,
-)
-
+    AlexNetClassifier, MobileNetClassifier, ResNet18Classifier,
+    ResNet34Classifier, ResNet50Classifier)
 from terratorch_surya.models.helio_spectformer import HelioSpectFormer
-from flare_surya.models.heads import SuryaHead
+
+from flare_surya.metrics.classification_metrics import \
+    DistributedClassificationMetrics
 from flare_surya.models.base import BaseModule
-from flare_surya.metrics.classification_metrics import DistributedClassificationMetrics
+from flare_surya.models.heads import SuryaHead
 
 
 class FlareSurya(BaseModule):
@@ -410,6 +405,7 @@ class BaseLineModel(BaseModule):
     def training_step(self, batch, batch_idx):
         # training_step defines the train loop.
         data, metadata = batch
+        stats = data["debug"]
         target = data["label"].float()
         x_hat = self.backbone(data)
         probs = torch.sigmoid(x_hat)
@@ -435,6 +431,16 @@ class BaseLineModel(BaseModule):
             )
 
             self.train_metrics.reset()
+
+        self.log_dict(
+            {
+                "perf/file_open_latency_sec": stats["open_time"].float().mean(),
+                "perf/file_read_bandwidth_sec": stats["read_time"].float().mean(),
+            },
+            on_step=True,
+            prog_bar=False,
+            sync_dist=False,
+        )
 
         # Log training loss every step
         self.log(
@@ -563,3 +569,22 @@ class BaseLineModel(BaseModule):
                 ),
                 index=False,
             )
+
+        def transfer_batch_to_device(self, batch, device, dataloader_idx):
+            t0 = time.perf_counter()
+
+            # the standard move (CPU -> GPU)
+            batch = super().transfer_batch_to_device(batch, device, dataloader_idx)
+
+            t1 = time.perf_counter()
+
+            if self.trainer.is_global_zero and self.logger:
+                try:
+                    self.logger.experiment.log(
+                        {"perf/cpu_to_gpu_transfer_sec": t1 - t0},
+                        commit=False,
+                    )
+                except AttributeError:
+                    pass
+
+            return batch

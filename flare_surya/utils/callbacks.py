@@ -70,31 +70,23 @@ def build_callbacks(cfg, wandb_logger):
         mode="min",
     )
 
-    step_ckpt = ModelCheckpoint(
+    epoch_ckpt = ModelCheckpoint(
         dirpath=cfg.etc.ckpt_dir,
         filename=(
             f"{wandb_logger.experiment.id}_"
             f"{cfg.etc.ckpt_name_tag}_"
-            f"{cfg.head.type}_"
-            "{epoch}-{step}-{val_loss:.4f}"
+            f"{cfg.head.type}_lastepoch"
         ),
-        every_n_train_steps=cfg.etc.every_n_train_steps,
+        save_on_train_epoch_end=True,
         save_top_k=-1,
         verbose=True,
     )
-
-    last_ckpt = ModelCheckpoint(
-        dirpath=cfg.etc.ckpt_dir,
-        save_last=True,
-        filename="last",
-        verbose=True,
-    )
+ 
     performance_monitor = PerformanceMonitor()
     return [
         # RichProgressBar(),
         LearningRateMonitor(logging_interval="step"),
         best_val_ckpt,
-        step_ckpt,
-        last_ckpt,
+        epoch_ckpt,
         performance_monitor,
     ]

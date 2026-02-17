@@ -13,7 +13,7 @@ data:
   test_flare_data_path: ../data/surya-bench-flare-forecasting/test.csv
   channels: ['aia94', 'aia131', 'aia171', 'aia193', 'aia211', 'aia304', 'aia335', 'aia1600', 'hmi_m', 'hmi_bx', 'hmi_by', 'hmi_bz', 'hmi_v']
   time_delta_input_minutes: [-60,0]
-  time_delta_target_minutes: +60
+  time_delta_target_minutes: +60 
   n_input_timestamps: 2 # must be equal to time_delta_input_minutes
   batch_size: 1
   num_data_workers: 6
@@ -110,10 +110,9 @@ etc:
   resume: true
   ckpt_dir: /anvil/projects/x-cis251356/check_point/surya/flare/
   ckpt_name_tag: surya_flare
-  ckpt_file: e7bbit5h_surya_flare_mlp_epoch=5-val_loss=0.2104.ckpt
+  ckpt_file: nrpzmreh3_surya_flare_mlp_lastepoch.ckpt  
   ckpt_weights_only: false
   save_test_results_path: ../results/
-  # every_n_train_steps: 2000
   precision: 16-mixed #16-mixed
   accelerator: gpu
   devices: 2  #[0, 1, 2, 3]

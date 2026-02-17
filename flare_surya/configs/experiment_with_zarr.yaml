@@ -3,14 +3,12 @@ hydra:
       dir: .
 
 data:
-  zarr_path: /anvil/scratch/x-jhong6/data/surya_bench_train_daily.zarr
-  # train_data_path: ../data/surya_zarr_index_8hourly.csv
-  # valid_data_path: ../data/surya_zarr_index_8hourly.csv
-  # test_data_path: ../data/surya_zarr_index_8hourly.csv
-  train_flare_data_path: ../data/surya-bench-flare-forecasting/train.csv
-  valid_flare_data_path: ../data/surya-bench-flare-forecasting/validation.csv
-  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/leaky_validation.csv
-  test_flare_data_path: ../data/surya-bench-flare-forecasting/test.csv
+  train_zarr_path: /anvil/scratch/x-jhong6/data/surya_bench_train_hour_24.zarr
+  val_zarr_path: /anvil/scratch/x-jhong6/data/surya_bench_validation.zarr
+  # train_flare_data_path: ../data/surya-bench-flare-forecasting/train.csv
+  # valid_flare_data_path: ../data/surya-bench-flare-forecasting/validation.csv
+  # leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/leaky_validation.csv
+  # test_flare_data_path: ../data/surya-bench-flare-forecasting/test.csv
   channels: ['aia94', 'aia131', 'aia171', 'aia193', 'aia211', 'aia304', 'aia335', 'aia1600', 'hmi_m', 'hmi_bx', 'hmi_by', 'hmi_bz', 'hmi_v']
   time_delta_input_minutes: [-60,0]
   time_delta_target_minutes: +60

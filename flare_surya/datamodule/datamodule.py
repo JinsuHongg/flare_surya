@@ -9,6 +9,7 @@ from torch.utils.data import ConcatDataset
 #     SolarFlareDataset,
 # )
 from terratorch_surya.utils.data import build_scalers
+import zarr
 from flare_surya.utils.config import load_config
 from flare_surya.dataset.flare_cls_dataset import (
     SolarFlareClsDataset,
@@ -258,9 +259,8 @@ class FlareDataModuleZarr(L.LightningDataModule):
         self.cfg["data"]["scalers"] = load_config(self.cfg["data"]["scalers_path"])
         self.scalers = build_scalers(info=self.cfg["data"]["scalers"])
 
-    def _get_dataset(self, phase, index_path, flare_index_path):
+    def _get_dataset(self, phase, zarr_path, flare_index_path):
         return SolarFlareClsDatasetZarr(
-            index_path=index_path,
             time_delta_input_minutes=self.cfg["data"]["time_delta_input_minutes"],
             time_delta_target_minutes=self.cfg["data"]["time_delta_target_minutes"],
             n_input_timestamps=self.cfg["backbone"]["time_embedding"]["time_dim"],
@@ -274,7 +274,7 @@ class FlareDataModuleZarr(L.LightningDataModule):
             flare_index_path=flare_index_path,
             pooling=self.cfg["data"]["pooling"],
             random_vert_flip=self.cfg["data"]["random_vert_flip"],
-            zarr_path=self.cfg.data.zarr_path,
+            zarr_path=zarr_path,
         )
 
     def setup(self, stage: str):
@@ -282,8 +282,8 @@ class FlareDataModuleZarr(L.LightningDataModule):
         if stage in (None, "fit"):
             self.train_ds = self._get_dataset(
                 "train",
-                self.cfg["data"]["train_data_path"],
-                self.cfg["data"]["train_flare_data_path"],
+                self.cfg.data.train_zarr_path,
+                self.cfg.data.train_flare_data_path,
             )
             lgr_logger.info(f"Training # samples: {len(self.train_ds)}")
 
@@ -291,14 +291,14 @@ class FlareDataModuleZarr(L.LightningDataModule):
         if stage in (None, "fit", "validate"):
             self.val_ds = self._get_dataset(
                 "validation",
-                self.cfg["data"]["valid_data_path"],
-                self.cfg["data"]["valid_flare_data_path"],
+                self.cfg.data.val_zarr_path,
+                self.cfg.data.valid_flare_data_path,
             )
 
             if self.cfg.data.use_leaky_validation:
                 self.leaky_val_ds = self._get_dataset(
                     "validation",
-                    self.cfg.data.valid_data_path,
+                    self.cfg.data.leaky_val_zarr_path,
                     self.cfg.data.leaky_valid_flare_data_path,
                 )
 
@@ -310,16 +310,16 @@ class FlareDataModuleZarr(L.LightningDataModule):
         if stage in (None, "test"):
             self.test_ds = self._get_dataset(
                 "test",
-                self.cfg["data"]["test_data_path"],
-                self.cfg["data"]["test_flare_data_path"],
+                self.cfg.data.test_zarr_path,
+                self.cfg.data.test_flare_data_path,
             )
             lgr_logger.info(f"Test # samples: {len(self.test_ds)}")
 
         if stage in (None, "predict"):
             self.pred_ds = self._get_dataset(
                 "test",
-                self.cfg["data"]["test_data_path"],
-                self.cfg["data"]["test_flare_data_path"],
+                self.cfg.data.test_zarr_path,
+                self.cfg.data.test_flare_data_path,
             )
             lgr_logger.info(f"Predict # samples: {len(self.pred_ds)}")
 
@@ -370,7 +370,8 @@ class FlareDataModuleZarr(L.LightningDataModule):
 
 
 if __name__ == "__main__":
-    cfg = OmegaConf.load("../configs/experiment_with_zarr.yaml")
-    datamodule = FlareDataModuleZarr(cfg=cfg)
+    cfg = OmegaConf.load("../configs/first_experiment_model_comparison.yaml")
+    datamodule = FlareDataModule(cfg=cfg)
     datamodule.setup("fit")
+    datamodule.train_ds[0]
     print("Done")

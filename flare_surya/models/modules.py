@@ -4,19 +4,24 @@ from pprint import pprint
 
 import pandas as pd
 import torch
+
 # from torch import nn
 import torch.nn.functional as F
 from loguru import logger
 from peft import LoraConfig, get_peft_model
+
 # import lightning as L
 # from terratorch_surya.downstream_examples.solar_flare_forecasting.models import HelioSpectformer1D
 from terratorch_surya.downstream_examples.solar_flare_forecasting.models import (
-    AlexNetClassifier, MobileNetClassifier, ResNet18Classifier,
-    ResNet34Classifier, ResNet50Classifier)
+    AlexNetClassifier,
+    MobileNetClassifier,
+    ResNet18Classifier,
+    ResNet34Classifier,
+    ResNet50Classifier,
+)
 from terratorch_surya.models.helio_spectformer import HelioSpectFormer
 
-from flare_surya.metrics.classification_metrics import \
-    DistributedClassificationMetrics
+from flare_surya.metrics.classification_metrics import DistributedClassificationMetrics
 from flare_surya.models.base import BaseModule
 from flare_surya.models.heads import SuryaHead
 
@@ -194,6 +199,7 @@ class FlareSurya(BaseModule):
             {
                 "perf/file_open_latency_sec": stats["open_time"].float().mean(),
                 "perf/file_read_bandwidth_sec": stats["read_time"].float().mean(),
+                "perf/cpu_to_gpu_sec": stats["cpu_to_gpu_sec"].float().mean(),
             },
             on_step=True,
             prog_bar=False,
@@ -286,7 +292,6 @@ class FlareSurya(BaseModule):
         all_targets = self.all_gather(self.test_results["targets"])
 
         if self.trainer.is_global_zero:
-
             # Flatten the gathered lists (from multiple ranks) correctly
             all_timestamps = [
                 ts.detach().cpu().tolist()
@@ -320,20 +325,18 @@ class FlareSurya(BaseModule):
 
     def transfer_batch_to_device(self, batch, device, dataloader_idx):
         t0 = time.perf_counter()
-
-        # the standard move (CPU -> GPU)
         batch = super().transfer_batch_to_device(batch, device, dataloader_idx)
-
         t1 = time.perf_counter()
 
-        if self.trainer.is_global_zero and self.logger:
-            try:
-                self.logger.experiment.log(
-                    {"perf/cpu_to_gpu_transfer_sec": t1 - t0},
-                    commit=False,
-                )
-            except AttributeError:
-                pass
+        # Store the metric in the batch metadata instead of logging immediately
+        if isinstance(batch, list) or isinstance(batch, tuple):
+            # Handle list/tuple batches if necessary, or just skip
+            pass
+        elif isinstance(batch, dict):
+            # Add the transfer time to the debug dictionary we created earlier
+            if "debug" not in batch:
+                batch["debug"] = {}
+            batch["debug"]["cpu_to_gpu_sec"] = t1 - t0
 
         return batch
 
@@ -436,6 +439,7 @@ class BaseLineModel(BaseModule):
             {
                 "perf/file_open_latency_sec": stats["open_time"].float().mean(),
                 "perf/file_read_bandwidth_sec": stats["read_time"].float().mean(),
+                "perf/cpu_to_gpu_sec": stats["cpu_to_gpu_sec"].float().mean(),
             },
             on_step=True,
             prog_bar=False,
@@ -536,7 +540,6 @@ class BaseLineModel(BaseModule):
         all_targets = self.all_gather(self.test_results["targets"])
 
         if self.trainer.is_global_zero:
-
             # Flatten the gathered lists (from multiple ranks) correctly
             all_timestamps = [
                 ts.detach().cpu().tolist()
@@ -570,21 +573,19 @@ class BaseLineModel(BaseModule):
                 index=False,
             )
 
-        def transfer_batch_to_device(self, batch, device, dataloader_idx):
-            t0 = time.perf_counter()
+    def transfer_batch_to_device(self, batch, device, dataloader_idx):
+        t0 = time.perf_counter()
+        batch = super().transfer_batch_to_device(batch, device, dataloader_idx)
+        t1 = time.perf_counter()
 
-            # the standard move (CPU -> GPU)
-            batch = super().transfer_batch_to_device(batch, device, dataloader_idx)
+        # Store the metric in the batch metadata instead of logging immediately
+        if isinstance(batch, list) or isinstance(batch, tuple):
+            # Handle list/tuple batches if necessary, or just skip
+            pass
+        elif isinstance(batch, dict):
+            # Add the transfer time to the debug dictionary we created earlier
+            if "debug" not in batch:
+                batch["debug"] = {}
+            batch["debug"]["cpu_to_gpu_sec"] = t1 - t0
 
-            t1 = time.perf_counter()
-
-            if self.trainer.is_global_zero and self.logger:
-                try:
-                    self.logger.experiment.log(
-                        {"perf/cpu_to_gpu_transfer_sec": t1 - t0},
-                        commit=False,
-                    )
-                except AttributeError:
-                    pass
-
-            return batch
+        return batch

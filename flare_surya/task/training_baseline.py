@@ -100,23 +100,15 @@ def train(cfg: OmegaConf):
         mode="min",
     )
 
-    step_ckpt = ModelCheckpoint(
+    epoch_ckpt = ModelCheckpoint(
         dirpath=cfg.etc.ckpt_dir,
         filename=(
             f"{wandb_logger.experiment.id}_"
             f"{cfg.etc.ckpt_name_tag}_"
-            f"{cfg.backbone.model_name}_"
-            "{epoch}-{step}"
+            f"{cfg.backbone.model_name}_lastepoch"
         ),
-        every_n_train_steps=cfg.etc.every_n_train_steps,
+        save_on_train_epoch_end=True,
         save_top_k=-1,
-        verbose=True,
-    )
-
-    last_ckpt = ModelCheckpoint(
-        dirpath=cfg.etc.ckpt_dir,
-        save_last=True,
-        filename="last",
         verbose=True,
     )
     
@@ -127,8 +119,7 @@ def train(cfg: OmegaConf):
         LearningRateMonitor(logging_interval="step"),
         pf_monitor,
         best_val_ckpt,
-        step_ckpt,
-        last_ckpt,
+        epoch_ckpt,
     ]
 
     trainer = Trainer(

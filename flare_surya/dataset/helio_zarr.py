@@ -1,19 +1,19 @@
 import os
-import sys
-import zarr
 import random
+import sys
 from datetime import datetime
-import torch
-import numpy as np
-import skimage.measure
-import pandas as pd
+from functools import cache
 from logging import Logger
-from torch.utils.data import Dataset
+
+import numpy as np
+import pandas as pd
+import skimage.measure
+import torch
+import zarr
+from numba import njit, prange
 from terratorch_surya.utils.distributed import get_rank
 from terratorch_surya.utils.log import create_logger
-from functools import cache
-
-from numba import njit, prange
+from torch.utils.data import Dataset
 
 
 @njit(parallel=True)
@@ -234,7 +234,7 @@ class HelioNetCDFDatasetZarr(Dataset):
         self.use_latitude_in_learned_flow = use_latitude_in_learned_flow
         self.pooling = pooling if pooling is not None else 1
         self.random_vert_flip = random_vert_flip
-        self.data_zarr = zarr.open(zarr_path, mode="r", zarr_version=3)
+        self.data_zarr = zarr.open_consolidated(zarr_path, mode="r")
 
         if self.channels is None:
             # AIA + HMI channels
@@ -430,15 +430,15 @@ class HelioNetCDFDatasetZarr(Dataset):
         ) / np.timedelta64(1, "h")
         lead_time_delta_float = lead_time_delta_float.astype(np.float32)
 
-        # metadata = {
-        #     "timestamps_input": timestamps_input,
-        #     "timestamps_targets": timestamps_targets,
-        # }
+        metadata = {
+            "timestamps_input": timestamps_input,
+            "timestamps_targets": timestamps_targets,
+        }
 
         if self.random_vert_flip:
             if torch.bernoulli(torch.ones(()) / 2) == 1:
                 stacked_inputs = torch.flip(stacked_inputs, dims=-2)
-                stacked_targets = torch.flip(stacked_inputs, dims=-2)
+                stacked_targets = torch.flip(stacked_targets, dims=-2)
 
         if self.use_latitude_in_learned_flow:
             from sunpy.coordinates.ephemeris import get_earth
@@ -456,39 +456,14 @@ class HelioNetCDFDatasetZarr(Dataset):
                 "forecast": stacked_targets,
                 "lead_time_delta": lead_time_delta_float,
                 "forecast_latitude": target_latitude,
-            }  # , metadata
+            }, metadata
 
         return {
             "ts": stacked_inputs,
             "time_delta_input": time_delta_input_float,
             "forecast": stacked_targets,
             "lead_time_delta": lead_time_delta_float,
-        }  # , metadata
-
-    # def load_nc_data(
-    #     self, filepath: str, timestep: pd.Timestamp, channels: list[str]
-    # ) -> np.ndarray:
-    #     """
-    #     Args:
-    #         filepath: String or Pathlike. Points to NetCDF file to open.
-    #         timestep: Identifies timestamp to retrieve.
-    #     Returns:
-    #         Numpy array of shape (C, H, W).
-    #     """
-    #     self.logger.info(f"Reading file {filepath}.")
-
-    #     if self.sdo_data_root_path and not os.path.isabs(filepath):
-    #         filepath = os.path.join(self.sdo_data_root_path, filepath)
-
-    #     with xr.open_dataset(
-    #         filepath,
-    #         engine="h5netcdf",
-    #         chunks=None,
-    #         cache=False,
-    #     ) as ds:
-    #         data = ds[channels].to_array().load().to_numpy()
-
-    #     return data
+        }, metadata
 
     @cache
     def transformation_inputs(self) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray):

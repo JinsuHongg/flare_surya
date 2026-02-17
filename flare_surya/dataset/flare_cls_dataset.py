@@ -1,13 +1,13 @@
 import os
-import time
 import random
+import time
+
 import numpy as np
 import pandas as pd
-import xarray as xr
-
 import torch
-
+import xarray as xr
 from terratorch_surya.datasets.helio import HelioNetCDFDataset
+
 from flare_surya.dataset.helio_aws import HelioNetCDFDatasetAWS
 from flare_surya.dataset.helio_zarr import HelioNetCDFDatasetZarr
 
@@ -132,7 +132,7 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
                 )
             )
             + [self.time_delta_input_minutes[-1]]
-            + self.time_delta_target_minutes
+            # + self.time_delta_target_minutes
         )
         reference_timestep = self.valid_indices[idx]
         required_timesteps = reference_timestep + time_deltas
@@ -145,39 +145,38 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
             sequence_data.append(self.transform_data(data))
 
         # Split sequence_data into inputs and target
-        inputs = sequence_data[: -self.rollout_steps - 1]
-        targets = sequence_data[-self.rollout_steps - 1 :]
+        inputs = sequence_data
+        # targets = sequence_data[-self.rollout_steps - 1 :]
 
         stacked_inputs = np.stack(inputs, axis=1)
-        stacked_targets = np.stack(targets, axis=1)
+        # stacked_targets = np.stack(targets, axis=1)
 
-        timestamps_input = required_timesteps[: -self.rollout_steps - 1]
-        timestamps_targets = required_timesteps[-self.rollout_steps - 1 :]
+        timestamps_input = required_timesteps
+        # timestamps_targets = required_timesteps[-self.rollout_steps - 1 :]
 
         if self.num_mask_aia_channels > 0 or self.drop_hmi_probability:
             stacked_inputs = self.masker(stacked_inputs)
 
-        time_delta_input_float = (
-            time_deltas[-self.rollout_steps - 2]
-            - time_deltas[: -self.rollout_steps - 1]
-        ) / np.timedelta64(1, "h")
+        time_delta_input_float = (time_deltas[-1] - time_deltas[0]) / np.timedelta64(
+            1, "h"
+        )
         time_delta_input_float = time_delta_input_float.astype(np.float32)
 
-        lead_time_delta_float = (
-            time_deltas[-self.rollout_steps - 2]
-            - time_deltas[-self.rollout_steps - 1 :]
-        ) / np.timedelta64(1, "h")
-        lead_time_delta_float = lead_time_delta_float.astype(np.float32)
+        # lead_time_delta_float = (
+        #     time_deltas[-self.rollout_steps - 2]
+        #     - time_deltas[-self.rollout_steps - 1 :]
+        # ) / np.timedelta64(1, "h")
+        # lead_time_delta_float = lead_time_delta_float.astype(np.float32)
 
         metadata = {
             "timestamps_input": timestamps_input.astype(int),
-            "timestamps_targets": timestamps_targets.astype(int),
+            # "timestamps_targets": timestamps_targets.astype(int),
         }
 
         if self.random_vert_flip:
             if torch.bernoulli(torch.ones(()) / 2) == 1:
                 stacked_inputs = torch.flip(stacked_inputs, dims=-2)
-                stacked_targets = torch.flip(stacked_inputs, dims=-2)
+                # stacked_targets = torch.flip(stacked_inputs, dims=-2)
 
         if self.use_latitude_in_learned_flow:
             from sunpy.coordinates.ephemeris import get_earth
@@ -186,15 +185,15 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
                 get_earth(timestep).lat.value for timestep in required_timesteps
             ]
             input_latitudes = sequence_latitude[: -self.rollout_steps - 1]
-            target_latitude = sequence_latitude[-self.rollout_steps - 1 :]
+            # target_latitude = sequence_latitude[-self.rollout_steps - 1 :]
 
             return {
                 "ts": stacked_inputs,
                 "time_delta_input": time_delta_input_float,
                 "input_latitudes": input_latitudes,
-                "forecast": stacked_targets,
-                "lead_time_delta": lead_time_delta_float,
-                "forecast_latitude": target_latitude,
+                # "forecast": stacked_targets,
+                # "lead_time_delta": lead_time_delta_float,
+                # "forecast_latitude": target_latitude,
                 "label": self.flare_index.loc[reference_timestep, "label_max"],
                 "debug": debug,
             }, metadata
@@ -202,8 +201,8 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
         return {
             "ts": stacked_inputs,
             "time_delta_input": time_delta_input_float,
-            "forecast": stacked_targets,
-            "lead_time_delta": lead_time_delta_float,
+            # "forecast": stacked_targets,
+            # "lead_time_delta": lead_time_delta_float,
             "debug": debug,
             "label": self.flare_index.loc[reference_timestep, "label_max"],
         }, metadata

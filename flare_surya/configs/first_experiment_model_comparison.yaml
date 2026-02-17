@@ -110,7 +110,7 @@ etc:
   resume: true
   ckpt_dir: /anvil/projects/x-cis251356/check_point/surya/flare/
   ckpt_name_tag: surya_flare
-  ckpt_file: nrpzmreh3_surya_flare_mlp_lastepoch.ckpt  
+  ckpt_file: rpzmreh3_surya_flare_mlp_lastepoch.ckpt  
   ckpt_weights_only: false
   save_test_results_path: ../results/
   precision: 16-mixed #16-mixed

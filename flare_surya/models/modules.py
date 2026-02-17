@@ -4,24 +4,19 @@ from pprint import pprint
 
 import pandas as pd
 import torch
-
 # from torch import nn
 import torch.nn.functional as F
 from loguru import logger
 from peft import LoraConfig, get_peft_model
-
 # import lightning as L
 # from terratorch_surya.downstream_examples.solar_flare_forecasting.models import HelioSpectformer1D
 from terratorch_surya.downstream_examples.solar_flare_forecasting.models import (
-    AlexNetClassifier,
-    MobileNetClassifier,
-    ResNet18Classifier,
-    ResNet34Classifier,
-    ResNet50Classifier,
-)
+    AlexNetClassifier, MobileNetClassifier, ResNet18Classifier,
+    ResNet34Classifier, ResNet50Classifier)
 from terratorch_surya.models.helio_spectformer import HelioSpectFormer
 
-from flare_surya.metrics.classification_metrics import DistributedClassificationMetrics
+from flare_surya.metrics.classification_metrics import \
+    DistributedClassificationMetrics
 from flare_surya.models.base import BaseModule
 from flare_surya.models.heads import SuryaHead
 
@@ -328,17 +323,15 @@ class FlareSurya(BaseModule):
         batch = super().transfer_batch_to_device(batch, device, dataloader_idx)
         t1 = time.perf_counter()
 
-        # Store the metric in the batch metadata instead of logging immediately
-        if isinstance(batch, list) or isinstance(batch, tuple):
-            # Handle list/tuple batches if necessary, or just skip
-            pass
-        elif isinstance(batch, dict):
-            # Add the transfer time to the debug dictionary we created earlier
-            if "debug" not in batch:
-                batch["debug"] = {}
-            batch["debug"]["cpu_to_gpu_sec"] = t1 - t0
+        data, metadata = batch
 
-        return batch
+        if isinstance(data, dict):
+            if "debug" not in data:
+                data["debug"] = {}
+
+            data["debug"]["cpu_to_gpu_sec"] = t1 - t0
+
+        return (data, metadata)
 
 
 class BaseLineModel(BaseModule):
@@ -578,14 +571,12 @@ class BaseLineModel(BaseModule):
         batch = super().transfer_batch_to_device(batch, device, dataloader_idx)
         t1 = time.perf_counter()
 
-        # Store the metric in the batch metadata instead of logging immediately
-        if isinstance(batch, list) or isinstance(batch, tuple):
-            # Handle list/tuple batches if necessary, or just skip
-            pass
-        elif isinstance(batch, dict):
-            # Add the transfer time to the debug dictionary we created earlier
-            if "debug" not in batch:
-                batch["debug"] = {}
-            batch["debug"]["cpu_to_gpu_sec"] = t1 - t0
+        data, metadata = batch
 
-        return batch
+        if isinstance(data, dict):
+            if "debug" not in data:
+                data["debug"] = {}
+
+            data["debug"]["cpu_to_gpu_sec"] = t1 - t0
+
+        return (data, metadata)

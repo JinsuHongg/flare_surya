@@ -361,7 +361,6 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
 
     def __init__(
         self,
-        index_path: str,
         flare_index_path: str,
         time_delta_input_minutes: list[int],
         time_delta_target_minutes: int,
@@ -386,7 +385,6 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
         self.flare_index.sort_index(inplace=True)
 
         super().__init__(
-            index_path=index_path,
             time_delta_input_minutes=time_delta_input_minutes,
             time_delta_target_minutes=time_delta_target_minutes,
             n_input_timestamps=n_input_timestamps,

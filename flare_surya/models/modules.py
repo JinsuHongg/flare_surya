@@ -4,24 +4,19 @@ from pprint import pprint
 
 import pandas as pd
 import torch
-
 # from torch import nn
 import torch.nn.functional as F
 from loguru import logger
 from peft import LoraConfig, get_peft_model
-
 # import lightning as L
 # from terratorch_surya.downstream_examples.solar_flare_forecasting.models import HelioSpectformer1D
 from terratorch_surya.downstream_examples.solar_flare_forecasting.models import (
-    AlexNetClassifier,
-    MobileNetClassifier,
-    ResNet18Classifier,
-    ResNet34Classifier,
-    ResNet50Classifier,
-)
+    AlexNetClassifier, MobileNetClassifier, ResNet18Classifier,
+    ResNet34Classifier, ResNet50Classifier)
 from terratorch_surya.models.helio_spectformer import HelioSpectFormer
 
-from flare_surya.metrics.classification_metrics import DistributedClassificationMetrics
+from flare_surya.metrics.classification_metrics import \
+    DistributedClassificationMetrics
 from flare_surya.models.base import BaseModule
 from flare_surya.models.heads import SuryaHead
 
@@ -178,23 +173,6 @@ class FlareSurya(BaseModule):
         # Update Metrics
         self.train_metrics.update(probs, target)
 
-        # Step-Wise Logging Logic
-        # Check if the current global step is a multiple of 100
-        if (self.trainer.global_step + 1) % self.log_step_size == 0:
-            # Compute, log, and reset the metrics accumulated over the last 100 steps
-            metrics = self.train_metrics.compute()
-
-            # Log the computed metrics
-            self.log_dict(
-                {f"train/step_{k}": v.float() for k, v in metrics.items()},
-                on_step=True,
-                on_epoch=False,
-                prog_bar=True,
-                sync_dist=True,
-            )
-
-            self.train_metrics.reset()
-
         self.log_dict(
             {
                 "perf/file_open_latency_sec": stats["open_time"].float().mean(),
@@ -218,6 +196,21 @@ class FlareSurya(BaseModule):
 
         return loss
 
+    def on_train_epoch_end(self):
+        # Compute, log, and reset the metrics accumulated over the last 100 steps
+        metrics = self.train_metrics.compute()
+
+        # Log the computed metrics
+        self.log_dict(
+            {f"train/step_{k}": v.float() for k, v in metrics.items()},
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            sync_dist=True,
+        )
+
+        self.train_metrics.reset()
+
     def validation_step(self, batch, batch_idx):
         data, metadata = batch
         target = data["label"].float().unsqueeze(1)
@@ -230,7 +223,14 @@ class FlareSurya(BaseModule):
 
         # Log step loss normally
         loss = F.binary_cross_entropy_with_logits(x_hat, target)
-        self.log("val_loss", loss, sync_dist=True)
+        self.log(
+            "val_loss",
+            loss,
+            on_epoch=True,
+            on_step=False,
+            prog_bar=False,
+            sync_dist=True,
+        )
 
     def on_validation_epoch_end(self):
         # Compute global metrics (Auto-synced across GPUs)
@@ -416,23 +416,6 @@ class BaseLineModel(BaseModule):
         # Update Metrics
         self.train_metrics.update(probs, target)
 
-        # Step-Wise Logging Logic
-        # Check if the current global step is a multiple of 100
-        if (self.trainer.global_step + 1) % self.log_step_size == 0:
-            # Compute, log, and reset the metrics accumulated over the last 100 steps
-            metrics = self.train_metrics.compute()
-
-            # Log the computed metrics
-            self.log_dict(
-                {f"train/step_{k}": v.float() for k, v in metrics.items()},
-                on_step=True,
-                on_epoch=False,
-                prog_bar=True,
-                sync_dist=True,
-            )
-
-            self.train_metrics.reset()
-
         self.log_dict(
             {
                 "perf/file_open_latency_sec": stats["open_time"].float().mean(),
@@ -455,6 +438,21 @@ class BaseLineModel(BaseModule):
         )
 
         return loss
+    
+    def on_train_epoch_end(self):
+        # Compute, log, and reset the metrics accumulated over the last 100 steps
+        metrics = self.train_metrics.compute()
+
+        # Log the computed metrics
+        self.log_dict(
+            {f"train/step_{k}": v.float() for k, v in metrics.items()},
+            on_step=False,
+            on_epoch=False,
+            prog_bar=False,
+            sync_dist=True,
+        )
+
+        self.train_metrics.reset()
 
     def validation_step(self, batch, batch_idx):
         data, metadata = batch
@@ -470,7 +468,7 @@ class BaseLineModel(BaseModule):
             loss,
             on_step=False,
             on_epoch=True,
-            prog_bar=True,
+            prog_bar=False,
             sync_dist=True,
         )
 

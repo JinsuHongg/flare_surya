@@ -66,7 +66,7 @@ head:
     bias: true
     dropout: 0.1
   threshold: 0.5 # for thresholding logit
-  log_step_size: 100 # for logging score metrics every n step in training
+  log_step_size: 2 # for logging score metrics every n step in training
 
 lora:
   use: true
@@ -115,12 +115,12 @@ etc:
   save_test_results_path: ../results/
   precision: 16-mixed #16-mixed
   accelerator: gpu
-  devices: 2  #[0, 1, 2, 3]
+  devices: 1 #[0, 1, 2, 3]
   num_nodes: 1
-  strategy: auto #auto, ddp, fsdp
+  strategy: ddp #auto, ddp, fsdp
   max_epochs: 100
-  limit_train_batches: null
-  limit_val_batches: null
+  limit_train_batches: 10
+  limit_val_batches: 10
   accumulate_grad_batches: 64
 
 wandb:

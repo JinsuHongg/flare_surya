@@ -55,14 +55,12 @@ class FlareSurya(BaseModule):
         lora_dict,
         optimizer_dict,
         threshold=0.5,
-        log_step_size=100,
         # misc
         save_test_results_path=None,
     ):
         super().__init__(optimizer_dict=optimizer_dict)
         self.save_hyperparameters()
         self.token_type = token_type
-        self.log_step_size = log_step_size
         self.freeze_backbone = freeze_backbone
         self.lora_dict = lora_dict
         self.test_results = {
@@ -350,13 +348,11 @@ class BaseLineModel(BaseModule):
         threshold,
         # head parameters
         optimizer_dict,
-        log_step_size=100,
         # misc
         save_test_results_path=None,
     ):
         super().__init__(optimizer_dict=optimizer_dict)
         self.save_hyperparameters()
-        self.log_step_size = log_step_size
         self.save_test_results_path = save_test_results_path
         self.test_results = {
             "timestamps": [],
@@ -447,7 +443,7 @@ class BaseLineModel(BaseModule):
         self.log_dict(
             {f"train/step_{k}": v.float() for k, v in metrics.items()},
             on_step=False,
-            on_epoch=False,
+            on_epoch=True,
             prog_bar=False,
             sync_dist=True,
         )

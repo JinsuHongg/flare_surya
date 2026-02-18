@@ -33,7 +33,7 @@ backbone:
   num_classes: 1
   p_drop: 0.5
   threshold: 0.5
-  log_step_size: 100
+  log_step_size: 1
   time_embedding:
     type: linear
     time_dim: 2

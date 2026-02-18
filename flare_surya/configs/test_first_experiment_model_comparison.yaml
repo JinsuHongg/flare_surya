@@ -63,7 +63,7 @@ head:
     bias: true
     dropout: 0.1
   threshold: 0.5 # for thresholding logit
-  log_step_size: 100 # for logging score metrics every n step in training
+  log_step_size: 1 # for logging score metrics every n step in training
 
 lora:
   use: true

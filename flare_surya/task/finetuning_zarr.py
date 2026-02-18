@@ -52,7 +52,6 @@ def build_model(cfg):
         "lora_dict": cfg.lora,
         "optimizer_dict": cfg.optimizer,
         "threshold": cfg.head.threshold,
-        "log_step_size": cfg.head.log_step_size,
         "save_test_results_path": cfg.etc.save_test_results_path,
     }
     if cfg.etc.resume and cfg.etc.ckpt_weights_only:

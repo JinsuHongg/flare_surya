@@ -28,7 +28,7 @@ data:
   use_leaky_validation: false
 
 backbone:
-  model_name: resnet18 # resnet18, resnet34, resnet50, alexnet,
+  model_name: alexnet # resnet18, resnet34, resnet50, alexnet,
   in_channels: 13
   time_steps: 2
   num_classes: 1
@@ -69,10 +69,10 @@ optimizer:
 
 etc:
   phase: train
-  resume: false
+  resume: true
   ckpt_dir: /anvil/projects/x-cis251356/check_point/surya/baselines
   ckpt_name_tag: baselines
-  ckpt_file: ivaa13ej_baselines_alexnet_lastepoch.ckpt 
+  ckpt_file: ik4vzs2o_baselines_alexnet_lastepoch.ckpt 
   ckpt_weights_only: false
   save_test_results_path: ../results/
   precision: 16-mixed #16-mixed

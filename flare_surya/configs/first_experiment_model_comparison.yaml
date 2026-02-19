@@ -110,17 +110,17 @@ etc:
   resume: true
   ckpt_dir: /anvil/projects/x-cis251356/check_point/surya/flare/
   ckpt_name_tag: surya_flare
-  ckpt_file: rpzmreh3_surya_flare_mlp_lastepoch.ckpt  
+  ckpt_file: oem99f1y_surya_flare_mlp_lastepoch.ckpt  
   ckpt_weights_only: false
   save_test_results_path: ../results/
   precision: 16-mixed #16-mixed
   accelerator: gpu
-  devices: 1 #[0, 1, 2, 3]
+  devices: 2 #[0, 1, 2, 3]
   num_nodes: 1
   strategy: ddp #auto, ddp, fsdp
   max_epochs: 100
-  limit_train_batches: 10
-  limit_val_batches: 10
+  limit_train_batches: null
+  limit_val_batches: null
   accumulate_grad_batches: 64
 
 wandb:

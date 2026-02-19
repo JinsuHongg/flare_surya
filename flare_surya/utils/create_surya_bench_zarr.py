@@ -82,37 +82,37 @@ def create_zarr_optimized(data_local, data_aws, data_ref, zarr_path):
     print(f"Starting sequential processing for {total_len} timesteps...")
 
     pbar = tqdm(enumerate(valid_index), total=total_len, desc="Converting to Zarr")
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        for i, idx in pbar:
-            # Checkpoint check
-            if int(idx.value) in processed_set:
-                continue
+    for i, idx in pbar:
+        # Checkpoint check
+        if int(idx.value) in processed_set:
+            continue
 
-            # Presence check
-            if idx not in data_aws.index or data_aws.loc[idx, "present"] == 0:
-                continue
+        # Presence check
+        if idx not in data_aws.index or data_aws.loc[idx, "present"] == 0:
+            continue
 
-            local_path = data_local.loc[idx, "path"]
-            aws_path = data_aws.loc[idx, "path"]
+        local_path = data_local.loc[idx, "path"]
+        aws_path = data_aws.loc[idx, "path"]
 
-            # Load data
-            if os.path.exists(local_path):
-                ds = get_dataset(local_path, is_s3=False, s3=s3)
-            else:
-                ds = get_dataset(aws_path, is_s3=True, s3=s3)
+        # Load data
+        if os.path.exists(local_path):
+            ds = get_dataset(local_path, is_s3=False, s3=s3)
+        else:
+            ds = get_dataset(aws_path, is_s3=True, s3=s3)
 
-            if ds is not None:
-                # Extract and write data
-                img_data = ds[channels].to_array().values.astype("float32")
-                img_arr[i] = img_data
-                time_arr[i] = int(idx.value)
+        if ds is not None:
+            # Extract and write data
+            img_data = ds[channels].to_array().values.astype("float32")
+            img_arr[i] = img_data
+            time_arr[i] = int(idx.value)
 
-                ds.close()
-                pbar.set_postfix({"timestamp": idx.strftime("%Y-%m-%d %H:%M")})
+            ds.close()
+            pbar.set_postfix({"timestamp": idx.strftime("%Y-%m-%d %H:%M")})
 
-    print("Consolidating metadata...")
-    zarr.consolidate_metadata(store)  # <--- THIS IS THE MISSING LINE
-    print(f"Success! Consolidated Zarr created at {zarr_path}")
+
+print("Consolidating metadata...")
+zarr.consolidate_metadata(store)  # <--- THIS IS THE MISSING LINE
+print(f"Success! Consolidated Zarr created at {zarr_path}")
 
 
 if __name__ == "__main__":

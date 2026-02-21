@@ -130,10 +130,11 @@ def create_zarr_optimized(data_local, data_aws, data_ref, zarr_path):
 
 
 if __name__ == "__main__":
+    cadence = 8
     # Load indices
     df_anvil = pd.read_csv("../data/surya_input_data.csv")
     df_aws = pd.read_csv("../data/surya_aws_s3_full_index.csv")
-    df_ref = pd.read_csv("../data/surya-bench-flare-forecasting/train_hour_24.csv")
+    df_ref = pd.read_csv(f"../data/surya-bench-flare-forecasting/train_hour_{cadence}.csv")
 
     # Correct datetime parsing
     df_anvil["timestep"] = pd.to_datetime(
@@ -149,6 +150,6 @@ if __name__ == "__main__":
     df_ref.set_index("timestamp", inplace=True)
 
     # Target path on Anvil scratch
-    zarr_out = "/anvil/scratch/x-jhong6/data/surya_bench_train_hour_24.zarr"
+    zarr_out = f"/anvil/scratch/x-jhong6/data/surya_bench_train_hour_{cadence}.zarr"
 
     create_zarr_optimized(df_anvil, df_aws, df_ref, zarr_out)

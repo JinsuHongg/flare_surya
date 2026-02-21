@@ -194,6 +194,10 @@ class FlareSurya(BaseModule):
 
         return loss
 
+    def on_train_batch_start(self, batch, batch_idx):
+        lr = self.trainer.optimizers[0].param_groups[0]["lr"]
+        self.log("learning_rate", lr, on_step=True)
+    
     def on_train_epoch_end(self):
         # Compute, log, and reset the metrics accumulated over the last 100 steps
         metrics = self.train_metrics.compute()
@@ -434,7 +438,11 @@ class BaseLineModel(BaseModule):
         )
 
         return loss
-    
+   
+    def on_train_batch_start(self, batch, batch_idx):
+        lr = self.trainer.optimizers[0].param_groups[0]["lr"]
+        self.log("learning_rate", lr, on_step=True)
+ 
     def on_train_epoch_end(self):
         # Compute, log, and reset the metrics accumulated over the last 100 steps
         metrics = self.train_metrics.compute()
@@ -445,7 +453,7 @@ class BaseLineModel(BaseModule):
             on_step=False,
             on_epoch=True,
             prog_bar=False,
-            sync_dist=False,
+            sync_dist=True,
         )
 
         self.train_metrics.reset()

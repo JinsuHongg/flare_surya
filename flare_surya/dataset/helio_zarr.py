@@ -1,4 +1,5 @@
 import os
+import time
 import random
 import sys
 from datetime import datetime
@@ -234,7 +235,10 @@ class HelioNetCDFDatasetZarr(Dataset):
         self.use_latitude_in_learned_flow = use_latitude_in_learned_flow
         self.pooling = pooling if pooling is not None else 1
         self.random_vert_flip = random_vert_flip
+        t0 = time.perf_counter()
         self.data_zarr = zarr.open_consolidated(zarr_path, mode="r")
+        t1 = time.perf_counter()
+        self.debug = {"open_time": t1 - t0, "read_time": None}
 
         if self.channels is None:
             # AIA + HMI channels
@@ -397,10 +401,13 @@ class HelioNetCDFDatasetZarr(Dataset):
         reference_timestep = self.valid_indices[idx]
         required_timesteps = reference_timestep + time_deltas
 
-        sequence_data = [
-            self.transform_data(self.data_zarr["img"][idx])
-            for idx in self.index.loc[required_timesteps, "idx"]
-        ]
+        sequence_data = []
+        for idx in self.index.loc[required_timesteps, "idx"]:
+            t0 = time.perf_counter()
+            transformed_data = self.transform_data(self.data_zarr["img"][idx])
+            t1 = time.perf_counter()
+            sequence_data.append(transformed_data)
+        self.debug["read_time"] = t1 - t0
 
         # Split sequence_data into inputs and target
         inputs = sequence_data[: -self.rollout_steps - 1]
@@ -431,8 +438,8 @@ class HelioNetCDFDatasetZarr(Dataset):
         lead_time_delta_float = lead_time_delta_float.astype(np.float32)
 
         metadata = {
-            "timestamps_input": timestamps_input,
-            "timestamps_targets": timestamps_targets,
+            "timestamps_input": timestamps_input.astype(int),
+            "timestamps_targets": timestamps_targets.astype(int),
         }
 
         if self.random_vert_flip:
@@ -456,6 +463,7 @@ class HelioNetCDFDatasetZarr(Dataset):
                 "forecast": stacked_targets,
                 "lead_time_delta": lead_time_delta_float,
                 "forecast_latitude": target_latitude,
+                "debug": self.debug,
             }, metadata
 
         return {
@@ -463,6 +471,7 @@ class HelioNetCDFDatasetZarr(Dataset):
             "time_delta_input": time_delta_input_float,
             "forecast": stacked_targets,
             "lead_time_delta": lead_time_delta_float,
+            "debug": self.debug,
         }, metadata
 
     @cache

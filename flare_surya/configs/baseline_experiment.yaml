@@ -72,7 +72,7 @@ etc:
   resume: true
   ckpt_dir: /anvil/projects/x-cis251356/check_point/surya/baselines
   ckpt_name_tag: baselines
-  ckpt_file: ik4vzs2o_baselines_alexnet_lastepoch.ckpt 
+  ckpt_file: fa2sp8f1_baselines_alexnet_lastepoch.ckpt 
   ckpt_weights_only: false
   save_test_results_path: ../results/
   precision: 16-mixed #16-mixed
@@ -80,7 +80,7 @@ etc:
   devices: 1 #[0, 1, 2, 3]
   num_nodes: 1
   strategy: auto #auto, ddp, fsdp
-  max_epochs: 100
+  max_epochs: 300
   limit_train_batches: null
   limit_val_batches: null
   accumulate_grad_batches: 64

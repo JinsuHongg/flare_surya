@@ -73,7 +73,6 @@ def build_callbacks(cfg, wandb_logger):
     epoch_ckpt = ModelCheckpoint(
         dirpath=cfg.etc.ckpt_dir,
         filename=(
-            f"{wandb_logger.experiment.id}_"
             f"{cfg.etc.ckpt_name_tag}_"
             f"{cfg.head.type}_lastepoch"
         ),

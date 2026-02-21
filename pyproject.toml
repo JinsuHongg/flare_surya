@@ -16,6 +16,7 @@ dependencies = [
     "hf-transfer>=0.1.9",
     "peft>=0.4.0",
     "transformers>=4.41,<5.0",
+    "zarr<=3.0.0",
 ]
 
 [tool.setuptools.packages.find]

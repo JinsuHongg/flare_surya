@@ -5,10 +5,10 @@ Benchmark: xarray vs h5py vs h5py-core for loading SDO NetCDF files.
 Usage:
     python bench_load.py --index_csv /aifm/helio_2012_one_sample.csv
 """
-
 import argparse
 import time
 
+import dask
 import h5py
 import hdf5plugin  # noqa: F401
 import numpy as np
@@ -21,10 +21,12 @@ CHANNELS = [
     "hmi_m", "hmi_bx", "hmi_by", "hmi_bz", "hmi_v",
 ]
 
+dask.config.set(scheduler='processes')
 
 def load_xarray(path: str, channels: list[str]) -> np.ndarray:
-    with xr.open_dataset(path, engine="h5netcdf", chunks=None, cache=False) as ds:
-        return ds[list(channels)].to_array().values
+    with xr.open_dataset(path, engine="h5netcdf", chunks="auto", cache=False) as ds:
+        # return ds[list(channels)].to_array().values
+        return ds[channels].to_array().to_numpy()
 
 
 def load_h5py(path: str, channels: list[str]) -> np.ndarray:

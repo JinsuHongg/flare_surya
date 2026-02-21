@@ -80,7 +80,7 @@ etc:
   devices: 4 #[0, 1, 2, 3]
   num_nodes: 1
   strategy: ddp #auto, ddp, fsdp
-  max_epochs: 100
+  max_epochs: 300
   limit_train_batches: null
   limit_val_batches: null
 

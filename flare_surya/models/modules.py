@@ -160,6 +160,7 @@ class FlareSurya(BaseModule):
     def training_step(self, batch, batch_idx):
         # training_step defines the train loop.
         data, metadata = batch
+        self.batch_size = data["ts"].shape[0]
         stats = data["debug"]
         target = data["label"].float().unsqueeze(1)
         tokens = self.forward_features(data)
@@ -209,6 +210,7 @@ class FlareSurya(BaseModule):
             on_epoch=True,
             prog_bar=False,
             sync_dist=True,
+            batch_size=self.batch_size
         )
 
         self.train_metrics.reset()
@@ -406,6 +408,7 @@ class BaseLineModel(BaseModule):
     def training_step(self, batch, batch_idx):
         # training_step defines the train loop.
         data, metadata = batch
+        self.batch_size = data["ts"].shape[0]
         stats = data["debug"]
         target = data["label"].float()
         x_hat = self.backbone(data)
@@ -454,6 +457,7 @@ class BaseLineModel(BaseModule):
             on_epoch=True,
             prog_bar=False,
             sync_dist=True,
+            batch_size=self.batch_size
         )
 
         self.train_metrics.reset()

@@ -1,0 +1,62 @@
+#!/usr/bin/bash
+#PBS -S /usr/bin/bash
+#PBS -N train_baselines_zarr 
+
+## On NAS, model can be sky_gpu, cas_gpu or mil_a100 which have GPUs
+## cas_gpu node: 24/48 cores 384GB, 4 GPUs (each 32GB)
+## sky_gpu node: 18/36 cores 384GB, 4 GPUs (each 32GB)
+## mil_a100 node: 64 cores / host, 16 / vnode, 256 GB / host, 64 / vnode, 4 GPUs / host, 1 / vnode (each 80GB)
+
+#PBS -l select=1:model=mil_a100:ncpus=32:ngpus=1:mem=250GB
+##PBS -l place=scatter:excl
+
+##PBS -q gpu_devel
+#PBS -q gpu_normal
+##PBS -l walltime=00:30:00
+##PBS -l walltime=02:00:00
+#PBS -l walltime=24:00:00
+
+## PBS will email when the job is aborted, begun, ended.
+#PBS -M jhong36@gsu.edu
+#PBS -m abe
+
+## join the stderr output to stdout, by default the output file will be placed in place where
+## the qsub is run.  It can be in a different place with PBS -o /path/to/pbs/log/file
+## by default, the output filename is jobname.oJOBID
+
+#PBS -kod -ked
+#PBS -o logs/baselines/train_baselines_zarr.out
+#PBS -e logs/baselines/train_baselines_zarr.err
+#PBS -W umask=002
+
+    
+## Note**: 
+##   I think the batch_size here is the size per dataloading, not the effective 
+##   batch_size which will be n_nodes * nGPUs * batch_size
+##   Based on suggetion from Soumya, for DDP in pytorch lightning, the batch_size is per node, 
+##   i.e., batch_size will be distributed over the GPUs on the node. Hence if 4 is the best
+##   per GPU, then batch size of 16 will be the choice for node with 4 GPUs. 
+##   since nodes with GPUs on NAS most have 4-GPUs, therefore batch_size will be set to 16
+##   regardless how many nodes to be used
+##
+## Let each GPU process 4 batches each time, 
+## Make sure the batch size in the AFNO yaml file get updated accordingly     
+#
+
+JOBID=$(echo "$PBS_JOBID" | cut -d. -f1)
+exec > logs/baselines/train_baselines_zarr.${JOBID}.out
+exec 2> logs/baselines/train_baselines_zarr.${JOBID}.err
+
+mapfile -t NODES < <(sort -u "$PBS_NODEFILE")
+if [[ ${#NODES[@]} -ne 1 ]]; then
+  echo "ERROR: expected 1 node, got ${#NODES[@]}"
+  exit 1
+fi
+
+echo "Changing directory to: $PBS_O_WORKDIR"
+cd $PBS_O_WORKDIR
+
+source .venv/bin/activate
+cd flare_surya/task
+python training_baseline_zarr.py --config-name=alexnet_exp_zarr.yaml
+

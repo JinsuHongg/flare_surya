@@ -1,0 +1,104 @@
+hydra:
+  run:
+      dir: .
+
+data:
+  train_zarr_path: /nobackupp17/jhong15/data/surya_bench_train_8_val_1.zarr
+  val_zarr_path: /nobackupp17/jhong15/data/surya_bench_train_8_val_1.zarr
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/train_hour_8.csv
+  valid_flare_data_path: ../data/surya-bench-flare-forecasting/validation.csv
+  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/leaky_validation.csv
+  test_flare_data_path: ../data/surya-bench-flare-forecasting/test.csv
+  channels: ['aia94', 'aia131', 'aia171', 'aia193', 'aia211', 'aia304', 'aia335', 'aia1600', 'hmi_m', 'hmi_bx', 'hmi_by', 'hmi_bz', 'hmi_v']
+  time_delta_input_minutes: [-60,0]
+  time_delta_target_minutes: 0
+  n_input_timestamps: 2 # must be equal to time_delta_input_minutes
+  batch_size: 1
+  num_data_workers: 12
+  pin_memory: true
+  prefetch_factor: 2
+  persistent_workers: true
+  pooling: 1
+  random_vert_flip: false
+  scalers_path: ../data/scalers.yaml
+  scalers: null
+  class_names: ["FL", "NFL"]
+  use_leaky_validation: false
+  use_simplecache: true
+  s3_cache_dir: /tmp/helio_s3_cache
+
+backbone:
+  model_name: alexnet # resnet18, resnet34, resnet50, alexnet,
+  in_channels: 13
+  time_steps: 2
+  num_classes: 1
+  p_drop: 0.5
+  threshold: 0.5
+  log_step_size: 1
+  time_embedding:
+    type: linear
+    time_dim: 2
+
+classifier_metrics:
+  task: 'binary'  # ["binary", "multiclass", "multilabel"]
+  num_classes: 2
+  average: 'macro'  # ["micro", "macro", "weighted", "none"]
+  train_metrics_config:
+    metrics_to_report: ['accuracy', 'precision', 'recall', 'f1']
+  validation_metrics_config:
+    metrics_to_report: ['accuracy', 'precision', 'recall', 'f1']
+
+optimizer:
+  type: adamw
+  lr: 5e-3
+  weight_decay: 0
+  scheduler:
+      use: cosine_warmup # The switch
+      monitor: val_loss 
+    
+      # Define available strategies
+      cosine_warmup:
+        # T_max: 10
+        # eta_min: 1e-6
+        total_steps: 1000
+        warmup_ratio: 0.1 # Default 10% warmup
+      plateau:
+        mode: min
+        factor: 0.1
+        patience: 10
+
+etc:
+  phase: train # test
+  resume: false
+  ckpt_dir: ../results/check_point/baselines/
+  ckpt_name_tag: baseline_zarr
+  ckpt_file: null  
+  ckpt_weights_only: false
+  save_test_results_path: ../results/
+  precision: 16-mixed #16-mixed
+  accelerator: gpu
+  devices: 1 #[0, 1, 2, 3]
+  num_nodes: 1
+  strategy: ddp #auto, ddp, fsdp
+  max_epochs: 300
+  limit_train_batches: null
+  limit_val_batches: null
+  accumulate_grad_batches: 64
+
+wandb:
+  save_dir: ../results
+  entity: gsu-dmlab
+  project: helio-fm
+  log_model: false
+  notes: "alexnet"
+  offline: true
+  save_code: false
+  tag: ["zarr"] # backbone model, head type, task
+
+
+use_latitude_in_learned_flow: false
+loss_weights: [] # [] or list of weights per channel
+rollout_steps: 0
+num_mask_aia_channels: 0
+drop_hmi_probability: 0.0
+validate_after_epoch: 1

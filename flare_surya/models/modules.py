@@ -181,6 +181,7 @@ class FlareSurya(BaseModule):
             on_step=True,
             prog_bar=False,
             sync_dist=False,
+            batch_size=self.batch_size,
         )
 
         # Log training loss every step
@@ -191,6 +192,7 @@ class FlareSurya(BaseModule):
             on_epoch=True,
             prog_bar=True,
             sync_dist=False,
+            batch_size=self.batch_size,
         )
 
         return loss
@@ -198,7 +200,7 @@ class FlareSurya(BaseModule):
     def on_train_batch_start(self, batch, batch_idx):
         lr = self.trainer.optimizers[0].param_groups[0]["lr"]
         self.log("learning_rate", lr, on_step=True)
-    
+
     def on_train_epoch_end(self):
         # Compute, log, and reset the metrics accumulated over the last 100 steps
         metrics = self.train_metrics.compute()
@@ -210,7 +212,7 @@ class FlareSurya(BaseModule):
             on_epoch=True,
             prog_bar=False,
             sync_dist=True,
-            batch_size=self.batch_size
+            batch_size=self.batch_size,
         )
 
         self.train_metrics.reset()
@@ -234,6 +236,7 @@ class FlareSurya(BaseModule):
             on_step=False,
             prog_bar=False,
             sync_dist=True,
+            batch_size=self.batch_size,
         )
 
     def on_validation_epoch_end(self):
@@ -269,7 +272,14 @@ class FlareSurya(BaseModule):
         self.test_metrics.update(probs, target)
 
         # Log Test Loss
-        self.log("test/loss", loss, on_step=False, on_epoch=True, sync_dist=True)
+        self.log(
+            "test/loss",
+            loss,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
+            batch_size=self.batch_size,
+        )
 
         return loss
 
@@ -428,6 +438,7 @@ class BaseLineModel(BaseModule):
             on_step=True,
             prog_bar=False,
             sync_dist=False,
+            batch_size=self.batch_size,
         )
 
         # Log training loss every step
@@ -438,14 +449,15 @@ class BaseLineModel(BaseModule):
             on_epoch=True,
             prog_bar=True,
             sync_dist=False,
+            batch_size=self.batch_size,
         )
 
         return loss
-   
+
     def on_train_batch_start(self, batch, batch_idx):
         lr = self.trainer.optimizers[0].param_groups[0]["lr"]
         self.log("learning_rate", lr, on_step=True)
- 
+
     def on_train_epoch_end(self):
         # Compute, log, and reset the metrics accumulated over the last 100 steps
         metrics = self.train_metrics.compute()
@@ -457,7 +469,7 @@ class BaseLineModel(BaseModule):
             on_epoch=True,
             prog_bar=False,
             sync_dist=True,
-            batch_size=self.batch_size
+            batch_size=self.batch_size,
         )
 
         self.train_metrics.reset()
@@ -478,6 +490,7 @@ class BaseLineModel(BaseModule):
             on_epoch=True,
             prog_bar=False,
             sync_dist=True,
+            batch_size=self.batch_size,
         )
 
         # Update Metrics (x_hat contains the logits)
@@ -517,7 +530,14 @@ class BaseLineModel(BaseModule):
         self.test_metrics.update(probs, target)
 
         # Log Test Loss
-        self.log("test/loss", loss, on_step=False, on_epoch=True, sync_dist=True)
+        self.log(
+            "test/loss",
+            loss,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
+            batch_size=self.batch_size,
+        )
 
         return loss
 

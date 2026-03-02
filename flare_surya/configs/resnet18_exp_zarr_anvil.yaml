@@ -70,8 +70,8 @@ optimizer:
 
 etc:
   phase: train # test
-  resume: false
-  ckpt_dir: /anvil/projects/x-cis251356/check_point/surya/baselines/
+  resume: true
+  ckpt_dir: /anvil/projects/x-cis251356/check_point/surya/baselines/resnet18/
   ckpt_name_tag: baseline_8hour_zarr
   ckpt_file: baseline_8hour_zarr_resnet18_lastepoch.ckpt  
   ckpt_weights_only: false
@@ -91,10 +91,10 @@ wandb:
   entity: gsu-dmlab
   project: helio-fm
   log_model: false
-  notes: "simple mlp head"
+  notes: "resnet18"
   offline: false
   save_code: false
-  tag: ["zarr"] # backbone model, head type, task
+  tag: ["zarr", "resnet18"] # backbone model, head type, task
 
 
 use_latitude_in_learned_flow: false

@@ -29,7 +29,7 @@ data:
   s3_cache_dir: /tmp/helio_s3_cache
 
 backbone:
-  model_name: resnet18 # resnet18, resnet34, resnet50, alexnet,
+  model_name: alexnet # resnet18, resnet34, resnet50, alexnet,
   in_channels: 13
   time_steps: 2
   num_classes: 1
@@ -59,8 +59,6 @@ optimizer:
     
       # Define available strategies
       cosine_warmup:
-        # T_max: 10
-        # eta_min: 1e-6
         total_steps: 1000
         warmup_ratio: 0.1 # Default 10% warmup
       plateau:
@@ -71,9 +69,9 @@ optimizer:
 etc:
   phase: train # test
   resume: false
-  ckpt_dir: /anvil/projects/x-cis251356/check_point/surya/baselines/
+  ckpt_dir: /anvil/projects/x-cis251356/check_point/surya/baselines/alexnet/
   ckpt_name_tag: baseline_8hour_zarr
-  ckpt_file: baseline_8hour_zarr_resnet18_lastepoch.ckpt  
+  ckpt_file: baseline_8hour_zarr_alexnet_lastepoch.ckpt  
   ckpt_weights_only: false
   save_test_results_path: ../results/
   precision: 16-mixed #16-mixed
@@ -91,10 +89,10 @@ wandb:
   entity: gsu-dmlab
   project: helio-fm
   log_model: false
-  notes: "simple mlp head"
+  notes: "alexnet"
   offline: false
   save_code: false
-  tag: ["zarr"] # backbone model, head type, task
+  tag: ["zarr", "alexnet"] # backbone model, head type, task
 
 
 use_latitude_in_learned_flow: false

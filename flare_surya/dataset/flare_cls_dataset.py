@@ -375,6 +375,7 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
         pooling: int | None = None,
         random_vert_flip: bool = False,
         zarr_path: str = None,
+        is_downstream: bool = False,
     ):
 
         self.flare_index = pd.read_csv(flare_index_path)
@@ -398,6 +399,7 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
             pooling=pooling,
             random_vert_flip=random_vert_flip,
             zarr_path=zarr_path,
+            is_downstream=is_downstream,
         )
         self.valid_indices = self.filter_valid_indices()
         self.adjusted_length = len(self.valid_indices)

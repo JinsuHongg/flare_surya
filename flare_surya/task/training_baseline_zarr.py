@@ -29,6 +29,7 @@ def build_model(config):
         p_drop=config.backbone.p_drop,
         threshold=config.backbone.threshold,
         optimizer_dict=config.optimizer,
+        batch_size=config.data.batch_size,
         save_test_results_path=config.etc.save_test_results_path,
     )
 
@@ -77,30 +78,45 @@ def train(cfg: OmegaConf):
     )
 
     # Trainer
-    best_val_ckpt = ModelCheckpoint(
-        monitor=cfg.optimizer.scheduler.monitor,
-        dirpath=cfg.etc.ckpt_dir,
-        filename=(
-            f"{wandb_logger.experiment.id}_"
-            f"{cfg.etc.ckpt_name_tag}_"
-            f"{cfg.backbone.model_name}_"
-            "{epoch}-{val_loss:.4f}"
-        ),
-        save_top_k=3,
-        verbose=True,
-        mode="min",
-    )
+    # best_val_ckpt = ModelCheckpoint(
+    #     monitor=cfg.optimizer.scheduler.monitor,
+    #     dirpath=cfg.etc.ckpt_dir,
+    #     filename=(
+    #         f"{wandb_logger.experiment.id}_"
+    #         f"{cfg.etc.ckpt_name_tag}_"
+    #         f"{cfg.backbone.model_name}_"
+    #         "{epoch}-{val_loss:.4f}"
+    #     ),
+    #     save_top_k=3,
+    #     verbose=True,
+    #     mode="max",
+    # )
+    
+    checkpoint_callback = ModelCheckpoint(
+    monitor=cfg.optimizer.scheduler.monitor, # e.g., "val_loss"
+    dirpath=cfg.etc.ckpt_dir,
+    filename=(
+        f"{wandb_logger.experiment.id}_"
+        f"{cfg.etc.ckpt_name_tag}_"
+        f"{cfg.backbone.model_name}_"
+        "{epoch}-{val_tss:.4f}"
+    ),
+    save_top_k=3,
+    mode="max", 
+    verbose=True,
+    save_last=True 
+)
 
-    epoch_ckpt = ModelCheckpoint(
-        dirpath=cfg.etc.ckpt_dir,
-        filename=(
-            f"{cfg.etc.ckpt_name_tag}_"
-            f"{cfg.backbone.model_name}_lastepoch"
-        ),
-        save_on_train_epoch_end=True,
-        save_top_k=-1,
-        verbose=True,
-    )
+    # epoch_ckpt = ModelCheckpoint(
+    #     dirpath=cfg.etc.ckpt_dir,
+    #     filename=(
+    #         f"{cfg.etc.ckpt_name_tag}_"
+    #         f"{cfg.backbone.model_name}_lastepoch"
+    #     ),
+    #     save_on_train_epoch_end=True,
+    #     save_top_k=-1,
+    #     verbose=True,
+    # )
     
     pf_monitor = PerformanceMonitor()
 
@@ -108,8 +124,9 @@ def train(cfg: OmegaConf):
         # RichProgressBar(),
         LearningRateMonitor(logging_interval="step"),
         pf_monitor,
-        best_val_ckpt,
-        epoch_ckpt,
+        checkpoint_callback,
+        # best_val_ckpt,
+        # epoch_ckpt,
     ]
 
     trainer = Trainer(

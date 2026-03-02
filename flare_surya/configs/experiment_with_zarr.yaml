@@ -3,9 +3,9 @@ hydra:
       dir: .
 
 data:
-  train_zarr_path: /anvil/scratch/x-jhong6/data/surya_bench_train_hour_24.zarr
+  train_zarr_path: /anvil/scratch/x-jhong6/data/surya_bench_train_hour_8.zarr
   val_zarr_path: /anvil/scratch/x-jhong6/data/surya_bench_validation.zarr
-  train_flare_data_path: ../data/surya-bench-flare-forecasting/train.csv
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/train_hour_8.csv
   valid_flare_data_path: ../data/surya-bench-flare-forecasting/validation.csv
   leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/leaky_validation.csv
   test_flare_data_path: ../data/surya-bench-flare-forecasting/test.csv
@@ -13,8 +13,9 @@ data:
   time_delta_input_minutes: [-60,0]
   time_delta_target_minutes: 0
   n_input_timestamps: 2 # must be equal to time_delta_input_minutes
+  is_downstream: true
   batch_size: 1
-  num_data_workers: 9
+  num_data_workers: 6
   pin_memory: true
   prefetch_factor: 2
   persistent_workers: true
@@ -62,7 +63,7 @@ head:
     norm_layer: LayerNorm
     activation_layer: GELU
     bias: true
-    dropout: 0.1
+    dropout: 0.5
   threshold: 0.5 # for thresholding logit
   log_step_size: 1 # for logging score metrics every n step in training
 
@@ -86,11 +87,11 @@ classifier_metrics:
 
 optimizer:
   type: adamw
-  lr: 1e-3
-  weight_decay: 0
+  lr: 2e-4
+  weight_decay: 0.5
   scheduler:
       use: cosine_warmup # The switch
-      monitor: val_loss 
+      monitor: val_hss 
     
       # Define available strategies
       cosine_warmup:
@@ -107,8 +108,8 @@ etc:
   phase: train # test
   resume: true
   ckpt_dir: /anvil/projects/x-cis251356/check_point/surya/flare/
-  ckpt_name_tag: mlp_daily_zarr
-  ckpt_file: 9km7pnjr_surya_flare_mlp_epoch=9-val_loss=0.2911.ckpt  
+  ckpt_name_tag: mlp_8hour_zarr
+  ckpt_file: mlp_8hour_zarr_mlp_lastepoch.ckpt  
   ckpt_weights_only: false
   save_test_results_path: ../results/
   precision: 16-mixed #16-mixed

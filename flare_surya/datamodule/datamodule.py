@@ -275,6 +275,7 @@ class FlareDataModuleZarr(L.LightningDataModule):
             pooling=self.cfg["data"]["pooling"],
             random_vert_flip=self.cfg["data"]["random_vert_flip"],
             zarr_path=zarr_path,
+            is_downstream=self.cfg.data.is_downstream,
         )
 
     def setup(self, stage: str):

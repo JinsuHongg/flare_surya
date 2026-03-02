@@ -62,7 +62,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--save_path",
         type=str,
-        default="../data/",
+        default="/home/x-jhong6/project/flare_surya/flare_surya/data/",
         help="Base directory for files",
     )
 

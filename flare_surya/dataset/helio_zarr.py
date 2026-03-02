@@ -224,6 +224,7 @@ class HelioNetCDFDatasetZarr(Dataset):
         pooling: int | None = None,
         random_vert_flip: bool = False,
         zarr_path: str = None,
+        is_downstream: bool = False,
     ):
         self.scalers = scalers
         self.phase = phase
@@ -265,10 +266,14 @@ class HelioNetCDFDatasetZarr(Dataset):
         self.time_delta_input_minutes = sorted(
             np.timedelta64(t, "m") for t in time_delta_input_minutes
         )
-        self.time_delta_target_minutes = [
-            np.timedelta64(iroll * time_delta_target_minutes, "m")
-            for iroll in range(1, rollout_steps + 2)
-        ]
+
+        if not is_downstream:
+            self.time_delta_target_minutes = []
+        else:
+            self.time_delta_target_minutes = [
+                np.timedelta64(iroll * time_delta_target_minutes, "m")
+                for iroll in range(1, rollout_steps + 2)
+            ]
 
         # Create the index
         ts = self.data_zarr["timestep"][:]

@@ -56,6 +56,7 @@ class FlareSurya(BaseModule):
         optimizer_dict,
         threshold=0.5,
         # misc
+        batch_size=1,
         save_test_results_path=None,
     ):
         super().__init__(optimizer_dict=optimizer_dict)
@@ -68,6 +69,7 @@ class FlareSurya(BaseModule):
             "predictions": [],
             "targets": [],
         }
+        self.batch_size = batch_size
         self.save_test_results_path = save_test_results_path
 
         self.backbone = HelioSpectFormer(
@@ -160,7 +162,6 @@ class FlareSurya(BaseModule):
     def training_step(self, batch, batch_idx):
         # training_step defines the train loop.
         data, metadata = batch
-        self.batch_size = data["ts"].shape[0]
         stats = data["debug"]
         target = data["label"].float().unsqueeze(1)
         tokens = self.forward_features(data)
@@ -365,6 +366,7 @@ class BaseLineModel(BaseModule):
         # head parameters
         optimizer_dict,
         # misc
+        batch_size=1,
         save_test_results_path=None,
     ):
         super().__init__(optimizer_dict=optimizer_dict)
@@ -375,6 +377,7 @@ class BaseLineModel(BaseModule):
             "predictions": [],
             "targets": [],
         }
+        self.batch_size = batch_size
         self.model_name = model_name
 
         match model_name:
@@ -418,7 +421,6 @@ class BaseLineModel(BaseModule):
     def training_step(self, batch, batch_idx):
         # training_step defines the train loop.
         data, metadata = batch
-        self.batch_size = data["ts"].shape[0]
         stats = data["debug"]
         target = data["label"].float()
         x_hat = self.backbone(data)

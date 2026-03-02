@@ -37,6 +37,7 @@ def build_model(config):
         p_drop=config.backbone.p_drop,
         threshold=config.backbone.threshold,
         optimizer_dict=config.optimizer,
+        batch_size=config.data.batch_size,
         save_test_results_path=config.etc.save_test_results_path,
     )
 
@@ -106,7 +107,7 @@ def train(cfg: OmegaConf):
             f"{cfg.backbone.model_name}_lastepoch"
         ),
         save_on_train_epoch_end=True,
-        save_top_k=-1,
+        save_top_k=0,
         verbose=True,
     )
     

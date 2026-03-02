@@ -65,7 +65,7 @@ def create_zarr_optimized(data_local, data_aws, data_ref, zarr_path):
     num_channels = len(channels)
 
     # check total
-    surya_bench_index = data_aws.index
+    surya_bench_index = data_aws[data_aws["present"]==1].index
 
     # define reference timestamps
     flare_index = data_ref.index
@@ -130,26 +130,30 @@ def create_zarr_optimized(data_local, data_aws, data_ref, zarr_path):
 
 
 if __name__ == "__main__":
-    cadence = 8
     # Load indices
     df_anvil = pd.read_csv("../data/surya_input_data.csv")
     df_aws = pd.read_csv("../data/surya_aws_s3_full_index.csv")
-    df_ref = pd.read_csv(f"../data/surya-bench-flare-forecasting/train_hour_{cadence}.csv")
+    df_ref_1 = pd.read_csv("../data/surya-bench-flare-forecasting/train_hour_8.csv")
+    df_ref_2 = pd.read_csv("../data/surya-bench-flare-forecasting/train_hour_12.csv")
+    
+    df_ref_1["timestamp"] = pd.to_datetime(df_ref_1["timestamp"])
+    df_ref_2["timestamp"] = pd.to_datetime(df_ref_2["timestamp"])
+    df_ref = (
+        pd.concat([df_ref_1, df_ref_2], ignore_index=True)
+          .drop_duplicates(subset="timestamp")
+          .sort_values("timestamp")
+          .set_index("timestamp")
+    )
 
     # Correct datetime parsing
     df_anvil["timestep"] = pd.to_datetime(
         df_anvil["timestep"], format="%Y-%m-%d %H:%M:%S"
     )
     df_aws["timestep"] = pd.to_datetime(df_aws["timestep"], format="%Y-%m-%d %H:%M:%S")
-    df_ref["timestamp"] = pd.to_datetime(
-        df_ref["timestamp"], format="%Y-%m-%d %H:%M:%S"
-    )
-
     df_anvil.set_index("timestep", inplace=True)
     df_aws.set_index("timestep", inplace=True)
-    df_ref.set_index("timestamp", inplace=True)
 
     # Target path on Anvil scratch
-    zarr_out = f"/anvil/scratch/x-jhong6/data/surya_bench_train_hour_{cadence}.zarr"
+    zarr_out = f"/anvil/scratch/x-jhong6/data/surya_bench_train_hour_8_12.zarr"
 
     create_zarr_optimized(df_anvil, df_aws, df_ref, zarr_out)

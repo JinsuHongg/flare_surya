@@ -95,8 +95,6 @@ optimizer:
     
       # Define available strategies
       cosine_warmup:
-        # T_max: 10
-        # eta_min: 1e-6
         total_steps: 1000
         warmup_ratio: 0.1 # Default 10% warmup
       plateau:

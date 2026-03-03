@@ -68,7 +68,7 @@ optimizer:
 
 etc:
   phase: train # test
-  resume: false
+  resume: true
   ckpt_dir: /anvil/projects/x-cis251356/check_point/surya/baselines/alexnet/
   ckpt_name_tag: baseline_8hour_zarr
   ckpt_file: baseline_8hour_zarr_alexnet_lastepoch.ckpt  

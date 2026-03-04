@@ -15,7 +15,7 @@ data:
   n_input_timestamps: 2 # must be equal to time_delta_input_minutes
   is_downstream: true
   batch_size: 1
-  num_data_workers: 6
+  num_data_workers: 2
   pin_memory: true
   prefetch_factor: 2
   persistent_workers: true
@@ -55,7 +55,7 @@ optimizer:
   weight_decay: 1e-3
   scheduler:
       use: cosine_warmup # The switch
-      monitor: val_tss 
+      monitor: val_hss 
     
       # Define available strategies
       cosine_warmup:
@@ -70,10 +70,10 @@ optimizer:
 
 etc:
   phase: train # test
-  resume: false
+  resume: true
   ckpt_dir: /anvil/projects/x-cis251356/check_point/surya/baselines/resnet18/
   ckpt_name_tag: baseline_8hour_zarr
-  ckpt_file: null  
+  ckpt_file: last.ckpt  
   ckpt_weights_only: false
   save_test_results_path: ../results/
   precision: 16-mixed #16-mixed

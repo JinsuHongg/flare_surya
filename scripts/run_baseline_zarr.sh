@@ -5,7 +5,7 @@
 #SBATCH -p ai               # the default queue is "shared" queue
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=7
+#SBATCH --cpus-per-task=3
 #SBATCH --gres=gpu:1
 #SBATCH --mem=300G
 #SBATCH --time=24:00:00

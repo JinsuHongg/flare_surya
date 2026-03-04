@@ -56,36 +56,52 @@ class PerformanceMonitor(pl.Callback):
 
 def build_callbacks(cfg, wandb_logger):
 
-    best_val_ckpt = ModelCheckpoint(
-        monitor=cfg.optimizer.scheduler.monitor,
+    # best_val_ckpt = ModelCheckpoint(
+    #     monitor=cfg.optimizer.scheduler.monitor,
+    #     dirpath=cfg.etc.ckpt_dir,
+    #     filename=(
+    #         f"{wandb_logger.experiment.id}_"
+    #         f"{cfg.etc.ckpt_name_tag}_"
+    #         f"{cfg.head.type}_"
+    #         "{epoch}-{val_loss:.4f}"
+    #     ),
+    #     save_top_k=3,
+    #     verbose=True,
+    #     mode="min",
+    # )
+    #
+    # epoch_ckpt = ModelCheckpoint(
+    #     dirpath=cfg.etc.ckpt_dir,
+    #     filename=(
+    #         f"{cfg.etc.ckpt_name_tag}_"
+    #         f"{cfg.head.type}_lastepoch"
+    #     ),
+    #     save_on_train_epoch_end=True,
+    #     save_top_k=-1,
+    #     verbose=True,
+    # )
+ 
+    checkpoint_callback = ModelCheckpoint(
+        monitor=cfg.optimizer.scheduler.monitor, # e.g., "val_loss"
         dirpath=cfg.etc.ckpt_dir,
         filename=(
             f"{wandb_logger.experiment.id}_"
             f"{cfg.etc.ckpt_name_tag}_"
-            f"{cfg.head.type}_"
-            "{epoch}-{val_loss:.4f}"
+            f"{cfg.backbone.model_name}_"
+            "{epoch}-{val_tss:.4f}"
         ),
         save_top_k=3,
+        mode="max", 
         verbose=True,
-        mode="min",
+        save_last=True 
     )
 
-    epoch_ckpt = ModelCheckpoint(
-        dirpath=cfg.etc.ckpt_dir,
-        filename=(
-            f"{cfg.etc.ckpt_name_tag}_"
-            f"{cfg.head.type}_lastepoch"
-        ),
-        save_on_train_epoch_end=True,
-        save_top_k=-1,
-        verbose=True,
-    )
- 
     performance_monitor = PerformanceMonitor()
     return [
         # RichProgressBar(),
         LearningRateMonitor(logging_interval="step"),
-        best_val_ckpt,
-        epoch_ckpt,
+        checkpoint_callback,
+        # best_val_ckpt,
+        # epoch_ckpt,
         performance_monitor,
     ]

@@ -1,9 +1,9 @@
 import pandas as pd
 from pathlib import Path
 
-def main(new_data_path):
+def main(new_data_path, tag):
     # read new data
-    df_new = pd.read_csv(new_data_path / "data_12hour_window.csv")
+    df_new = pd.read_csv(new_data_path / "data_thres_c_24hour_window.csv")
 
     # read existing datasplit
     df_train = pd.read_csv((new_data_path.parent / "train.csv").resolve())
@@ -22,13 +22,14 @@ def main(new_data_path):
     df_new_test = pd.merge(df_new, df_test[["timestamp"]], on="timestamp", how="inner")
 
     # save new split
-    df_new_train.to_csv(new_data_path / "train_12w.csv", index=False)
-    df_new_val.to_csv(new_data_path / "val_12w.csv", index=False)
-    df_new_leaky_val.to_csv(new_data_path / "leaky_val_12w.csv", index=False)
-    df_new_test.to_csv(new_data_path / "test_12w.csv", index=False)
+    df_new_train.to_csv(new_data_path / f"train_{tag}.csv", index=False)
+    df_new_val.to_csv(new_data_path / f"val_{tag}.csv", index=False)
+    df_new_leaky_val.to_csv(new_data_path / f"leaky_val_{tag}.csv", index=False)
+    df_new_test.to_csv(new_data_path / f"test_{tag}.csv", index=False)
     print("complete data split!")
 
 if __name__ == "__main__":
 
-    new_data_path = Path("./flare_surya/data/surya-bench-flare-forecasting/12w/")
-    main(new_data_path=new_data_path)
+    tag = "C24w" 
+    new_data_path = Path(f"./flare_surya/data/surya-bench-flare-forecasting/{tag}/")
+    main(new_data_path, tag)

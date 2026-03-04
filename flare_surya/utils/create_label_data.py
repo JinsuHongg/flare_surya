@@ -150,7 +150,7 @@ def rolling_window(
         df = df[cols]
 
     print(f"Total {len(df)} instances!")
-    df.to_csv("total_flare_labels_12hour_window.csv", index=False)
+    df.to_csv(save_path + "data_thres_c_24hour_window.csv", index=False)
     # split_dataset(df, savepath=save_path)
 
     return df
@@ -255,13 +255,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--file_path",
         type=str,
-        default="./flare/",
+        default="./flare_surya/data/",
         help="File path",
     )
     parser.add_argument(
         "--save_path",
         type=str,
-        default="./flare/",
+        default="./flare_surya/data/",
         help="Save path",
     )
     parser.add_argument(
@@ -288,7 +288,7 @@ if __name__ == "__main__":
         start=args.start,
         stop=args.stop,
         cadence={"hours": 1, "minutes": 0, "seconds": 0},
-        windowsize={"hours": 11, "minutes": 59, "seconds": 59},
-        thres_max="M1.0",
+        windowsize={"hours": 23, "minutes": 59, "seconds": 59},
+        thres_max="C1.0",
         thres_cum=10,
     )

@@ -3,9 +3,9 @@ hydra:
       dir: .
 
 data:
-  train_zarr_path: /anvil/scratch/x-jhong6/data/surya_bench_train_hour_8.zarr
+  train_zarr_path: /anvil/scratch/x-jhong6/data/surya_bench_train_hour_8_12.zarr
   val_zarr_path: /anvil/scratch/x-jhong6/data/surya_bench_validation.zarr
-  train_flare_data_path: ../data/surya-bench-flare-forecasting/train_hour_8.csv
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/train_hour_12.csv
   valid_flare_data_path: ../data/surya-bench-flare-forecasting/validation.csv
   leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/leaky_validation.csv
   test_flare_data_path: ../data/surya-bench-flare-forecasting/test.csv
@@ -55,7 +55,7 @@ optimizer:
   weight_decay: 1e-3
   scheduler:
       use: cosine_warmup # The switch
-      monitor: val_tss 
+      monitor: val_hss 
     
       # Define available strategies
       cosine_warmup:
@@ -68,10 +68,10 @@ optimizer:
 
 etc:
   phase: train # test
-  resume: true
+  resume: false
   ckpt_dir: /anvil/projects/x-cis251356/check_point/surya/baselines/alexnet/
   ckpt_name_tag: baseline_8hour_zarr
-  ckpt_file: baseline_8hour_zarr_alexnet_lastepoch.ckpt  
+  ckpt_file: last.ckpt  
   ckpt_weights_only: false
   save_test_results_path: ../results/
   precision: 16-mixed #16-mixed

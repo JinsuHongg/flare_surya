@@ -15,8 +15,8 @@ def create_data_with_hour(file, base_path, hour, target_file_name):
 
 if __name__ == "__main__":
 
-    base_dir = Path("./flare_surya/data/surya-bench-flare-forecasting/12w")
-    target_files = ["train_12w.csv"]
+    base_dir = Path("./flare_surya/data/surya-bench-flare-forecasting/C24w")
+    target_files = ["train_C24w.csv"]
     hour = 24
 
     for target_file in target_files:

@@ -87,8 +87,8 @@ def build_callbacks(cfg, wandb_logger):
         filename=(
             f"{wandb_logger.experiment.id}_"
             f"{cfg.etc.ckpt_name_tag}_"
-            f"{cfg.backbone.model_name}_"
-            "{epoch}-{val_tss:.4f}"
+            f"{cfg.head.type}_"
+            "{epoch}-{val_hss:.4f}"
         ),
         save_top_k=3,
         mode="max", 

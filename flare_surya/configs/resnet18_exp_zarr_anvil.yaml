@@ -15,7 +15,7 @@ data:
   n_input_timestamps: 2 # must be equal to time_delta_input_minutes
   is_downstream: true
   batch_size: 1
-  num_data_workers: 2
+  num_data_workers: 4
   pin_memory: true
   prefetch_factor: 2
   persistent_workers: true

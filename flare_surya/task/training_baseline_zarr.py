@@ -99,7 +99,7 @@ def train(cfg: OmegaConf):
         f"{wandb_logger.experiment.id}_"
         f"{cfg.etc.ckpt_name_tag}_"
         f"{cfg.backbone.model_name}_"
-        "{epoch}-{val_tss:.4f}"
+        "{epoch}-{val_hss:.4f}"
     ),
     save_top_k=3,
     mode="max", 

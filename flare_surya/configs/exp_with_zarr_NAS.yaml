@@ -8,19 +8,19 @@ hydra:
     dir: .
 
 data:
-  train_zarr_path: /anvil/scratch/x-jhong6/data/surya_bench_train_hour_8.zarr
-  val_zarr_path: /anvil/scratch/x-jhong6/data/surya_bench_validation.zarr
-  train_flare_data_path: ../data/surya-bench-flare-forecasting/train_hour_8.csv
-  valid_flare_data_path: ../data/surya-bench-flare-forecasting/validation.csv
-  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/leaky_validation.csv
-  test_flare_data_path: ../data/surya-bench-flare-forecasting/test.csv
+  train_zarr_path: /nobackupnfs1/sroy14/processed_data/Helio/zarr/surya_bench_train_8_val_1.zarr
+  val_zarr_path: /nobackupnfs1/sroy14/processed_data/Helio/zarr/surya_bench_train_8_val_1.zarr
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/c24w/train_C24w_24.csv
+  valid_flare_data_path: ../data/surya-bench-flare-forecasting/c24w/val_C24w.csv
+  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/c24w/leaky_val_C24w.csv
+  test_flare_data_path: ../data/surya-bench-flare-forecasting/c24w/test_C24w.csv
   channels: ['aia94', 'aia131', 'aia171', 'aia193', 'aia211', 'aia304', 'aia335', 'aia1600', 'hmi_m', 'hmi_bx', 'hmi_by', 'hmi_bz', 'hmi_v']
   time_delta_input_minutes: [-60,0]
   time_delta_target_minutes: 0
   n_input_timestamps: 2 # must be equal to time_delta_input_minutes
   is_downstream: true
   batch_size: 1
-  num_data_workers: 6
+  num_data_workers: 12
   pin_memory: true
   prefetch_factor: 2
   persistent_workers: true
@@ -100,6 +100,8 @@ optimizer:
     
       # Define available strategies
       cosine_warmup:
+        # T_max: 10
+        # eta_min: 1e-6
         total_steps: 1000
         warmup_ratio: 0.1 # Default 10% warmup
       plateau:
@@ -110,9 +112,9 @@ optimizer:
 etc:
   phase: train # test
   resume: true
-  ckpt_dir: /anvil/projects/x-cis251356/check_point/surya/flare/
-  ckpt_name_tag: mlp_8hour_zarr
-  ckpt_file: mlp_8hour_zarr_mlp_lastepoch.ckpt  
+  ckpt_dir: ../results/check_point/surya_flare/
+  ckpt_name_tag: mlp_24hour_zarr
+  ckpt_file: last.ckpt  
   ckpt_weights_only: false
   save_test_results_path: ../results/
   precision: 16-mixed #16-mixed
@@ -131,9 +133,9 @@ wandb:
   project: helio-fm
   log_model: false
   notes: "simple mlp head"
-  offline: false
+  offline: true
   save_code: false
-  tag: ["surya", "mlp", "binary"] # backbone model, head type, task
+  tag: ["mlp", "12hour", "zarr"] # backbone model, head type, task
 
 
 use_latitude_in_learned_flow: false
@@ -151,3 +153,4 @@ validate_after_epoch: 1
 # iters_per_epoch_valid: 200
 # iters_grad_accum: 1
 # parallelism: 'ddp' # Valid options: "ddp" and "fsdp" 
+

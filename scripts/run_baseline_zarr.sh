@@ -5,7 +5,7 @@
 #SBATCH -p ai               # the default queue is "shared" queue
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=3
+#SBATCH --cpus-per-task=7
 #SBATCH --gres=gpu:1
 #SBATCH --mem=300G
 #SBATCH --time=24:00:00
@@ -29,4 +29,4 @@ source $SLURM_SUBMIT_DIR/.venv/bin/activate
 cd flare_surya/task
 
 # Run your training script
-srun python training_baseline_zarr.py --config-name=resnet18_exp_zarr_anvil.yaml
+srun python training_baseline_zarr.py --config-name=alexnet_exp_zarr_anvil.yaml

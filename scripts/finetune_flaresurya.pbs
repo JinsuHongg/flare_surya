@@ -47,7 +47,7 @@
 ## sky_gpu node: 18/36 cores 384GB, 4 GPUs (each 32GB)
 ## mil_a100 node: 64 cores / host, 16 / vnode, 256 GB / host, 64 / vnode, 4 GPUs / host, 1 / vnode (each 80GB)
 
-#PBS -l select=1:model=mil_a100:ncpus=32:ngpus=1:mem=250GB
+#PBS -l select=1:model=mil_a100:ncpus=32:ngpus=1:mem=450GB
 ##PBS -l place=scatter:excl
 
 ##PBS -q gpu_devel
@@ -98,4 +98,4 @@ cd $PBS_O_WORKDIR
 
 source .venv/bin/activate
 cd flare_surya/task
-python finetuning.py
+python finetuning_zarr.py --config-name=exp_with_zarr_NAS.yaml

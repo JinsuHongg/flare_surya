@@ -75,6 +75,8 @@ def train(cfg: OmegaConf):
         tags=cfg.wandb.tag,
         name=name,
         config=cfg_dict,
+        id=f"{cfg.backbone.model_name}_lr{cfg.optimizer.lr}",
+        resume=cfg.etc.resume,
     )
 
     # Trainer

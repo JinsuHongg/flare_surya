@@ -7,7 +7,7 @@
 ## sky_gpu node: 18/36 cores 384GB, 4 GPUs (each 32GB)
 ## mil_a100 node: 64 cores / host, 16 / vnode, 256 GB / host, 64 / vnode, 4 GPUs / host, 1 / vnode (each 80GB)
 
-#PBS -l select=1:model=mil_a100:ncpus=32:ngpus=1:mem=250GB
+#PBS -l select=1:model=mil_a100:ncpus=16:ngpus=1:mem=250GB
 ##PBS -l place=scatter:excl
 
 ##PBS -q gpu_devel
@@ -25,11 +25,8 @@
 ## by default, the output filename is jobname.oJOBID
 
 #PBS -kod -ked
-#PBS -o logs/baselines/train_baselines_zarr.out
-#PBS -e logs/baselines/train_baselines_zarr.err
 #PBS -W umask=002
 
-    
 ## Note**: 
 ##   I think the batch_size here is the size per dataloading, not the effective 
 ##   batch_size which will be n_nodes * nGPUs * batch_size
@@ -59,4 +56,5 @@ cd $PBS_O_WORKDIR
 source .venv/bin/activate
 cd flare_surya/task
 python training_baseline_zarr.py --config-name=alexnet_exp_zarr.yaml
+
 

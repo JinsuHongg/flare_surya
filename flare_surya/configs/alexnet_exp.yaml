@@ -1,6 +1,11 @@
+defaults:
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+
 hydra:
+  output_subdir: null
   run:
-      dir: .
+    dir: .
 
 data:
   sdo_data_root_path: /nobackupnfs1/sroy14/processed_data/Helio/nc 

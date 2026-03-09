@@ -75,25 +75,10 @@ def train(cfg: OmegaConf):
         tags=cfg.wandb.tag,
         name=name,
         config=cfg_dict,
-        id=f"{cfg.backbone.model_name}_lr{cfg.optimizer.lr}",
+        id=f"{cfg.wandb.id}",
         resume=cfg.etc.resume,
     )
 
-    # Trainer
-    # best_val_ckpt = ModelCheckpoint(
-    #     monitor=cfg.optimizer.scheduler.monitor,
-    #     dirpath=cfg.etc.ckpt_dir,
-    #     filename=(
-    #         f"{wandb_logger.experiment.id}_"
-    #         f"{cfg.etc.ckpt_name_tag}_"
-    #         f"{cfg.backbone.model_name}_"
-    #         "{epoch}-{val_loss:.4f}"
-    #     ),
-    #     save_top_k=3,
-    #     verbose=True,
-    #     mode="max",
-    # )
-    
     checkpoint_callback = ModelCheckpoint(
     monitor=cfg.optimizer.scheduler.monitor, # e.g., "val_loss"
     dirpath=cfg.etc.ckpt_dir,
@@ -106,29 +91,16 @@ def train(cfg: OmegaConf):
     save_top_k=3,
     mode="max", 
     verbose=True,
-    save_last=True 
-)
+    save_last=True,
+    enable_version_counter=False,
+    )
 
-    # epoch_ckpt = ModelCheckpoint(
-    #     dirpath=cfg.etc.ckpt_dir,
-    #     filename=(
-    #         f"{cfg.etc.ckpt_name_tag}_"
-    #         f"{cfg.backbone.model_name}_lastepoch"
-    #     ),
-    #     save_on_train_epoch_end=True,
-    #     save_top_k=-1,
-    #     verbose=True,
-    # )
-    
     pf_monitor = PerformanceMonitor()
 
     callbacks = [
-        # RichProgressBar(),
         LearningRateMonitor(logging_interval="step"),
         pf_monitor,
         checkpoint_callback,
-        # best_val_ckpt,
-        # epoch_ckpt,
     ]
 
     trainer = Trainer(

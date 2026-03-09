@@ -7,7 +7,7 @@ if __name__ == "__main__":
     # Define paths
     dest_base_path = Path("/anvil/scratch/x-jhong6/data/surya-bench/")
     aws_index_path = "../data/surya_aws_s3_full_index.csv"
-    flare_val_path = "../data/surya-bench-flare-forecasting/validation.csv"
+    flare_val_path = "../data/surya-bench-flare-forecasting/test.csv"
 
     # Load DataFrames
     df_aws = pd.read_csv(aws_index_path)

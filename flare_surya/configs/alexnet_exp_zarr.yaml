@@ -76,7 +76,7 @@ optimizer:
 etc:
   phase: train # test
   resume: false
-  ckpt_dir: ../results/check_point/baselines/
+  ckpt_dir: ../results/check_point/baselines/alexnet/
   ckpt_name_tag: baseline_zarr
   ckpt_file: null  
   ckpt_weights_only: false
@@ -96,11 +96,10 @@ wandb:
   entity: gsu-dmlab
   project: helio-fm
   log_model: false
-  notes: "alexnet"
+  notes: alexnet
   offline: true
   save_code: false
-  tag: ["zarr"] # backbone model, head type, task
-
+  tag: ["alexnet", "zarr"] # backbone model, head type, task
 
 use_latitude_in_learned_flow: false
 loss_weights: [] # [] or list of weights per channel

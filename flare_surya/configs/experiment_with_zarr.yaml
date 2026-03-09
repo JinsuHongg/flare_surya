@@ -8,9 +8,9 @@ hydra:
     dir: .
 
 data:
-  train_zarr_path: /anvil/scratch/x-jhong6/data/surya_bench_train_hour_8.zarr
+  train_zarr_path: /anvil/scratch/x-jhong6/data/surya_bench_train_hour_8_12.zarr
   val_zarr_path: /anvil/scratch/x-jhong6/data/surya_bench_validation.zarr
-  train_flare_data_path: ../data/surya-bench-flare-forecasting/train_hour_8.csv
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/train_hour_12.csv
   valid_flare_data_path: ../data/surya-bench-flare-forecasting/validation.csv
   leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/leaky_validation.csv
   test_flare_data_path: ../data/surya-bench-flare-forecasting/test.csv
@@ -109,10 +109,10 @@ optimizer:
 
 etc:
   phase: train # test
-  resume: true
+  resume: false
   ckpt_dir: /anvil/projects/x-cis251356/check_point/surya/flare/
-  ckpt_name_tag: mlp_8hour_zarr
-  ckpt_file: mlp_8hour_zarr_mlp_lastepoch.ckpt  
+  ckpt_name_tag: mlp_12hour_zarr
+  ckpt_file: last.ckpt  
   ckpt_weights_only: false
   save_test_results_path: ../results/
   precision: 16-mixed #16-mixed
@@ -126,6 +126,7 @@ etc:
   accumulate_grad_batches: 64
 
 wandb:
+  id: null 
   save_dir: ../results
   entity: gsu-dmlab
   project: helio-fm

@@ -74,8 +74,8 @@ optimizer:
 
 etc:
   phase: train # test
-  resume: false
-  ckpt_dir: ../results/check_point/baselines/
+  resume: true
+  ckpt_dir: ../results/check_point/baselines/resnet18/
   ckpt_name_tag: baseline_zarr
   ckpt_file: null  
   ckpt_weights_only: false

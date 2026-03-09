@@ -1,3 +1,4 @@
+import os
 import time
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import (
@@ -58,7 +59,7 @@ def build_callbacks(cfg, wandb_logger):
 
     checkpoint_callback = ModelCheckpoint(
         monitor=cfg.optimizer.scheduler.monitor, # e.g., "val_loss"
-        dirpath=cfg.etc.ckpt_dir,
+        dirpath=os.path.join(cfg.etc.ckpt_dir, wandb_logger.experiment.id),
         filename=(
             f"{wandb_logger.experiment.id}_"
             f"{cfg.etc.ckpt_name_tag}_"
@@ -68,7 +69,8 @@ def build_callbacks(cfg, wandb_logger):
         save_top_k=3,
         mode="max", 
         verbose=True,
-        save_last=True 
+        save_last=True,
+        enable_version_counter=False,
     )
 
     performance_monitor = PerformanceMonitor()

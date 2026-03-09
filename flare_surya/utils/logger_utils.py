@@ -19,6 +19,8 @@ def build_wandb(cfg, model):
         config=cfg_dict,
         id=cfg.wandb.id,
         resume=cfg.etc.resume,
+        enable_version_counter=cfg.wandb.enable_version_counter,
+
     )
 
     # selected hparams for WandB

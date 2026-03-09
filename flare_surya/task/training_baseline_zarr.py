@@ -93,7 +93,6 @@ def train(cfg: OmegaConf):
     mode="max", 
     verbose=True,
     save_last=True,
-    enable_version_counter=False,
     )
 
     pf_monitor = PerformanceMonitor()

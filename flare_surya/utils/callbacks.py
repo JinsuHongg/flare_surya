@@ -70,7 +70,6 @@ def build_callbacks(cfg, wandb_logger):
         mode="max", 
         verbose=True,
         save_last=True,
-        enable_version_counter=cfg.wandb.enable_version_counter,
     )
 
     performance_monitor = PerformanceMonitor()

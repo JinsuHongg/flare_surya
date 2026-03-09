@@ -124,6 +124,7 @@ etc:
   limit_train_batches: null
   limit_val_batches: null
   accumulate_grad_batches: 64
+  enable_version_counter: False
 
 wandb:
   id: null 
@@ -135,8 +136,6 @@ wandb:
   offline: false
   save_code: false
   tag: ["mlp", "zarr"] # backbone model, head type, task
-  enable_version_counter: False
-
 
 use_latitude_in_learned_flow: false
 loss_weights: [] # [] or list of weights per channel

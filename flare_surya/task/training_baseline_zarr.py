@@ -77,7 +77,6 @@ def train(cfg: OmegaConf):
         config=cfg_dict,
         id=f"{cfg.wandb.id}",
         resume=cfg.etc.resume,
-        enable_version_counter=cfg.wandb.enable_version_counter,
     )
 
     checkpoint_callback = ModelCheckpoint(
@@ -93,6 +92,7 @@ def train(cfg: OmegaConf):
     mode="max", 
     verbose=True,
     save_last=True,
+    enable_version_counter=cfg.etc.enable_version_counter,
     )
 
     pf_monitor = PerformanceMonitor()

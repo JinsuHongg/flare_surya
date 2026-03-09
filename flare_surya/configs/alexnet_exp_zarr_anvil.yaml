@@ -99,6 +99,7 @@ wandb:
   offline: false
   save_code: false
   tag: ["zarr", "alexnet"] # backbone model, head type, task
+  enable_version_counter: False
 
 
 use_latitude_in_learned_flow: false

@@ -134,7 +134,8 @@ wandb:
   notes: "simple mlp head"
   offline: false
   save_code: false
-  tag: ["surya", "mlp", "binary"] # backbone model, head type, task
+  tag: ["mlp", "zarr"] # backbone model, head type, task
+  enable_version_counter: False
 
 
 use_latitude_in_learned_flow: false

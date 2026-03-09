@@ -128,6 +128,7 @@ etc:
   accumulate_grad_batches: 64
 
 wandb:
+  id: null
   save_dir: ../results
   entity: gsu-dmlab
   project: helio-fm
@@ -136,6 +137,7 @@ wandb:
   offline: true
   save_code: false
   tag: ["mlp", "12hour", "zarr"] # backbone model, head type, task
+  enable_version_counter: False
 
 
 use_latitude_in_learned_flow: false

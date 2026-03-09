@@ -91,6 +91,7 @@ etc:
   accumulate_grad_batches: 64
 
 wandb:
+  id: null
   save_dir: ../results
   entity: gsu-dmlab
   project: helio-fm
@@ -98,7 +99,8 @@ wandb:
   notes: "resnet18"
   offline: true
   save_code: false
-  tag: ["zarr"] # backbone model, head type, task
+  tag: ["resnet18", "zarr"] # backbone model, head type, task
+  enable_version_counter: False
 
 
 use_latitude_in_learned_flow: false

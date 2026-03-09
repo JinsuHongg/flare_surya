@@ -17,7 +17,7 @@ def build_wandb(cfg, model):
         tags=cfg["wandb"]["tag"],
         name=name,
         config=cfg_dict,
-        id=f"{cfg.wandb.id}",
+        id=cfg.wandb.id,
         resume=cfg.etc.resume,
     )
 

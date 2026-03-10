@@ -94,7 +94,7 @@ def train(cfg: OmegaConf):
     model = build_model(cfg=cfg)
 
     # Create wandb obejct
-    wandb_logger = build_wandb(cfg=cfg, model=model)
+    wandb_logger = build_wandb(cfg=cfg)
 
     # Trainer
     callbacks = build_callbacks(cfg=cfg, wandb_logger=wandb_logger)

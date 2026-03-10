@@ -10,8 +10,8 @@
 #SBATCH --mem=300G
 #SBATCH --time=24:00:00
 #SBATCH --job-name=baselines_zarr
-#SBATCH --output=logs/%x_%j.out   # %x = job name, %j = job ID
-#SBATCH --error=logs/%x_%j.err    # separate error log (optional)
+#SBATCH --output=logs/baselines/%x_%j.out   # %x = job name, %j = job ID
+#SBATCH --error=logs/baselines/%x_%j.err    # separate error log (optional)
 
 
 # Clean environment

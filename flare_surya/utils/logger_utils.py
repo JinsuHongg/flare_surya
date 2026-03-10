@@ -3,8 +3,7 @@ from omegaconf import DictConfig, OmegaConf
 from lightning.pytorch.loggers import WandbLogger
 
 
-def build_wandb(cfg, model):
-    name = f"{cfg.head.type}_lr{cfg.optimizer.lr}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+def build_wandb(cfg):
     cfg_dict = OmegaConf.to_container(cfg, resolve=True, throw_on_missing=False)
     wandb_logger = WandbLogger(
         entity=cfg["wandb"]["entity"],
@@ -15,7 +14,7 @@ def build_wandb(cfg, model):
         save_code=cfg["wandb"]["save_code"],
         notes=cfg["wandb"]["notes"],
         tags=cfg["wandb"]["tag"],
-        name=name,
+        name=cfg.wandb.name,
         config=cfg_dict,
         id=cfg.wandb.id,
         resume=cfg.etc.resume,
@@ -48,5 +47,4 @@ def build_wandb(cfg, model):
         }
     )
 
-    # wandb_logger.watch(model, log="parameters", log_freq=2000)
     return wandb_logger

@@ -91,7 +91,8 @@ etc:
   enable_version_counter: False
 
 wandb:
-  id: alexnet_lr0.001
+  name: alexnet_12hour_zarr_anvil
+  id: null
   save_dir: ../results
   entity: gsu-dmlab
   project: helio-fm

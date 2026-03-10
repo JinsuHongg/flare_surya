@@ -10,8 +10,8 @@
 #SBATCH --mem=300G
 #SBATCH --time=24:00:00
 #SBATCH --job-name=surya-flare-zarr
-#SBATCH --output=logs/%x_%j.out   # %x = job name, %j = job ID
-#SBATCH --error=logs/%x_%j.err    # separate error log (optional)
+#SBATCH --output=logs/surya/%x_%j.out   # %x = job name, %j = job ID
+#SBATCH --error=logs/surya/%x_%j.err    # separate error log (optional)
 
 
 # Clean environment

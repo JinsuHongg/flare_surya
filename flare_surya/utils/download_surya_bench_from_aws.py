@@ -37,7 +37,7 @@ if __name__ == "__main__":
         if local_file.exists():
             continue
 
-        print(f"[{index+1}/{len(df)}] Downloading {s3_path}...")
+        # print(f"[{index+1}/{len(df)}] Downloading {s3_path}...")
 
         # Execute the AWS CLI command
         try:
@@ -53,4 +53,4 @@ if __name__ == "__main__":
                 check=True,
             )
         except subprocess.CalledProcessError as e:
-            print(f"Failed to download {s3_path}: {e}")
+            # print(f"Failed to download {s3_path}: {e}")

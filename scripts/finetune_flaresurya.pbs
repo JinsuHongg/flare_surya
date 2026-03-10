@@ -65,8 +65,8 @@
 ## by default, the output filename is jobname.oJOBID
 
 #PBS -kod -ked
-#PBS -o logs/surya/flaresurya_finetune.out
-#PBS -e logs/surya/flaresurya_finetune.err
+## PBS -o logs/surya/flaresurya_finetune.out
+## PBS -e logs/surya/flaresurya_finetune.err
 #PBS -W umask=002
 
     

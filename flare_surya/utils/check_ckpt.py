@@ -4,7 +4,7 @@ if __name__ == "__main__":
 
     # ckpt_path = "/anvil/projects/x-cis251356/check_point/surya/baselines/"
     # ckpt_file = "baseline_8hour_zarr_alexnet_lastepoch.ckpt"
-    ckpt_path = "/anvil/projects/x-cis251356/check_point/surya/baselines/resnet18/" 
+    ckpt_path = "/anvil/projects/x-cis251356/check_point/surya/baselines/alexnet/" 
     # ckpt_path = "/anvil/projects/x-cis251356/check_point/surya/flare/"
     ckpt_file = "last-v4.ckpt"
 

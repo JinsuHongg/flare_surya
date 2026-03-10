@@ -129,6 +129,7 @@ etc:
   enable_version_counter: False
 
 wandb:
+  name: null
   id: null
   save_dir: ../results
   entity: gsu-dmlab

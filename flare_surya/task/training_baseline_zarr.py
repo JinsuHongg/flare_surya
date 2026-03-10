@@ -62,7 +62,6 @@ def train(cfg: OmegaConf):
         )
 
     # Create wandb obejct
-    name = f"{cfg.backbone.model_name}_lr{cfg.optimizer.lr}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
     cfg_dict = OmegaConf.to_container(cfg, resolve=True, throw_on_missing=False)
     wandb_logger = WandbLogger(
         entity=cfg.wandb.entity,
@@ -73,9 +72,9 @@ def train(cfg: OmegaConf):
         save_code=cfg.wandb.save_code,
         notes=cfg.wandb.notes,
         tags=cfg.wandb.tag,
-        name=name,
+        name=cfg.wandb.name,
         config=cfg_dict,
-        id=f"{cfg.wandb.id}",
+        id=cfg.wandb.id,
         resume=cfg.etc.resume,
     )
 

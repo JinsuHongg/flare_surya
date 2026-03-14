@@ -29,4 +29,4 @@ source $SLURM_SUBMIT_DIR/.venv/bin/activate
 cd flare_surya/task
 
 # Run your training script
-srun python training_baseline_zarr.py --config-name=alexnet_exp_zarr_anvil.yaml
+srun python training_baseline_zarr.py --config-name=resnet18_exp_zarr_anvil.yaml

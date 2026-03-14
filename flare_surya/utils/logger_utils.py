@@ -17,7 +17,7 @@ def build_wandb(cfg):
         name=cfg.wandb.name,
         config=cfg_dict,
         id=cfg.wandb.id,
-        resume=cfg.etc.resume,
+        resume=cfg.wandb.resume,
     )
 
     # selected hparams for WandB

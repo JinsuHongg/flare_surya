@@ -75,7 +75,7 @@ def train(cfg: OmegaConf):
         name=cfg.wandb.name,
         config=cfg_dict,
         id=cfg.wandb.id,
-        resume=cfg.etc.resume,
+        resume=cfg.wandb.resume,
     )
 
     checkpoint_callback = ModelCheckpoint(

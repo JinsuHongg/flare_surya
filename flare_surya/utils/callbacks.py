@@ -59,7 +59,7 @@ def build_callbacks(cfg, wandb_logger):
 
     checkpoint_callback = ModelCheckpoint(
         monitor=cfg.optimizer.scheduler.monitor, # e.g., "val_loss"
-        dirpath=os.path.join(cfg.etc.ckpt_dir, wandb_logger.experiment.id),
+        dirpath=cfg.etc.ckpt_dir,
         filename=(
             f"{wandb_logger.experiment.id}_"
             f"{cfg.etc.ckpt_name_tag}_"

@@ -1,0 +1,34 @@
+#!/usr/bin/bash
+#PBS -S /usr/bin/bash
+#PBS -N train_baselines_gh
+
+#PBS -l select=1:ncpus=10:ngpus=1:mem=250GB
+##PBS -l place=scatter:excl
+
+#PBS -q gpu_normal
+#PBS -l walltime=24:00:00
+
+## PBS will email when the job is aborted, begun, ended.
+#PBS -M jhong36@gsu.edu
+#PBS -m abe
+
+#PBS -kod -ked
+#PBS -W umask=002
+
+JOBID=$(echo "$PBS_JOBID" | cut -d. -f1)
+exec >logs/baselines/train_baselines_gh.${JOBID}.out
+exec 2>logs/baselines/train_baselines_gh.${JOBID}.err
+
+mapfile -t NODES < <(sort -u "$PBS_NODEFILE")
+if [[ ${#NODES[@]} -ne 1 ]]; then
+  echo "ERROR: expected 1 node, got ${#NODES[@]}"
+  exit 1
+fi
+
+echo "Changing directory to: $PBS_O_WORKDIR"
+cd $PBS_O_WORKDIR
+
+source /nobackupp17/jhong15/miniforge3_gh/etc/profile.d/conda.sh
+conda activate flare_surya
+cd flare_surya/task
+python training_baseline.py --config-name=resnet18_exp_gh.yaml

@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 #PBS -S /usr/bin/bash
-#PBS -N train_baselines_zarr 
+#PBS -N train_baselines_zarr
 
 ## On NAS, model can be sky_gpu, cas_gpu or mil_a100 which have GPUs
 ## cas_gpu node: 24/48 cores 384GB, 4 GPUs (each 32GB)
@@ -27,22 +27,22 @@
 #PBS -kod -ked
 #PBS -W umask=002
 
-## Note**: 
-##   I think the batch_size here is the size per dataloading, not the effective 
+## Note**:
+##   I think the batch_size here is the size per dataloading, not the effective
 ##   batch_size which will be n_nodes * nGPUs * batch_size
-##   Based on suggetion from Soumya, for DDP in pytorch lightning, the batch_size is per node, 
+##   Based on suggetion from Soumya, for DDP in pytorch lightning, the batch_size is per node,
 ##   i.e., batch_size will be distributed over the GPUs on the node. Hence if 4 is the best
-##   per GPU, then batch size of 16 will be the choice for node with 4 GPUs. 
+##   per GPU, then batch size of 16 will be the choice for node with 4 GPUs.
 ##   since nodes with GPUs on NAS most have 4-GPUs, therefore batch_size will be set to 16
 ##   regardless how many nodes to be used
 ##
-## Let each GPU process 4 batches each time, 
-## Make sure the batch size in the AFNO yaml file get updated accordingly     
+## Let each GPU process 4 batches each time,
+## Make sure the batch size in the AFNO yaml file get updated accordingly
 #
 
 JOBID=$(echo "$PBS_JOBID" | cut -d. -f1)
-exec > logs/baselines/train_baselines_zarr.${JOBID}.out
-exec 2> logs/baselines/train_baselines_zarr.${JOBID}.err
+exec >logs/baselines/train_baselines_zarr.${JOBID}.out
+exec 2>logs/baselines/train_baselines_zarr.${JOBID}.err
 
 mapfile -t NODES < <(sort -u "$PBS_NODEFILE")
 if [[ ${#NODES[@]} -ne 1 ]]; then
@@ -55,6 +55,4 @@ cd $PBS_O_WORKDIR
 
 source .venv/bin/activate
 cd flare_surya/task
-python training_baseline_zarr.py --config-name=alexnet_exp_zarr.yaml
-
-
+python training_baseline_zarr.py --config-name=resnet18_exp_zarr.yaml

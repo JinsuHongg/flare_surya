@@ -13,7 +13,6 @@
 #SBATCH --output=logs/baselines/%x_%j.out   # %x = job name, %j = job ID
 #SBATCH --error=logs/baselines/%x_%j.err    # separate error log (optional)
 
-
 # Clean environment
 module purge
 module --force purge

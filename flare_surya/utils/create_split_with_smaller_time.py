@@ -2,29 +2,33 @@ import pandas as pd
 from pathlib import Path
 
 
-def create_data_with_hour(file, base_path, hour, target_file_name):
-    
-    df = pd.read_csv(base_path / file)
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
+def create_data_with_hour(
+    file: str, base_path: Path, source_freq: str, hour: int, target_file_name: str
+) -> None:
+    df = pd.read_csv(
+        base_path / source_freq / file,
+        parse_dates=["timestamp"],
+    )
+    df[df["timestamp"].dt.hour % hour == 0].to_csv(
+        base_path / f"{source_freq[0]}{hour}w" / target_file_name,
+        index=False,
+        date_format="%Y-%m-%d %H:%M:%S",
+    )
 
-    condition = df["timestamp"].dt.hour % hour == 0
-    df.loc[condition].to_csv(
-            base_path / target_file_name, 
-            index=False,
-            date_format="%Y-%m-%d %H:%M:%S")
 
 if __name__ == "__main__":
+    base_dir = Path("./flare_surya/data/surya-bench-flare-forecasting/")
+    source_freq = "C24w"
+    hour = 8
+    stem_suffix = f"_freq{hour}.csv"
 
-    base_dir = Path("./flare_surya/data/surya-bench-flare-forecasting/C24w")
-    target_files = ["train_C24w.csv"]
-    hour = 24
+    target_files = ["train", "val", "leaky_val", "test"]
 
-    for target_file in target_files:
+    for stem in target_files:
         create_data_with_hour(
-                target_file,
-                base_dir,
-                hour,
-                target_file.split(".")[0] + f"_{hour}.csv"
+            f"{stem}_{source_freq}.csv",
+            base_dir,
+            source_freq,
+            hour,
+            f"{stem}_{source_freq}{stem_suffix}",
         )
-
-

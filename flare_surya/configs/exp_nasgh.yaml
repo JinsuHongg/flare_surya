@@ -10,7 +10,7 @@ hydra:
 data:
   train_zarr_path: /anvil/scratch/x-jhong6/data/surya_bench_train_hour_8_12.zarr
   val_zarr_path: /anvil/scratch/x-jhong6/data/surya_bench_validation.zarr
-  train_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/train_C24w_freq8.csv
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/train_C24w_24.csv
   valid_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/val_C24w.csv
   leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/leaky_val_C24w.csv
   test_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/test_C24w.csv

@@ -17,7 +17,7 @@ from lightning.pytorch.callbacks import (
 
 from flare_surya.datamodule import FlareDataModule
 from flare_surya.models.modules import BaseLineModel
-from flare_surya.utils.callbacks import PerformanceMonitor 
+from flare_surya.utils.callbacks import PerformanceMonitor
 
 # from flare_surya.utils.logger_utils import build_wandb
 # from flare_surya.utils.callbacks import build_callbacks
@@ -45,7 +45,7 @@ def build_model(config):
 @hydra.main(
     version_base=None,
     config_path="../configs",
-    config_name="baseline_experiment.yaml",
+    config_name="resnet18_exp_gh.yaml",
 )
 def train(cfg: OmegaConf):
 
@@ -81,44 +81,34 @@ def train(cfg: OmegaConf):
         save_code=cfg.wandb.save_code,
         notes=cfg.wandb.notes,
         tags=cfg.wandb.tag,
-        name=name,
+        name=cfg.wandb.name,
         config=cfg_dict,
+        id=cfg.wandb.id,
+        resume=cfg.wandb.resume,
     )
 
-    # Trainer
-    best_val_ckpt = ModelCheckpoint(
-        monitor=cfg.optimizer.scheduler.monitor,
+    checkpoint_callback = ModelCheckpoint(
+        monitor=cfg.optimizer.scheduler.monitor,  # e.g., "val_loss"
         dirpath=cfg.etc.ckpt_dir,
         filename=(
             f"{wandb_logger.experiment.id}_"
             f"{cfg.etc.ckpt_name_tag}_"
             f"{cfg.backbone.model_name}_"
-            "{epoch}-{val_loss:.4f}"
+            "{epoch}-{val_hss:.4f}"
         ),
         save_top_k=3,
+        mode="max",
         verbose=True,
-        mode="min",
+        save_last=True,
+        enable_version_counter=cfg.etc.enable_version_counter,
     )
 
-    epoch_ckpt = ModelCheckpoint(
-        dirpath=cfg.etc.ckpt_dir,
-        filename=(
-            f"{cfg.etc.ckpt_name_tag}_"
-            f"{cfg.backbone.model_name}_lastepoch"
-        ),
-        save_on_train_epoch_end=True,
-        save_top_k=0,
-        verbose=True,
-    )
-    
     pf_monitor = PerformanceMonitor()
 
     callbacks = [
-        # RichProgressBar(),
         LearningRateMonitor(logging_interval="step"),
         pf_monitor,
-        best_val_ckpt,
-        epoch_ckpt,
+        checkpoint_callback,
     ]
 
     trainer = Trainer(
@@ -157,5 +147,4 @@ def train(cfg: OmegaConf):
 
 
 if __name__ == "__main__":
-
     train()

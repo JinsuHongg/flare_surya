@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 #PBS -S /usr/bin/bash
-#PBS -N train_baselines_gh
+#PBS -N finetuning_surya_gh
 
 #PBS -l select=1:ncpus=10:ngpus=1:mem=250GB
 ##PBS -l place=scatter:excl
@@ -16,8 +16,8 @@
 #PBS -W umask=002
 
 JOBID=$(echo "$PBS_JOBID" | cut -d. -f1)
-exec >logs/baselines/train_baselines_gh.${JOBID}.out
-exec 2>logs/baselines/train_baselines_gh.${JOBID}.err
+exec >logs/surya/finetuning_surya_gh.${JOBID}.out
+exec 2>logs/surya/finetuning_surya_gh.${JOBID}.err
 
 mapfile -t NODES < <(sort -u "$PBS_NODEFILE")
 if [[ ${#NODES[@]} -ne 1 ]]; then

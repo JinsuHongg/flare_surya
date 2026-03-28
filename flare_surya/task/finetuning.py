@@ -58,7 +58,6 @@ def build_model(cfg):
         "save_test_results_path": cfg.etc.save_test_results_path,
     }
     if cfg.etc.resume and cfg.etc.ckpt_weights_only:
-
         ckpt_path = os.path.join(
             cfg.etc.ckpt_dir,
             cfg.etc.ckpt_file,
@@ -96,7 +95,7 @@ def train(cfg: OmegaConf):
     model = build_model(cfg=cfg)
 
     # Create wandb obejct
-    wandb_logger = build_wandb(cfg=cfg, model=model)
+    wandb_logger = build_wandb(cfg=cfg)
 
     # Trainer
     callbacks = build_callbacks(cfg=cfg, wandb_logger=wandb_logger)
@@ -136,5 +135,4 @@ def train(cfg: OmegaConf):
 
 
 if __name__ == "__main__":
-
     train()

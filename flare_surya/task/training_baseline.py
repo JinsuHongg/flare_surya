@@ -44,7 +44,7 @@ def build_model(config):
 
 @hydra.main(
     version_base=None,
-    config_path="../configs",
+    config_path="../configs/nas/",
     config_name="resnet18_exp_gh.yaml",
 )
 def train(cfg: OmegaConf):

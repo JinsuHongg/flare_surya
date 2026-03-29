@@ -36,7 +36,7 @@ def build_model(config):
 
 @hydra.main(
     version_base=None,
-    config_path="../configs",
+    config_path="../configs/anvil/",
     config_name="baseline_exp_with_zarr.yaml",
 )
 def train(cfg: OmegaConf):

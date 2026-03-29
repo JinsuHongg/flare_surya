@@ -123,6 +123,7 @@ def train(cfg: OmegaConf):
                 if cfg.etc.resume and not cfg.etc.ckpt_weights_only
                 else None
             ),
+            weights_only=False,
         )
     elif cfg.etc.phase == "test":
         trainer.test(

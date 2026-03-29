@@ -17,7 +17,7 @@ from lightning.pytorch.callbacks import (
 
 from flare_surya.datamodule import FlareDataModule
 from flare_surya.models.modules import BaseLineModel
-from flare_surya.utils.callbacks import PerformanceMonitor
+from flare_surya.utils.callbacks import PerformanceMonitor, TimeLogger
 
 # from flare_surya.utils.logger_utils import build_wandb
 # from flare_surya.utils.callbacks import build_callbacks
@@ -104,10 +104,12 @@ def train(cfg: OmegaConf):
     )
 
     pf_monitor = PerformanceMonitor()
+    time_monitor = TimeLogger()
 
     callbacks = [
         LearningRateMonitor(logging_interval="step"),
         pf_monitor,
+        time_monitor,
         checkpoint_callback,
     ]
 

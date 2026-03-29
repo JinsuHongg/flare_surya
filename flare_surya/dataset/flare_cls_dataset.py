@@ -296,7 +296,7 @@ class SolarFlareClsDatasetAWS(HelioNetCDFDatasetAWS):
         label_type: str = "label_max",
         return_surya_stack: bool = True,
         max_number_of_samples: int | None = None,
-        flare_index_path: str = None,
+        flare_index_path: str = "",
     ):
         self.label_type = label_type
         self.return_surya_stack = return_surya_stack
@@ -375,7 +375,7 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
         phase="train",
         pooling: int | None = None,
         random_vert_flip: bool = False,
-        zarr_path: str = None,
+        zarr_path: str = "",
         is_downstream: bool = False,
     ):
 

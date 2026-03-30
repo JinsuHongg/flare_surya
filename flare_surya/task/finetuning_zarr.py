@@ -99,6 +99,7 @@ def train(cfg: OmegaConf):
     # Trainer
     callbacks = build_callbacks(cfg=cfg, wandb_logger=wandb_logger)
     trainer = Trainer(
+        enable_progress_bar=False,
         accelerator=cfg.etc.accelerator,
         devices=cfg.etc.devices,
         num_nodes=cfg.etc.num_nodes,

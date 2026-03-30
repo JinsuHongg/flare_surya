@@ -59,7 +59,7 @@ classifier_metrics:
 optimizer:
   type: adamw
   lr: 1e-5
-  weight_decay: 5e-2
+  weight_decay: 0.5
   scheduler:
       use: cosine_warmup # The switch
       monitor: val_hss 
@@ -78,8 +78,8 @@ optimizer:
 etc:
   phase: train # test
   resume: false
-  ckpt_dir: ../results/check_point/baselines/resnet18/
-  ckpt_name_tag: baseline_daily_nasgh
+  ckpt_dir: ../results/check_point/baselines/resnet18/daily_c/
+  ckpt_name_tag: resnet18_daily_c
   ckpt_file: last.ckpt  
   ckpt_weights_only: false
   save_test_results_path: ../results/

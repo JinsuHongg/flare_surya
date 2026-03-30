@@ -104,6 +104,7 @@ def train(cfg: OmegaConf):
     ]
 
     trainer = Trainer(
+        enable_progress_bar=False,
         accelerator=cfg.etc.accelerator,
         devices=cfg.etc.devices,
         num_nodes=cfg.etc.num_nodes,

@@ -45,7 +45,6 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
         pooling: int | None = None,
         random_vert_flip: bool = False,
     ):
-
         self.flare_index = pd.read_csv(flare_index_path)
         self.flare_index["timestamp"] = pd.to_datetime(
             self.flare_index["timestamp"]
@@ -157,6 +156,11 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
 
         if self.num_mask_aia_channels > 0 or self.drop_hmi_probability:
             stacked_inputs = self.masker(stacked_inputs)
+
+        if not np.isfinite(stacked_inputs).all():
+            self.logger.warning(
+                f"NaN or Inf found in sample at index {idx}, reference_timestep: {reference_timestep}"
+            )
 
         time_delta_input_float = (time_deltas[-1] - time_deltas[0]) / np.timedelta64(
             1, "h"
@@ -378,7 +382,6 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
         zarr_path: str = "",
         is_downstream: bool = False,
     ):
-
         self.flare_index = pd.read_csv(flare_index_path)
         self.flare_index["timestamp"] = pd.to_datetime(
             self.flare_index["timestamp"]
@@ -423,7 +426,6 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
     def __len__(self):
         return self.adjusted_length
 
-
     class SolarFlareClsXRSDataset(SolarFlareClsDataset):
         """
         Add 24hour chunked Xray flux data into flare dataset.
@@ -449,7 +451,6 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
             xrs_zarr_path: str = "",
             xrs_stat_path: str = "",
         ):
-
             super().__init__(
                 sdo_data_root_path=sdo_data_root_path,
                 index_path=index_path,
@@ -467,7 +468,7 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
                 random_vert_flip=random_vert_flip,
                 flare_index_path=flare_index_path,
             )
-            
+
             self.xrs_data = xr.open_dataset(xrs_zarr_path, engine="zarr", chunks="auto")
             self.xrs_stat = OmegaConf.load(xrs_stat_path)
 
@@ -475,25 +476,25 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
             data, metadata = super()._get_index_data(idx)
             reference_timestamp = self.valid_indices[idx]
             data["label"] = self.flare_index.loc[reference_timestamp, "label_max"]
-            
+
             xrs = self.xrs_data["xray"].sel(timestep=reference_timestamp)
             # shape: (minute_offset, channel) after timestep selection
-            
+
             data["xrs_soft"] = torch.tensor(
-                self.norm_log_zscore(xrs.sel(channel="soft").values, self.xrs_stat.soft), 
+                self.norm_log_zscore(
+                    xrs.sel(channel="soft").values, self.xrs_stat.soft
+                ),
                 dtype=torch.float32,
             )
             data["xrs_hard"] = torch.tensor(
-                self.norm_log_zscore(xrs.sel(channel="hard").values, self.xrs_stat.hard), 
+                self.norm_log_zscore(
+                    xrs.sel(channel="hard").values, self.xrs_stat.hard
+                ),
                 dtype=torch.float32,
             )
             return data, metadata
 
-        
         def norm_log_zscore(self, data_arr, stats, eps=1e-10):
-            x = np.clip(data_arr, eps, None)              # avoid log(0)
+            x = np.clip(data_arr, eps, None)  # avoid log(0)
             x_log = np.log10(x)
-            return (x_log - stats.mean) / stats.std            # → ~N(0, 1)
-
-
-
+            return (x_log - stats.mean) / stats.std  # → ~N(0, 1)

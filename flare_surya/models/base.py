@@ -19,9 +19,13 @@ class BaseModule(L.LightningModule):
 
         match opt_type.lower():
             case "adam":
-                optimizer = torch.optim.Adam(params, lr=lr, weight_decay=weight_decay)
+                optimizer = torch.optim.Adam(
+                    params, lr=lr, weight_decay=weight_decay, eps=1e-7
+                )
             case "adamw":
-                optimizer = torch.optim.AdamW(params, lr=lr, weight_decay=weight_decay)
+                optimizer = torch.optim.AdamW(
+                    params, lr=lr, weight_decay=weight_decay, eps=1e-7
+                )
             case _:
                 raise ValueError(f"Unknown optimizer type: {opt_type}")
 

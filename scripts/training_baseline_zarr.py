@@ -1,7 +1,6 @@
 
 import os
 import hydra
-import datetime
 from omegaconf import DictConfig, OmegaConf
 from loguru import logger as lgr_logger
 
@@ -14,7 +13,7 @@ from lightning.pytorch.callbacks import (
 )
 
 from flare_surya.datamodule import FlareDataModuleZarr
-from flare_surya.models.modules import BaseLineModel
+from flare_surya.models import BaseLineModel
 from flare_surya.utils.callbacks import PerformanceMonitor, TimeLogger
 
 torch.set_float32_matmul_precision("medium")

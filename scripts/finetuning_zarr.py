@@ -9,9 +9,7 @@ from lightning.pytorch import Trainer
 from flare_surya.datamodule import (
     FlareDataModuleZarr,
 )
-from flare_surya.models.modules import FlareSurya
-
-# from flare_surya.utils.config import load_config
+from flare_surya.models import FlareSurya
 from flare_surya.utils.logger_utils import build_wandb
 from flare_surya.utils.callbacks import build_callbacks
 

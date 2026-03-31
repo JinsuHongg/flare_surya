@@ -1,24 +1,19 @@
 import os
 import time
-from pprint import pprint
 
 import pandas as pd
 import torch
-# from torch import nn
 import torch.nn.functional as F
 from loguru import logger
 from peft import LoraConfig, get_peft_model
-# import lightning as L
-# from terratorch_surya.downstream_examples.solar_flare_forecasting.models import HelioSpectformer1D
 from terratorch_surya.downstream_examples.solar_flare_forecasting.models import (
-    AlexNetClassifier, MobileNetClassifier, ResNet18Classifier,
+    AlexNetClassifier, MobileNetClassifier,
     ResNet34Classifier, ResNet50Classifier)
 from terratorch_surya.models.helio_spectformer import HelioSpectFormer
 
 from flare_surya.metrics.classification_metrics import \
     DistributedClassificationMetrics
-from flare_surya.models.base import BaseModule
-from flare_surya.models.heads import SuryaHead
+from flare_surya.models import BaseModule, SuryaHead, ResNet18
 
 
 class FlareSurya(BaseModule):
@@ -385,7 +380,7 @@ class BaseLineModel(BaseModule):
                     dropout=p_drop,
                 )
             case "resnet18":
-                self.backbone = ResNet18Classifier(
+                self.backbone = ResNet18(
                     in_channels=in_channels,
                     time_steps=time_steps,
                     num_classes=num_classes,

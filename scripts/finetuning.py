@@ -8,12 +8,8 @@ from lightning.pytorch import Trainer
 
 from flare_surya.datamodule import (
     FlareDataModule,
-    FlareDataModuleAWS,
-    FlareDataModuleZarr,
 )
-from flare_surya.models.modules import FlareSurya
-
-# from flare_surya.utils.config import load_config
+from flare_surya.models import FlareSurya
 from flare_surya.utils.logger_utils import build_wandb
 from flare_surya.utils.callbacks import build_callbacks
 
@@ -83,7 +79,7 @@ def build_model(cfg):
 
 @hydra.main(
     version_base=None,
-    config_path="../configs/nas/",
+    config_path="../../configs/nas/",
     config_name="first_experiment_model_comparison.yaml",
 )
 def train(cfg: OmegaConf):

@@ -5,13 +5,9 @@ import lightning as L
 from torch.utils.data import DataLoader
 from torch.utils.data import ConcatDataset
 
-# from terratorch_surya.downstream_examples.solar_flare_forecasting.dataset import (
-#     SolarFlareDataset,
-# )
 from terratorch_surya.utils.data import build_scalers
-import zarr
 from flare_surya.utils.config import load_config
-from flare_surya.dataset.flare_cls_dataset import (
+from flare_surya.dataset import (
     SolarFlareClsDataset,
     SolarFlareClsDatasetZarr,
     SolarFlareClsDatasetAWS,

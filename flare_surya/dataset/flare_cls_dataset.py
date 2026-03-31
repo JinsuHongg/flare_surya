@@ -426,75 +426,75 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
     def __len__(self):
         return self.adjusted_length
 
-    class SolarFlareClsXRSDataset(SolarFlareClsDataset):
-        """
-        Add 24hour chunked Xray flux data into flare dataset.
-        """
+class SolarFlareClsXRSDataset(SolarFlareClsDataset):
+    """
+    Add 24hour chunked Xray flux data into flare dataset.
+    """
 
-        def __init__(
-            self,
-            sdo_data_root_path: str,
-            index_path: str,
-            flare_index_path: str,
-            time_delta_input_minutes: list[int],
-            time_delta_target_minutes: int,
-            n_input_timestamps: int,
-            rollout_steps: int,
-            scalers=None,
-            num_mask_aia_channels=0,
-            drop_hmi_probability=0,
-            use_latitude_in_learned_flow=False,
-            channels: list[str] | None = None,
-            phase="train",
-            pooling: int | None = None,
-            random_vert_flip: bool = False,
-            xrs_zarr_path: str = "",
-            xrs_stat_path: str = "",
-        ):
-            super().__init__(
-                sdo_data_root_path=sdo_data_root_path,
-                index_path=index_path,
-                time_delta_input_minutes=time_delta_input_minutes,
-                time_delta_target_minutes=time_delta_target_minutes,
-                n_input_timestamps=n_input_timestamps,
-                rollout_steps=rollout_steps,
-                scalers=scalers,
-                num_mask_aia_channels=num_mask_aia_channels,
-                drop_hmi_probability=drop_hmi_probability,
-                use_latitude_in_learned_flow=use_latitude_in_learned_flow,
-                channels=channels,
-                phase=phase,
-                pooling=pooling,
-                random_vert_flip=random_vert_flip,
-                flare_index_path=flare_index_path,
-            )
+    def __init__(
+        self,
+        sdo_data_root_path: str,
+        index_path: str,
+        flare_index_path: str,
+        time_delta_input_minutes: list[int],
+        time_delta_target_minutes: int,
+        n_input_timestamps: int,
+        rollout_steps: int,
+        scalers=None,
+        num_mask_aia_channels=0,
+        drop_hmi_probability=0,
+        use_latitude_in_learned_flow=False,
+        channels: list[str] | None = None,
+        phase="train",
+        pooling: int | None = None,
+        random_vert_flip: bool = False,
+        xrs_zarr_path: str = "",
+        xrs_stat_path: str = "",
+    ):
+        super().__init__(
+            sdo_data_root_path=sdo_data_root_path,
+            index_path=index_path,
+            time_delta_input_minutes=time_delta_input_minutes,
+            time_delta_target_minutes=time_delta_target_minutes,
+            n_input_timestamps=n_input_timestamps,
+            rollout_steps=rollout_steps,
+            scalers=scalers,
+            num_mask_aia_channels=num_mask_aia_channels,
+            drop_hmi_probability=drop_hmi_probability,
+            use_latitude_in_learned_flow=use_latitude_in_learned_flow,
+            channels=channels,
+            phase=phase,
+            pooling=pooling,
+            random_vert_flip=random_vert_flip,
+            flare_index_path=flare_index_path,
+        )
 
-            self.xrs_data = xr.open_dataset(xrs_zarr_path, engine="zarr", chunks="auto")
-            self.xrs_stat = OmegaConf.load(xrs_stat_path)
+        self.xrs_data = xr.open_dataset(xrs_zarr_path, engine="zarr", chunks="auto")
+        self.xrs_stat = OmegaConf.load(xrs_stat_path)
 
-        def _get_index_data(self, idx: int) -> tuple[dict, dict]:
-            data, metadata = super()._get_index_data(idx)
-            reference_timestamp = self.valid_indices[idx]
-            data["label"] = self.flare_index.loc[reference_timestamp, "label_max"]
+    def _get_index_data(self, idx: int) -> tuple[dict, dict]:
+        data, metadata = super()._get_index_data(idx)
+        reference_timestamp = self.valid_indices[idx]
+        data["label"] = self.flare_index.loc[reference_timestamp, "label_max"]
 
-            xrs = self.xrs_data["xray"].sel(timestep=reference_timestamp)
-            # shape: (minute_offset, channel) after timestep selection
+        xrs = self.xrs_data["xray"].sel(timestep=reference_timestamp)
+        # shape: (minute_offset, channel) after timestep selection
 
-            data["xrs_soft"] = torch.tensor(
-                self.norm_log_zscore(
-                    xrs.sel(channel="soft").values, self.xrs_stat.soft
-                ),
-                dtype=torch.float32,
-            )
-            data["xrs_hard"] = torch.tensor(
-                self.norm_log_zscore(
-                    xrs.sel(channel="hard").values, self.xrs_stat.hard
-                ),
-                dtype=torch.float32,
-            )
-            return data, metadata
+        data["xrs_soft"] = torch.tensor(
+            self.norm_log_zscore(
+                xrs.sel(channel="soft").values, self.xrs_stat.soft
+            ),
+            dtype=torch.float32,
+        )
+        data["xrs_hard"] = torch.tensor(
+            self.norm_log_zscore(
+                xrs.sel(channel="hard").values, self.xrs_stat.hard
+            ),
+            dtype=torch.float32,
+        )
+        return data, metadata
 
-        def norm_log_zscore(self, data_arr, stats, eps=1e-10):
-            x = np.clip(data_arr, eps, None)  # avoid log(0)
-            x_log = np.log10(x)
-            return (x_log - stats.mean) / stats.std  # → ~N(0, 1)
+    def norm_log_zscore(self, data_arr, stats, eps=1e-10):
+        x = np.clip(data_arr, eps, None)  # avoid log(0)
+        x_log = np.log10(x)
+        return (x_log - stats.mean) / stats.std  # → ~N(0, 1)

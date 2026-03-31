@@ -9,18 +9,13 @@ from lightning.pytorch import Trainer
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import (
     ModelCheckpoint,
-    RichProgressBar,
     LearningRateMonitor,
-    # EarlyStopping,
-    # ModelSummary
 )
 
 from flare_surya.datamodule import FlareDataModule
-from flare_surya.models.modules import BaseLineModel
+from flare_surya.models import BaseLineModel
 from flare_surya.utils.callbacks import PerformanceMonitor, TimeLogger
 
-# from flare_surya.utils.logger_utils import build_wandb
-# from flare_surya.utils.callbacks import build_callbacks
 
 torch.set_float32_matmul_precision("medium")
 # This changes the sharing strategy from RAM (shm) to Disk (file_system)

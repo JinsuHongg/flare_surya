@@ -10,19 +10,19 @@ def create_data_with_hour(
         parse_dates=["timestamp"],
     )
     df[df["timestamp"].dt.hour % hour == 0].to_csv(
-        base_path / f"{source_freq[0]}{hour}w" / target_file_name,
+        base_path / f"{source_freq}" / target_file_name,
         index=False,
         date_format="%Y-%m-%d %H:%M:%S",
     )
 
 
 if __name__ == "__main__":
-    base_dir = Path("./flare_surya/data/surya-bench-flare-forecasting/")
-    source_freq = "C24w"
-    hour = 8
+    base_dir = Path("./data/surya-bench-flare-forecasting/")
+    source_freq = "M24w"
+    hour = 4
     stem_suffix = f"_freq{hour}.csv"
 
-    target_files = ["train", "val", "leaky_val", "test"]
+    target_files = ["test"]
 
     for stem in target_files:
         create_data_with_hour(

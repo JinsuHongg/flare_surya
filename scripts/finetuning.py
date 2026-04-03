@@ -79,8 +79,8 @@ def build_model(cfg):
 
 @hydra.main(
     version_base=None,
-    config_path="../../configs/nas/",
-    config_name="first_experiment_model_comparison.yaml",
+    config_path="../configs/nas/",
+    config_name="exp_nasgh.yaml",
 )
 def train(cfg: OmegaConf):
 

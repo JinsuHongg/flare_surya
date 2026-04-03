@@ -13,7 +13,9 @@ from terratorch_surya.models.helio_spectformer import HelioSpectFormer
 
 from flare_surya.metrics.classification_metrics import \
     DistributedClassificationMetrics
-from flare_surya.models import BaseModule, SuryaHead, ResNet18
+from .base import BaseModule
+from .heads import SuryaHead
+from .baselines_models import ResNet18
 
 
 class FlareSurya(BaseModule):

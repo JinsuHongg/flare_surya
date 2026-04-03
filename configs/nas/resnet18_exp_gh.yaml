@@ -95,8 +95,8 @@ etc:
   enable_version_counter: False
 
 wandb:
-  name: resnet18_daily_c_nasgh
-  id: resnet18_daily_c_nasgh
+  name: resnet18_daily_c_nasgh_new_wg
+  id: resnet18_daily_c_nasgh_new_wg
   resume: allow
   save_dir: ../results
   entity: gsu-dmlab

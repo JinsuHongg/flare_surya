@@ -76,12 +76,39 @@ class TimeLogger(pl.Callback):
     def on_train_epoch_end(self, trainer, pl_module):
         elapsed = time.time() - self._epoch_start
         metrics = trainer.callback_metrics
-        loss = metrics.get("train_loss", float("nan"))
+        loss = metrics.get("train/loss", float("nan"))
         val_loss = metrics.get("val_loss", float("nan"))
         print(
             f"[Epoch {trainer.current_epoch+1}/{trainer.max_epochs}] "
             f"time={elapsed:.1f}s | "
             f"train_loss={loss:.4f} | val_loss={val_loss:.4f}",
+            flush=True
+        )
+
+    def on_test_epoch_start(self, trainer, pl_module):
+        self._test_epoch_start = time.time()
+        self._total_test_batches = trainer.num_test_batches[0]  # list per dataloader
+
+    def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
+        if batch_idx % 50 == 0:
+            elapsed = time.time() - self._test_epoch_start
+            progress = (batch_idx + 1) / self._total_test_batches
+            eta = (elapsed / progress) - elapsed
+            print(
+                f"  [Test | "
+                f"Step {batch_idx+1}/{self._total_test_batches} ({100*progress:.0f}%)] "
+                f"elapsed={elapsed:.1f}s | ETA={eta:.0f}s",
+                flush=True
+            )
+
+    def on_test_epoch_end(self, trainer, pl_module):
+        elapsed = time.time() - self._test_epoch_start
+        metrics = trainer.callback_metrics
+        test_loss = metrics.get("test/loss", float("nan"))
+        print(
+            f"[Test Complete] "
+            f"time={elapsed:.1f}s | "
+            f"test_loss={test_loss:.4f}",
             flush=True
         )
 

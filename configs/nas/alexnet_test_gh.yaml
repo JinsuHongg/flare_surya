@@ -76,11 +76,11 @@ optimizer:
         patience: 10
 
 etc:
-  phase: train # test
-  resume: false
-  ckpt_dir: ../results/check_point/baselines/alexnet/8hour_c/
-  ckpt_name_tag: alexnet_8hour_c
-  ckpt_file: last.ckpt  
+  phase: test # test
+  resume: true
+  ckpt_dir: ../results/check_point/best/
+  ckpt_name_tag: alexnet_daily_test_m
+  ckpt_file: alexnet_daily_zarr_best.ckpt
   ckpt_weights_only: false
   save_test_results_path: ../results/
   precision: bf16-mixed #16-mixed
@@ -95,8 +95,8 @@ etc:
   enable_version_counter: False
 
 wandb:
-  name: alexnet_8hour_c_nasgh
-  id: alexnet_8hour_c_nasgh
+  name: alexnet_daily_m_nasgh_test
+  id: alexnet_daily_m_nasgh_test
   resume: allow
   save_dir: ../results
   entity: gsu-dmlab
@@ -105,7 +105,7 @@ wandb:
   notes: alexnet
   offline: false
   save_code: false
-  tag: ["alexnet", "C", "nasgh", "daily"] # backbone model, head type, task
+  tag: ["alexnet", "M", "nasgh", "daily", "test"] # backbone model, head type, task
 
 use_latitude_in_learned_flow: false
 loss_weights: [] # [] or list of weights per channel

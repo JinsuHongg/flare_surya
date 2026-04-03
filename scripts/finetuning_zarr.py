@@ -130,6 +130,7 @@ def train(cfg: OmegaConf):
             dataloaders=datamodule,
             ckpt_path=os.path.join(cfg.etc.ckpt_dir, cfg.etc.ckpt_file),
             verbose=True,
+            weights_only=False,
         )
 
 

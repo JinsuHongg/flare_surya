@@ -42,3 +42,22 @@ class SuryaHead(nn.Module):
 
     def forward(self, batch):
         return self.head(batch)
+
+
+class CrossModalFusion(nn.Module):
+    def __init__(self, embed_dim=1280, num_heads=16):
+        super().__init__()
+        # batch_first=True is required for our tensor shapes
+        self.cross_attn = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True)
+        self.norm = nn.LayerNorm(embed_dim)
+
+    def forward(self, xray, img):
+        # The X-ray sequence "looks at" the massive Image sequence
+        attn_output, _ = self.cross_attn(query=xray, key=img, value=img)
+        
+        # Add residual connection and normalize
+        fused_xray = self.norm(xray + attn_output)
+        
+        # Output shape is strictly tied to the Query shape
+        # Returns: [Batch, 1440, 1280]
+        return fused_xray

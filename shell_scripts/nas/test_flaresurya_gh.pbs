@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 #PBS -S /usr/bin/bash
-#PBS -N train_baselines_gh
+#PBS -N test_surya_gh
 
 #PBS -l select=1:ncpus=10:ngpus=1:mem=250GB
 ##PBS -l place=scatter:excl
@@ -16,8 +16,8 @@
 #PBS -W umask=002
 
 JOBID=$(echo "$PBS_JOBID" | cut -d. -f1)
-exec >logs/baselines/train_baselines_gh.${JOBID}.out
-exec 2>logs/baselines/train_baselines_gh.${JOBID}.err
+exec >logs/surya/test_surya_gh.${JOBID}.out
+exec 2>logs/surya/test_surya_gh.${JOBID}.err
 
 mapfile -t NODES < <(sort -u "$PBS_NODEFILE")
 if [[ ${#NODES[@]} -ne 1 ]]; then
@@ -31,4 +31,5 @@ cd $PBS_O_WORKDIR
 source /nobackupp17/jhong15/miniforge3_gh/etc/profile.d/conda.sh
 conda activate flare_surya
 cd scripts
-python training_baseline.py --config-name=resnet18_exp_gh.yaml
+python finetuning.py --config-name=test_nasgh.yaml
+

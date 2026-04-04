@@ -32,4 +32,3 @@ source /nobackupp17/jhong15/miniforge3_gh/etc/profile.d/conda.sh
 conda activate flare_surya
 cd scripts
 python training_baseline.py --config-name=alexnet_test_gh.yaml
-

@@ -116,7 +116,7 @@ etc:
   ckpt_name_tag: mlp_daily_m_test
   ckpt_file: mlp_daily_zarr_best.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ../results/
+  save_test_results_path: ../results/surya_test_result.csv
   precision: bf16-mixed #16-mixed
   accelerator: gpu
   devices: 1 #[0, 1, 2, 3]
@@ -129,8 +129,8 @@ etc:
   enable_version_counter: False
 
 wandb:
-  name: mlp_8hour_c_nasgh
-  id: mlp_8hour_c_nasgh
+  name: mlp_daily_M_nasgh_test
+  id: mlp_daily_M_nasgh_test
   resume: allow
   save_dir: ../results
   entity: gsu-dmlab
@@ -139,7 +139,7 @@ wandb:
   notes: "simple mlp head"
   offline: false
   save_code: false
-  tag: ["mlp", "C", "8hour", "nasgh"] # backbone model, head type, task
+  tag: ["mlp", "M", "8hour", "nasgh", "test"] # backbone model, head type, task
 
 use_latitude_in_learned_flow: false
 loss_weights: [] # [] or list of weights per channel

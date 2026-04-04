@@ -1,9 +1,7 @@
-import os
 import time
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import (
     ModelCheckpoint,
-    RichProgressBar,
     LearningRateMonitor,
     # EarlyStopping,
     # ModelSummary
@@ -92,7 +90,13 @@ class TimeLogger(pl.Callback):
     def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
         if batch_idx % 50 == 0:
             elapsed = time.time() - self._test_epoch_start
-            progress = (batch_idx + 1) / self._total_test_batches
+            batches_from_prev_loaders = sum(trainer.num_test_batches[:dataloader_idx])
+            global_batch_idx = batches_from_prev_loaders + batch_idx
+ 
+            if self._total_test_batches == 0:
+                return
+
+            progress = (global_batch_idx + 1) / self._total_test_batches
             eta = (elapsed / progress) - elapsed
             print(
                 f"  [Test | "

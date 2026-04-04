@@ -82,7 +82,7 @@ etc:
   ckpt_name_tag: alexnet_daily_test_m
   ckpt_file: alexnet_daily_zarr_best.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ../results/
+  save_test_results_path: ../results/alexnet_test_result.csv
   precision: bf16-mixed #16-mixed
   accelerator: gpu
   devices: 1 #[0, 1, 2, 3]

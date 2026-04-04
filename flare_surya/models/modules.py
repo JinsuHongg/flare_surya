@@ -3,6 +3,7 @@ import time
 
 import pandas as pd
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from loguru import logger
 from peft import LoraConfig, get_peft_model
@@ -44,7 +45,7 @@ class FlareSurya(BaseModule):
         nglo,
         path_weights,
         # head parameters
-        token_type,
+        pooling_type,
         in_feature,
         head_type,
         head_layer_dict,
@@ -58,7 +59,7 @@ class FlareSurya(BaseModule):
     ):
         super().__init__(optimizer_dict=optimizer_dict)
         self.save_hyperparameters()
-        self.token_type = token_type
+        self.pooling_type = pooling_type
         self.freeze_backbone = freeze_backbone
         self.lora_dict = lora_dict
         self.test_results = {
@@ -109,6 +110,9 @@ class FlareSurya(BaseModule):
             config = LoraConfig(**self.lora_dict["config"])
             # get peft model
             self.backbone = get_peft_model(self.backbone, config)
+        
+        if self.pooling_type == "attention_pooling":
+            self.attn_pooling = nn.Linear(in_feature, 1)
 
         # define head
         self.head = SuryaHead(
@@ -130,15 +134,18 @@ class FlareSurya(BaseModule):
         """
         tokens = self.backbone(data)
 
-        match self.token_type:
+        match self.pooling_type:
             case "cls_token":
                 return tokens[:, 0, :]
             case "avg_pooling":
                 return tokens.mean(dim=1)
             case "max_pooling":
                 return tokens.max(dim=1).values
+            case "attention_pooling":
+                w = torch.softmax(self.attn_pooling(tokens), dim=1)  # [B, T, 1]
+                return (w * tokens).sum(dim=1)                        # [B, D]
             case _:
-                raise ValueError(f"Unknown token_type: {self.token_type}")
+                raise ValueError(f"Unknown pooling_type: {self.pooling_type}")
 
     def train(self, mode=True):
         """
@@ -275,61 +282,23 @@ class FlareSurya(BaseModule):
             batch_size=self.batch_size,
         )
 
+        # Every rank saves its own shard
+        if batch_idx % 50 == 0:
+                self._flush_test_results()
+
         return loss
 
     def on_test_epoch_end(self):
-        # Compute and log metrics
-        # The compute_and_reset method handles distributed aggregation (all_reduce)
         metrics = self.test_metrics.compute()
-
-        # Log all computed metrics with a 'test/' prefix
+        print("\n=== Test Metrics ===")
+        for k, v in metrics.items():
+            print(f"  {k}: {v.float():.4f}")
+        print("===================\n")
         self.log_dict(
-            {f"test/{k}": v.float() for k, v in metrics.items()}, sync_dist=True
+            {f"test/{k}": v.float() for k, v in metrics.items()}, sync_dist=False
         )
-
         self.test_metrics.reset()
-
-        # Gather across all ranks (list of lists)
-        timestamps = torch.as_tensor(
-            self.test_results["timestamps"],
-            dtype=torch.float64,
-            device=self.device,
-        )
-        all_timestamps = self.all_gather(timestamps)
-        all_predictions = self.all_gather(self.test_results["predictions"])
-        all_targets = self.all_gather(self.test_results["targets"])
-
-        if self.trainer.is_global_zero:
-            # Flatten the gathered lists (from multiple ranks) correctly
-            all_timestamps = [
-                ts.detach().cpu().tolist()
-                for rank_ts in all_timestamps
-                for ts in rank_ts
-            ]
-
-            all_predictions = [
-                float(p.detach().cpu().item())
-                for rank_p in all_predictions
-                for p in rank_p
-            ]
-
-            all_targets = [
-                int(y.detach().cpu().item()) for rank_y in all_targets for y in rank_y
-            ]
-
-            results = pd.DataFrame(
-                {
-                    "timestamps": all_timestamps,  # list of lists
-                    "predictions": all_predictions,  # scalar per row
-                    "targets": all_targets,  # scalar per row
-                }
-            )
-
-            results = pd.DataFrame(results)
-            results.to_csv(
-                os.path.join(self.save_test_results_path, "surya_test_results.csv"),
-                index=False,
-            )
+        self._flush_test_results()
 
     def transfer_batch_to_device(self, batch, device, dataloader_idx):
         t0 = time.perf_counter()
@@ -345,6 +314,14 @@ class FlareSurya(BaseModule):
             data["debug"]["cpu_to_gpu_sec"] = t1 - t0
 
         return (data, metadata)
+
+    def _flush_test_results(self, mode="a"):
+        if not self.test_results["predictions"]:  # nothing buffered, skip
+            return
+        df = pd.DataFrame(self.test_results)
+        write_header = not os.path.exists(self.save_test_results_path)
+        df.to_csv(self.save_test_results_path, mode=mode, header=write_header, index=False)
+        self.test_results = {"timestamps": [], "predictions": [], "targets": []}
 
 
 class BaseLineModel(BaseModule):
@@ -530,63 +507,23 @@ class BaseLineModel(BaseModule):
             batch_size=self.batch_size,
         )
 
+        # Every rank saves its own shard
+        if batch_idx % 50 == 0:
+                self._flush_test_results()
+
         return loss
 
     def on_test_epoch_end(self):
-        # Compute and log metrics
-        # The compute_and_reset method handles distributed aggregation (all_reduce)
         metrics = self.test_metrics.compute()
-
-        # Log all computed metrics with a 'test/' prefix
+        print("\n=== Test Metrics ===")
+        for k, v in metrics.items():
+            print(f"  {k}: {v.float():.4f}")
+        print("===================\n")
         self.log_dict(
-            {f"test/{k}": v.float() for k, v in metrics.items()}, sync_dist=True
+            {f"test/{k}": v.float() for k, v in metrics.items()}, sync_dist=False
         )
-
         self.test_metrics.reset()
-
-        # Gather across all ranks (list of lists)
-        timestamps = torch.as_tensor(
-            self.test_results["timestamps"],
-            dtype=torch.float64,
-            device=self.device,
-        )
-        all_timestamps = self.all_gather(timestamps)
-        all_predictions = self.all_gather(self.test_results["predictions"])
-        all_targets = self.all_gather(self.test_results["targets"])
-
-        if self.trainer.is_global_zero:
-            # Flatten the gathered lists (from multiple ranks) correctly
-            all_timestamps = [
-                ts.detach().cpu().tolist()
-                for rank_ts in all_timestamps
-                for ts in rank_ts
-            ]
-
-            all_predictions = [
-                float(p.detach().cpu().item())
-                for rank_p in all_predictions
-                for p in rank_p
-            ]
-
-            all_targets = [
-                int(y.detach().cpu().item()) for rank_y in all_targets for y in rank_y
-            ]
-
-            results = pd.DataFrame(
-                {
-                    "timestamps": all_timestamps,  # list of lists
-                    "predictions": all_predictions,  # scalar per row
-                    "targets": all_targets,  # scalar per row
-                }
-            )
-
-            results = pd.DataFrame(results)
-            results.to_csv(
-                os.path.join(
-                    self.save_test_results_path, f"{self.model_name}_test_results.csv"
-                ),
-                index=False,
-            )
+        self._flush_test_results()
 
     def transfer_batch_to_device(self, batch, device, dataloader_idx):
         t0 = time.perf_counter()
@@ -602,3 +539,11 @@ class BaseLineModel(BaseModule):
             data["debug"]["cpu_to_gpu_sec"] = t1 - t0
 
         return (data, metadata)
+
+    def _flush_test_results(self, mode="a"):
+        if not self.test_results["predictions"]:  # nothing buffered, skip
+            return
+        df = pd.DataFrame(self.test_results)
+        write_header = not os.path.exists(self.save_test_results_path)
+        df.to_csv(self.save_test_results_path, mode=mode, header=write_header, index=False)
+        self.test_results = {"timestamps": [], "predictions": [], "targets": []}

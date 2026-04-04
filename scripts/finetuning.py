@@ -42,8 +42,8 @@ def build_model(cfg):
         "nglo": cfg.backbone.nglo,
         "path_weights": cfg.backbone.path_weights,
         # Put finetuning additions below this line
-        "token_type": cfg.head.token_type,
-        "in_feature": cfg.head.hyper_parameters.in_feature[cfg.head.token_type],
+        "pooling_type": cfg.head.pooling_type,
+        "in_feature": cfg.head.hyper_parameters.in_feature[cfg.head.pooling_type],
         "head_type": cfg.head.type,
         "head_layer_dict": cfg.head.hyper_parameters,
         "freeze_backbone": cfg.backbone.freeze_backbone,

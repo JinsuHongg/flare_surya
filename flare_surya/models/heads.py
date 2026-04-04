@@ -43,6 +43,18 @@ class SuryaHead(nn.Module):
     def forward(self, batch):
         return self.head(batch)
 
+    def forward_with_hidden(self, batch):
+        """
+        Returns (logits, h) where h is the output of the penultimate layer
+        (before the final linear classification layer).  Used by FLARELoss.
+        """
+        layers = list(self.head.children())
+        h = batch
+        for layer in layers[:-1]:
+            h = layer(h)
+        logits = layers[-1](h)
+        return logits, h
+
 
 class CrossModalFusion(nn.Module):
     def __init__(self, embed_dim=1280, num_heads=16):

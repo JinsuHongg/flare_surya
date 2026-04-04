@@ -17,7 +17,7 @@ from flare_surya.metrics.classification_metrics import \
 from .base import BaseModule
 from .heads import SuryaHead
 from .baselines_models import ResNet18
-from .criterions import BinaryFocalLoss
+from .criterions import BinaryFocalLoss, FLARELoss
 
 class FlareSurya(BaseModule):
     def __init__(
@@ -132,6 +132,13 @@ class FlareSurya(BaseModule):
                     gamma=loss_dict.focal.get("gamma", 2.0),
                     reduction=loss_dict.focal.get("reduction", "mean")
                 )
+            case "flare":
+                flare_cfg = loss_dict.get("flare", {})
+                self.criterion = FLARELoss(
+                    class_counts=list(flare_cfg.get("class_counts", [1, 1])),
+                    lambda_bss=flare_cfg.get("lambda_bss", 3.0),
+                    ib_start_epoch=flare_cfg.get("ib_start_epoch", 0),
+                )
             case _:
                 raise ValueError(f"Unsupported loss type: {loss_type}")
 
@@ -183,10 +190,15 @@ class FlareSurya(BaseModule):
         stats = data["debug"]
         target = data["label"].float().unsqueeze(1)
         tokens = self.forward_features(data)
-        x_hat = self.head(tokens)
-        probs = torch.sigmoid(x_hat)
 
-        loss = self.criterion(x_hat, target)
+        if isinstance(self.criterion, FLARELoss):
+            x_hat, h = self.head.forward_with_hidden(tokens)
+            loss = self.criterion(x_hat, target, h, current_epoch=self.current_epoch)
+        else:
+            x_hat = self.head(tokens)
+            loss = self.criterion(x_hat, target)
+
+        probs = torch.sigmoid(x_hat)
 
         # Update Metrics
         self.train_metrics.update(probs, target)
@@ -236,14 +248,20 @@ class FlareSurya(BaseModule):
         data, metadata = batch
         target = data["label"].float().unsqueeze(1)
         tokens = self.forward_features(data)
-        x_hat = self.head(tokens)
+
+        if isinstance(self.criterion, FLARELoss):
+            x_hat, h = self.head.forward_with_hidden(tokens)
+            loss = self.criterion(x_hat, target, h, current_epoch=self.current_epoch)
+        else:
+            x_hat = self.head(tokens)
+            loss = self.criterion(x_hat, target)
+
         probs = torch.sigmoid(x_hat)
 
         # Update states
         self.val_metrics.update(probs, target)
 
         # Log step loss normally
-        loss = self.criterion(x_hat, target)
         self.log(
             "val_loss",
             loss,
@@ -269,7 +287,14 @@ class FlareSurya(BaseModule):
         data, metadata = batch
         target = data["label"].float().unsqueeze(1)
         tokens = self.forward_features(data)
-        x_hat = self.head(tokens)
+
+        if isinstance(self.criterion, FLARELoss):
+            x_hat, h = self.head.forward_with_hidden(tokens)
+            loss = self.criterion(x_hat, target, h, current_epoch=self.current_epoch)
+        else:
+            x_hat = self.head(tokens)
+            loss = self.criterion(x_hat, target)
+
         probs = torch.sigmoid(x_hat)
 
         # Store predictions and targets for later analysis
@@ -278,9 +303,6 @@ class FlareSurya(BaseModule):
         )
         self.test_results["targets"].append(target.item())
         self.test_results["predictions"].append(probs.item())
-
-        # Calculate Loss
-        loss = self.criterion(x_hat, target)
 
         # Update Metrics
         # Pass predicted probabilities (sigmoid(x_hat)) and the target (squeezed to [B])
@@ -407,6 +429,11 @@ class BaseLineModel(BaseModule):
                     alpha=loss_dict.focal.get("alpha", 0.25),
                     gamma=loss_dict.focal.get("gamma", 2.0),
                     reduction=loss_dict.focal.get("reduction", "mean")
+                )
+            case "flare":
+                raise ValueError(
+                    "FLARELoss requires hidden features (h) from the penultimate layer "
+                    "and is only supported for FlareSurya, not BaseLineModel."
                 )
             case _:
                 raise ValueError(f"Unsupported loss type: {loss_type}")

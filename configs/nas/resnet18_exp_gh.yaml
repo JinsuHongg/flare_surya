@@ -56,6 +56,13 @@ classifier_metrics:
   validation_metrics_config:
     metrics_to_report: ['accuracy', 'precision', 'recall', 'f1']
 
+loss:
+  type: focal 
+  focal:
+    alpha: 0.25
+    gamma: 2.0
+    reduction: mean
+
 optimizer:
   type: adamw
   lr: 1e-5

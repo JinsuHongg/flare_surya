@@ -17,7 +17,7 @@ from flare_surya.metrics.classification_metrics import \
 from .base import BaseModule
 from .heads import SuryaHead
 from .baselines_models import ResNet18
-
+from .criterions import BinaryFocalLoss
 
 class FlareSurya(BaseModule):
     def __init__(
@@ -52,6 +52,7 @@ class FlareSurya(BaseModule):
         freeze_backbone,
         lora_dict,
         optimizer_dict,
+        loss_dict,
         threshold=0.5,
         # misc
         batch_size=1,
@@ -121,6 +122,19 @@ class FlareSurya(BaseModule):
             layer_dict=head_layer_dict,
         )
 
+        loss_type = loss_dict.get("type", "cross_entropy")
+        match loss_type:
+            case "cross_entropy":
+                self.criterion = F.binary_cross_entropy_with_logits
+            case "focal":
+                self.criterion = BinaryFocalLoss(
+                    alpha=loss_dict.focal.get("alpha", 0.25),
+                    gamma=loss_dict.focal.get("gamma", 2.0),
+                    reduction=loss_dict.focal.get("reduction", "mean")
+                )
+            case _:
+                raise ValueError(f"Unsupported loss type: {loss_type}")
+
         # Initialize the metrics instances
         self.train_metrics = DistributedClassificationMetrics(threshold=threshold)
         self.val_metrics = DistributedClassificationMetrics(threshold=threshold)
@@ -172,7 +186,7 @@ class FlareSurya(BaseModule):
         x_hat = self.head(tokens)
         probs = torch.sigmoid(x_hat)
 
-        loss = F.binary_cross_entropy_with_logits(x_hat, target)
+        loss = self.criterion(x_hat, target)
 
         # Update Metrics
         self.train_metrics.update(probs, target)
@@ -229,7 +243,7 @@ class FlareSurya(BaseModule):
         self.val_metrics.update(probs, target)
 
         # Log step loss normally
-        loss = F.binary_cross_entropy_with_logits(x_hat, target)
+        loss = self.criterion(x_hat, target)
         self.log(
             "val_loss",
             loss,
@@ -266,7 +280,7 @@ class FlareSurya(BaseModule):
         self.test_results["predictions"].append(probs.item())
 
         # Calculate Loss
-        loss = F.binary_cross_entropy_with_logits(x_hat, target)
+        loss = self.criterion(x_hat, target)
 
         # Update Metrics
         # Pass predicted probabilities (sigmoid(x_hat)) and the target (squeezed to [B])
@@ -335,6 +349,7 @@ class BaseLineModel(BaseModule):
         threshold,
         # head parameters
         optimizer_dict,
+        loss_dict,
         # misc
         batch_size=1,
         save_test_results_path=None,
@@ -381,7 +396,21 @@ class BaseLineModel(BaseModule):
                 )
             case _:
                 raise ValueError(f"Unknown model_name: {model_name}")
-
+        
+        # define loss
+        loss_type = loss_dict.get("type", "cross_entropy")
+        match loss_type:
+            case "cross_entropy":
+                self.criterion = F.binary_cross_entropy_with_logits
+            case "focal":
+                self.criterion = BinaryFocalLoss(
+                    alpha=loss_dict.focal.get("alpha", 0.25),
+                    gamma=loss_dict.focal.get("gamma", 2.0),
+                    reduction=loss_dict.focal.get("reduction", "mean")
+                )
+            case _:
+                raise ValueError(f"Unsupported loss type: {loss_type}")
+        
         # Initialize the metrics instances
         self.train_metrics = DistributedClassificationMetrics(threshold=threshold)
         self.val_metrics = DistributedClassificationMetrics(threshold=threshold)
@@ -396,7 +425,7 @@ class BaseLineModel(BaseModule):
         x_hat = self.backbone(data)
         probs = torch.sigmoid(x_hat)
 
-        loss = F.binary_cross_entropy_with_logits(x_hat, target)
+        loss = self.criterion(x_hat, target)
 
         # Update Metrics
         self.train_metrics.update(probs, target)
@@ -448,7 +477,7 @@ class BaseLineModel(BaseModule):
         x_hat = self.backbone(data)
         probs = torch.sigmoid(x_hat)
 
-        loss = F.binary_cross_entropy_with_logits(x_hat, target)
+        loss = self.criterion(x_hat, target)
 
         # Log Training Loss
         self.log(
@@ -491,7 +520,7 @@ class BaseLineModel(BaseModule):
         self.test_results["predictions"].append(probs.item())
 
         # Calculate Loss
-        loss = F.binary_cross_entropy_with_logits(x_hat, target)
+        loss = self.criterion(x_hat, target)
 
         # Update Metrics
         # Pass predicted probabilities (sigmoid(x_hat)) and the target (squeezed to [B])

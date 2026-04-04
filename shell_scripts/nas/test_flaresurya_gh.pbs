@@ -2,7 +2,7 @@
 #PBS -S /usr/bin/bash
 #PBS -N test_surya_gh
 
-#PBS -l select=1:ncpus=10:ngpus=1:mem=250GB
+#PBS -l select=1:ncpus=10:ngpus=1:mem=60GB
 ##PBS -l place=scatter:excl
 
 #PBS -q gpu_normal
@@ -32,4 +32,3 @@ source /nobackupp17/jhong15/miniforge3_gh/etc/profile.d/conda.sh
 conda activate flare_surya
 cd scripts
 python finetuning.py --config-name=test_nasgh.yaml
-

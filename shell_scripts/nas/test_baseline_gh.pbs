@@ -2,7 +2,7 @@
 #PBS -S /usr/bin/bash
 #PBS -N test_baselines_gh
 
-#PBS -l select=1:ncpus=10:ngpus=1:mem=250GB
+#PBS -l select=1:ncpus=10:ngpus=1:mem=60GB
 ##PBS -l place=scatter:excl
 
 #PBS -q gpu_normal

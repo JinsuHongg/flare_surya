@@ -1,21 +1,15 @@
 #!/usr/bin/bash
 #PBS -S /usr/bin/bash
 #PBS -N finetuning_surya_gh
-
-#PBS -l select=1:ncpus=10:ngpus=1:mem=250GB
-##PBS -l place=scatter:excl
-
+#PBS -l select=1:ncpus=10:ngpus=1:mem=70GB:model=gh200
 #PBS -q gpu_normal
 #PBS -l walltime=24:00:00
-
-## PBS will email when the job is aborted, begun, ended.
 #PBS -M jhong36@gsu.edu
 #PBS -m abe
-
-#PBS -kod -ked
 #PBS -W umask=002
 
 JOBID=$(echo "$PBS_JOBID" | cut -d. -f1)
+mkdir -p logs/surya
 exec >logs/surya/finetuning_surya_gh.${JOBID}.out
 exec 2>logs/surya/finetuning_surya_gh.${JOBID}.err
 
@@ -26,9 +20,9 @@ if [[ ${#NODES[@]} -ne 1 ]]; then
 fi
 
 echo "Changing directory to: $PBS_O_WORKDIR"
-cd $PBS_O_WORKDIR
+cd "$PBS_O_WORKDIR/scripts"
 
 source /nobackupp17/jhong15/miniforge3_gh/etc/profile.d/conda.sh
 conda activate flare_surya
-cd scripts
+
 python finetuning.py --config-name=exp_nasgh.yaml

@@ -12,10 +12,10 @@ data:
   train_data_path: ../data/surya-bench_sdo.csv
   valid_data_path: ../data/surya-bench_sdo.csv
   test_data_path: ../data/surya-bench_sdo.csv
-  train_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/train_X24w_freq8.csv
-  valid_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/val_X24w.csv
-  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/leaky_val_X24w.csv
-  test_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/test_X24w.csv
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/train_M24w_freq8.csv
+  valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/val_M24w.csv
+  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
+  test_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/test_M24w.csv
   channels: ['aia94', 'aia131', 'aia171', 'aia193', 'aia211', 'aia304', 'aia335', 'aia1600', 'hmi_m', 'hmi_bx', 'hmi_by', 'hmi_bz', 'hmi_v']
   time_delta_input_minutes: [-60,0]
   time_delta_target_minutes: 0
@@ -106,7 +106,7 @@ loss:
 optimizer:
   type: adamw
   lr: 1e-5
-  weight_decay: 0.5
+  weight_decay: 1e-2
   scheduler:
       use: cosine_warmup # The switch
       monitor: val_hss 
@@ -122,9 +122,9 @@ optimizer:
 
 etc:
   phase: train # test
-  resume: true
-  ckpt_dir: ../results/check_point/surya_flare/8hour_c/
-  ckpt_name_tag: mlp_8hour_c
+  resume: false
+  ckpt_dir: ../results/check_point/surya_flare/daily_m/
+  ckpt_name_tag: mlp_daily_m_focal
   ckpt_file: last.ckpt
   ckpt_weights_only: false
   save_test_results_path: ../results/
@@ -140,8 +140,8 @@ etc:
   enable_version_counter: False
 
 wandb:
-  name: mlp_8hour_c_nasgh
-  id: mlp_8hour_c_nasgh
+  name: mlp_daily_m_focal_nasgh
+  id: mlp_daily_m_focal_nasgh
   resume: allow
   save_dir: ../results
   entity: gsu-dmlab
@@ -150,7 +150,7 @@ wandb:
   notes: "simple mlp head"
   offline: false
   save_code: false
-  tag: ["mlp", "C", "8hour", "nasgh"] # backbone model, head type, task
+  tag: ["mlp", "M", "daily", "nasgh", "focal"] # backbone model, head type, task
 
 use_latitude_in_learned_flow: false
 loss_weights: [] # [] or list of weights per channel

@@ -289,6 +289,6 @@ if __name__ == "__main__":
         stop=args.stop,
         cadence={"hours": 1, "minutes": 0, "seconds": 0},
         windowsize={"hours": 23, "minutes": 59, "seconds": 59},
-        thres_max="C1.0",
+        thres_max="X1.0",
         thres_cum=10,
     )

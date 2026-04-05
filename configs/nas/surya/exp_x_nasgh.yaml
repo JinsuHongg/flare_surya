@@ -106,7 +106,7 @@ loss:
 optimizer:
   type: adamw
   lr: 1e-5
-  weight_decay: 0.5
+  weight_decay: 1e-2
   scheduler:
       use: cosine_warmup # The switch
       monitor: val_hss 

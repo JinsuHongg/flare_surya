@@ -87,11 +87,11 @@ optimizer:
         patience: 10
 
 etc:
-  phase: test # test
-  resume: true
-  ckpt_dir: ../results/check_point/best/
-  ckpt_name_tag: alexnet_daily_test_m
-  ckpt_file: alexnet_daily_zarr_best.ckpt
+  phase: train # test
+  resume: false
+  ckpt_dir: ../results/check_point/baselines/alexnet/
+  ckpt_name_tag: alexnet_daily_m_focal
+  ckpt_file: last.ckpt
   ckpt_weights_only: false
   save_test_results_path: ../results/alexnet_test_result.csv
   precision: bf16-mixed #16-mixed
@@ -106,8 +106,8 @@ etc:
   enable_version_counter: False
 
 wandb:
-  name: alexnet_daily_m_nasgh_test
-  id: alexnet_daily_m_nasgh_test
+  name: alexnet_daily_m_focal_nasgh
+  id: alexnet_daily_m_focal_nasgh
   resume: allow
   save_dir: ../results
   entity: gsu-dmlab
@@ -116,7 +116,7 @@ wandb:
   notes: alexnet
   offline: false
   save_code: false
-  tag: ["alexnet", "M", "nasgh", "daily", "test"] # backbone model, head type, task
+  tag: ["alexnet", "M", "nasgh", "daily", "focal"] # backbone model, head type, task
 
 use_latitude_in_learned_flow: false
 loss_weights: [] # [] or list of weights per channel

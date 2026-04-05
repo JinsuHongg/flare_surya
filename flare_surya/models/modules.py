@@ -17,7 +17,7 @@ from flare_surya.metrics.classification_metrics import \
 from .base import BaseModule
 from .heads import SuryaHead
 from .baselines_models import ResNet18
-from .criterions import BinaryFocalLoss, FLARELoss
+from .criterions import BinaryFocalLoss, FlareSSMLoss
 
 class FlareSurya(BaseModule):
     def __init__(
@@ -134,7 +134,7 @@ class FlareSurya(BaseModule):
                 )
             case "flare":
                 flare_cfg = loss_dict.get("flare", {})
-                self.criterion = FLARELoss(
+                self.criterion = FlareSSMLoss(
                     class_counts=list(flare_cfg.get("class_counts", [1, 1])),
                     lambda_bss=flare_cfg.get("lambda_bss", 3.0),
                     ib_start_epoch=flare_cfg.get("ib_start_epoch", 0),
@@ -191,7 +191,7 @@ class FlareSurya(BaseModule):
         target = data["label"].float().unsqueeze(1)
         tokens = self.forward_features(data)
 
-        if isinstance(self.criterion, FLARELoss):
+        if isinstance(self.criterion, FlareSSMLoss):
             x_hat, h = self.head.forward_with_hidden(tokens)
             loss = self.criterion(x_hat, target, h, current_epoch=self.current_epoch)
         else:
@@ -249,7 +249,7 @@ class FlareSurya(BaseModule):
         target = data["label"].float().unsqueeze(1)
         tokens = self.forward_features(data)
 
-        if isinstance(self.criterion, FLARELoss):
+        if isinstance(self.criterion, FlareSSMLoss):
             x_hat, h = self.head.forward_with_hidden(tokens)
             loss = self.criterion(x_hat, target, h, current_epoch=self.current_epoch)
         else:
@@ -288,7 +288,7 @@ class FlareSurya(BaseModule):
         target = data["label"].float().unsqueeze(1)
         tokens = self.forward_features(data)
 
-        if isinstance(self.criterion, FLARELoss):
+        if isinstance(self.criterion, FlareSSMLoss):
             x_hat, h = self.head.forward_with_hidden(tokens)
             loss = self.criterion(x_hat, target, h, current_epoch=self.current_epoch)
         else:
@@ -430,9 +430,9 @@ class BaseLineModel(BaseModule):
                     gamma=loss_dict.focal.get("gamma", 2.0),
                     reduction=loss_dict.focal.get("reduction", "mean")
                 )
-            case "flare":
+            case "flaressm":
                 raise ValueError(
-                    "FLARELoss requires hidden features (h) from the penultimate layer "
+                    "FlareSSMLoss requires hidden features (h) from the penultimate layer "
                     "and is only supported for FlareSurya, not BaseLineModel."
                 )
             case _:

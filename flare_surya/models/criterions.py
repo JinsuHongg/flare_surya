@@ -47,7 +47,7 @@ class BinaryFocalLoss(nn.Module):
         return loss
 
 
-class FLARELoss(nn.Module):
+class FlareSSMLoss(nn.Module):
     """
     FLARE Loss from Takagi et al. (arXiv:2509.09988), adapted for binary classification.
 
@@ -100,7 +100,7 @@ class FLARELoss(nn.Module):
     def _per_sample_gamma(self, targets: torch.Tensor) -> torch.Tensor:
         """Return gamma(y) for each sample. targets: (N, 1) with values 0/1."""
         idx = targets.long().squeeze(1)  # (N,)
-        return self.gamma_weights[idx]   # (N,)
+        return self.gamma_weights.to(idx.device)[idx]   # (N,)
 
     def forward(
         self,

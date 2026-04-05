@@ -94,6 +94,10 @@ loss:
     alpha: 0.25
     gamma: 2.0
     reduction: mean
+  flaressm:
+    class_counts: [45000, 5000]  # [N_neg, N_pos] from your training set # please check manually
+    lambda_bss: 3.0
+    ib_start_epoch: 10
 
 optimizer:
   type: adamw

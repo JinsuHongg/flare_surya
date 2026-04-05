@@ -12,10 +12,10 @@ data:
   train_data_path: ../data/surya-bench_sdo.csv
   valid_data_path: ../data/surya-bench_sdo.csv
   test_data_path: ../data/surya-bench_sdo.csv
-  train_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/train_M24w_freq8.csv
-  valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/val_M24w.csv
-  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
-  test_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/test_M24w.csv
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/train_X24w_freq8.csv
+  valid_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/val_X24w.csv
+  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/leaky_val_X24w.csv
+  test_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/test_X24w.csv
   channels: ['aia94', 'aia131', 'aia171', 'aia193', 'aia211', 'aia304', 'aia335', 'aia1600', 'hmi_m', 'hmi_bx', 'hmi_by', 'hmi_bz', 'hmi_v']
   time_delta_input_minutes: [-60,0]
   time_delta_target_minutes: 0
@@ -59,7 +59,7 @@ classifier_metrics:
 loss:
   type: focal 
   focal:
-    alpha: 0.25
+    alpha: 0.75
     gamma: 2.0
     reduction: mean
   flaressm:

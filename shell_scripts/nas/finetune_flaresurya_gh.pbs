@@ -25,4 +25,4 @@ cd "$PBS_O_WORKDIR/scripts"
 source /nobackupp17/jhong15/miniforge3_gh/etc/profile.d/conda.sh
 conda activate flare_surya
 
-python finetuning.py --config-name=exp_nasgh.yaml
+python finetuning.py --config-name=exp_m_nasgh.yaml

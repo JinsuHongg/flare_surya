@@ -1,0 +1,35 @@
+# @package _global_
+
+data:
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/train_C24w_freq8.csv
+  valid_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/val_C24w.csv
+  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/leaky_val_C24w.csv
+  test_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/test_C24w.csv
+
+head:
+  pooling_type: avg_pooling
+
+loss:
+  type: cross_entropy
+
+optimizer:
+  type: adamw
+  lr: 1e-5
+  weight_decay: 0.5
+
+etc:
+  phase: train # test
+  resume: true
+  ckpt_dir: ../results/check_point/surya_flare/8hour_c/
+  ckpt_name_tag: mlp_8hour_c
+  ckpt_file: last.ckpt
+  ckpt_weights_only: false
+  save_test_results_path: ../results/
+
+wandb:
+  name: mlp_8hour_c_nasgh
+  id: mlp_8hour_c_nasgh
+  notes: "simple mlp head"
+  offline: false
+  tag: ["mlp", "C", "8hour", "nasgh"] # backbone model, head type, task
+

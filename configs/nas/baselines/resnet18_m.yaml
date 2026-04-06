@@ -1,0 +1,38 @@
+# @package _global_
+
+data:
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/train_M24w_24.csv
+  valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/val_M24w.csv
+  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
+  test_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/test_M24w.csv
+
+backbone:
+  model_name: resnet18 # resnet18, resnet34, resnet50, alexnet,
+
+loss:
+  type: focal 
+  focal:
+    alpha: 0.75
+    gamma: 2.0
+    reduction: mean
+
+optimizer:
+  type: adamw
+  lr: 1e-5
+  weight_decay: 1e-2
+
+etc:
+  phase: train # test
+  resume: false
+  ckpt_dir: ../results/check_point/baselines/resnet18/daily_m/
+  ckpt_name_tag: resnet18_daily_m
+  ckpt_file: last.ckpt  
+  ckpt_weights_only: false
+
+wandb:
+  name: resnet18_daily_m_focal_nasgh
+  id: resnet18_daily_m_focal_nasgh
+  resume: allow
+  notes: resnet18
+  offline: false
+  tag: ["resnet18", "M", "nasgh", "daily", "focal"] # backbone model, head type, task

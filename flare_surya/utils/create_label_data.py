@@ -150,8 +150,8 @@ def rolling_window(
         df = df[cols]
 
     print(f"Total {len(df)} instances!")
-    df.to_csv(save_path + "data_thres_c_24hour_window.csv", index=False)
-    # split_dataset(df, savepath=save_path)
+    df.to_csv(save_path + f"data_thres_{thres_max[0].lower()}_24hour_window.csv", index=False)
+    split_dataset(df, savepath=save_path)
 
     return df
 
@@ -255,13 +255,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--file_path",
         type=str,
-        default="./flare_surya/data/",
+        default="./data/",
         help="File path",
     )
     parser.add_argument(
         "--save_path",
         type=str,
-        default="./flare_surya/data/",
+        default="./data/",
         help="Save path",
     )
     parser.add_argument(
@@ -284,7 +284,7 @@ if __name__ == "__main__":
     df_res = rolling_window(
         df_fl=df,
         valid_input_df=False,
-        save_path=args.save_path,
+        save_path=args.save_path + "surya-bench-flare-forecasting/X24w/",
         start=args.start,
         stop=args.stop,
         cadence={"hours": 1, "minutes": 0, "seconds": 0},

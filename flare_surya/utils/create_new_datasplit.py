@@ -4,7 +4,7 @@ from pathlib import Path
 
 def main(new_data_path, tag):
     # read new data
-    df_new = pd.read_csv(new_data_path.parent[1] / "data_thres_c_24hour_window.csv")
+    df_new = pd.read_csv(new_data_path.parents[1] / f"data_thres_{tag[0].lower()}_24hour_window.csv")
 
     # read existing datasplit
     df_train = pd.read_csv((new_data_path.parent / "train.csv").resolve())
@@ -39,6 +39,6 @@ def main(new_data_path, tag):
 
 
 if __name__ == "__main__":
-    tag = "C24w"
-    new_data_path = Path(f"./flare_surya/data/surya-bench-flare-forecasting/{tag}/")
+    tag = "X24w"
+    new_data_path = Path(f"./data/surya-bench-flare-forecasting/{tag}/")
     main(new_data_path, tag)

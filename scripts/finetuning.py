@@ -80,8 +80,8 @@ def build_model(cfg):
 
 @hydra.main(
     version_base=None,
-    config_path="../configs/nas/surya/",
-    config_name="exp_nasgh.yaml",
+    config_path="../configs/nas/",
+    config_name="exp_surya",
 )
 def train(cfg: OmegaConf):
 

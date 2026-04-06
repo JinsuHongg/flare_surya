@@ -1,3 +1,5 @@
+# @package _global_
+
 defaults:
   - override hydra/job_logging: disabled
   - override hydra/hydra_logging: disabled
@@ -12,10 +14,10 @@ data:
   train_data_path: ../data/surya-bench_sdo.csv
   valid_data_path: ../data/surya-bench_sdo.csv
   test_data_path: ../data/surya-bench_sdo.csv
-  train_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/train_C24w_freq8.csv
-  valid_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/val_C24w.csv
-  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/leaky_val_C24w.csv
-  test_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/test_C24w.csv
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/train_M24w_freq8.csv
+  valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/val_M24w.csv
+  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
+  test_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/test_M24w.csv
   channels: ['aia94', 'aia131', 'aia171', 'aia193', 'aia211', 'aia304', 'aia335', 'aia1600', 'hmi_m', 'hmi_bx', 'hmi_by', 'hmi_bz', 'hmi_v']
   time_delta_input_minutes: [-60,0]
   time_delta_target_minutes: 0
@@ -63,9 +65,9 @@ backbone:
 
 head:
   type: mlp
-  pooling_type: attention_pooling
+  token_type: avg_pooling
   hyper_parameters:
-    in_feature: {"cls_token": 1280, "avg_pooling": 1280, "max_pooling": 1280, "attention_pooling": 65536}
+    in_feature: {"cls_token": 1280, "avg_pooling": 1280, "max_pooling": 1280}
     hidden_channels: [1024, 256, 1] #[256, 64, 1]
     norm_layer: LayerNorm
     activation_layer: GELU
@@ -93,7 +95,7 @@ classifier_metrics:
     metrics_to_report: ['accuracy', 'precision', 'recall', 'f1']
 
 loss:
-  type: focal
+  type: focal 
   focal:
     alpha: 0.75
     gamma: 2.0
@@ -106,7 +108,7 @@ loss:
 optimizer:
   type: adamw
   lr: 1e-5
-  weight_decay: 1e-2
+  weight_decay: 0.5
   scheduler:
       use: cosine_warmup # The switch
       monitor: val_hss 
@@ -121,13 +123,13 @@ optimizer:
         patience: 10
 
 etc:
-  phase: train # test
-  resume: false
-  ckpt_dir: ../results/check_point/surya_flare/daily_c/
-  ckpt_name_tag: mlp_daily_c_focal
-  ckpt_file: last.ckpt
+  phase: test # test
+  resume: true
+  ckpt_dir: ../results/check_point/best/
+  ckpt_name_tag: mlp_daily_m_test
+  ckpt_file: mlp_daily_zarr_best.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ../results/
+  save_test_results_path: ../results/surya_test_result.csv
   precision: bf16-mixed #16-mixed
   accelerator: gpu
   devices: 1 #[0, 1, 2, 3]
@@ -140,8 +142,8 @@ etc:
   enable_version_counter: False
 
 wandb:
-  name: mlp_daily_c_focal_nasgh
-  id: mlp_daily_c_focal_nasgh
+  name: mlp_daily_M_nasgh_test
+  id: mlp_daily_M_nasgh_test
   resume: allow
   save_dir: ../results
   entity: gsu-dmlab
@@ -150,7 +152,7 @@ wandb:
   notes: "simple mlp head"
   offline: false
   save_code: false
-  tag: ["mlp", "C", "daily", "nasgh", "focal"] # backbone model, head type, task
+  tag: ["mlp", "M", "8hour", "nasgh", "test"] # backbone model, head type, task
 
 use_latitude_in_learned_flow: false
 loss_weights: [] # [] or list of weights per channel

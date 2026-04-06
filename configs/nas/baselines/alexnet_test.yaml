@@ -1,0 +1,36 @@
+# @package _global_
+
+data:
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/train_M24w_freq8.csv
+  valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/val_M24w.csv
+  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
+  test_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/test_M24w.csv
+
+backbone:
+  model_name: alexnet # resnet18, resnet34, resnet50, alexnet,
+
+loss:
+  type: focal 
+  focal:
+    alpha: 0.75
+    gamma: 2.0
+    reduction: mean
+
+etc:
+  phase: test # test
+  resume: true
+  ckpt_dir: ../results/check_point/best/
+  ckpt_name_tag: alexnet_daily_test_m
+  ckpt_file: alexnet_daily_zarr_best.ckpt
+  ckpt_weights_only: false
+  save_test_results_path: ../results/alexnet_test_result.csv
+
+wandb:
+  name: alexnet_daily_m_nasgh_test
+  id: alexnet_daily_m_nasgh_test
+  resume: allow
+  save_dir: ../results
+  log_model: false
+  notes: alexnet
+  offline: false
+  tag: ["alexnet", "M", "nasgh", "daily", "test"] # backbone model, head type, task

@@ -1,0 +1,38 @@
+# @package _global_
+
+data:
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/train_X24w_freq8.csv
+  valid_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/val_X24w.csv
+  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/leaky_val_X24w.csv
+  test_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/test_X24w.csv
+
+head:
+  pooling_type: attention_pooling
+
+loss:
+  type: focal
+  focal:
+    alpha: 0.75
+    gamma: 2.0
+    reduction: mean
+
+optimizer:
+  type: adamw
+  lr: 1e-5
+  weight_decay: 1e-2
+
+etc:
+  phase: train # test
+  resume: false
+  ckpt_dir: ../results/check_point/surya_flare/daily_x/
+  ckpt_name_tag: mlp_daily_x_focal
+  ckpt_file: last.ckpt
+  ckpt_weights_only: false
+
+wandb:
+  name: mlp_daily_x_focal_nasgh
+  id: mlp_daily_x_focal_nasgh
+  resume: allow
+  notes: "simple mlp head"
+  offline: false
+  tag: ["mlp", "X", "daily", "nasgh", "focal"] # backbone model, head type, task

@@ -33,6 +33,7 @@ def build_model(config):
         threshold=config.backbone.threshold,
         optimizer_dict=config.optimizer,
         batch_size=config.data.batch_size,
+        loss_dict=config.loss,
         save_test_results_path=config.etc.save_test_results_path,
     )
 
@@ -40,7 +41,7 @@ def build_model(config):
 @hydra.main(
     version_base=None,
     config_path="../configs/nas/",
-    config_name="resnet18_exp_gh.yaml",
+    config_name="baselines_exp",
 )
 def train(cfg: OmegaConf):
 

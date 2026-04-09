@@ -12,13 +12,9 @@ backbone:
 loss:
   type: focal 
   focal:
-    alpha: 0.75
+    alpha: 0.25
     gamma: 2.0
     reduction: mean
-  flaressm:
-    class_counts: [45000, 5000]  # [N_neg, N_pos] from your training set # please check manually
-    lambda_bss: 3.0
-    ib_start_epoch: 10
 
 optimizer:
   type: adamw
@@ -27,15 +23,15 @@ optimizer:
 
 etc:
   phase: train # test
-  resume: false
+  resume: true
   ckpt_dir: ../results/check_point/baselines/alexnet/daily_m/
   ckpt_name_tag: alexnet_daily_m_focal
   ckpt_file: last.ckpt
   ckpt_weights_only: false
 
 wandb:
-  name: alexnet_daily_m_focal_nasgh
-  id: alexnet_daily_m_focal_nasgh
+  name: alexnet_daily_m_focal_nasgh_1
+  id: alexnet_daily_m_focal_nasgh_1
   resume: allow
   notes: alexnet
   offline: false

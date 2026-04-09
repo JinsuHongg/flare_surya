@@ -1,7 +1,7 @@
 # @package _global_
 
 data:
-  train_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/train_X24w_freq8.csv
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/train_X24w_freq24.csv
   valid_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/val_X24w.csv
   leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/leaky_val_X24w.csv
   test_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/test_X24w.csv
@@ -12,7 +12,7 @@ head:
 loss:
   type: focal
   focal:
-    alpha: 0.75
+    alpha: 0.25
     gamma: 2.0
     reduction: mean
 
@@ -23,15 +23,15 @@ optimizer:
 
 etc:
   phase: train # test
-  resume: false
+  resume: true
   ckpt_dir: ../results/check_point/surya_flare/daily_x/
   ckpt_name_tag: mlp_daily_x_focal
   ckpt_file: last.ckpt
   ckpt_weights_only: false
 
 wandb:
-  name: mlp_daily_x_focal_nasgh
-  id: mlp_daily_x_focal_nasgh
+  name: mlp_daily_x_focal_nasgh_1
+  id: mlp_daily_x_focal_nasgh_1
   resume: allow
   notes: "simple mlp head"
   offline: false

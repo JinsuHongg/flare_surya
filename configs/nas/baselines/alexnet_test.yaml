@@ -12,7 +12,7 @@ backbone:
 loss:
   type: focal 
   focal:
-    alpha: 0.75
+    alpha: 0.25
     gamma: 2.0
     reduction: mean
 
@@ -32,5 +32,5 @@ wandb:
   save_dir: ../results
   log_model: false
   notes: alexnet
-  offline: false
+  offline: true
   tag: ["alexnet", "M", "nasgh", "daily", "test"] # backbone model, head type, task

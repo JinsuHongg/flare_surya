@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 
-
 class ResidualFluxBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1):
         super().__init__()
@@ -34,10 +33,10 @@ class ResidualFluxBlock(nn.Module):
 
 
 class FluxTokenizer(nn.Module):
-    def __init__(self, embed_dim=768):
+    def __init__(self, in_channels=1, embed_dim=768):
         super().__init__()
         # Block 1: Expand from 1 channel to embed_dim
-        self.layer1 = ResidualFluxBlock(1, embed_dim, kernel_size=7)
+        self.layer1 = ResidualFluxBlock(in_channels, embed_dim, kernel_size=7)
         # Block 2: Refine features at embed_dim
         self.layer2 = ResidualFluxBlock(embed_dim, embed_dim, kernel_size=5)
         
@@ -123,3 +122,26 @@ class TimeseriesTransformerEncoder(nn.Module):
             x = block(x)
             
         return self.norm(x)
+
+
+class FluxFormer(nn.Module):
+    def __init__(
+            self,
+            in_channels=1,
+            seq_len=1440, 
+            embed_dim=768, 
+            depth=4, 
+            num_heads=12
+            ):
+        super().__init__()
+        self.tokenizer = FluxTokenizer(in_channels, embed_dim)
+        self.encoder = TimeseriesTransformerEncoder(seq_len, embed_dim, depth, num_heads)
+
+
+    def forwards(self, x):
+
+        token = self.tokenizer(x)
+        embedding = self.encoder(token)
+
+        return embedding
+

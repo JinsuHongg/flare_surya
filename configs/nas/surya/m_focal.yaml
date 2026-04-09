@@ -12,7 +12,7 @@ head:
 loss:
   type: focal
   focal:
-    alpha: 0.75
+    alpha: 0.25
     gamma: 2.0
     reduction: mean
 
@@ -23,15 +23,15 @@ optimizer:
 
 etc:
   phase: train # test
-  resume: false
+  resume: true
   ckpt_dir: ../results/check_point/surya_flare/daily_m/
   ckpt_name_tag: mlp_daily_m_focal
   ckpt_file: last.ckpt
   ckpt_weights_only: false
 
 wandb:
-  name: mlp_daily_m_focal_nasgh
-  id: mlp_daily_m_focal_nasgh
+  name: mlp_daily_m_focal_nasgh_1
+  id: mlp_daily_m_focal_nasgh_1
   resume: allow
   notes: "simple mlp head"
   offline: false

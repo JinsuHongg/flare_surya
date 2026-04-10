@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from loguru import logger
 from peft import LoraConfig, get_peft_model
 from terratorch_surya.downstream_examples.solar_flare_forecasting.models import (
-    AlexNetClassifier, MobileNetClassifier,
+    AlexNetClassifier, MobileNetClassifier, ResNet18Classifier,
     ResNet34Classifier, ResNet50Classifier)
 from terratorch_surya.models.helio_spectformer import HelioSpectFormer
 
@@ -398,7 +398,7 @@ class BaseLineModel(BaseModule):
                     dropout=p_drop,
                 )
             case "resnet18":
-                self.backbone = ResNet18(
+                self.backbone = ResNet18Classifier(
                     in_channels=in_channels,
                     time_steps=time_steps,
                     num_classes=num_classes,

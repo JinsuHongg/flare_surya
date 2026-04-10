@@ -12,26 +12,27 @@ backbone:
 loss:
   type: focal 
   focal:
-    alpha: 0.25
-    gamma: 2.0
+    alpha: 0.5
+    gamma: 0.75
     reduction: mean
 
 optimizer:
   type: adamw
-  lr: 1e-3
-  weight_decay: 1e-3
+  lr: 2e-4
+  weight_decay: 1e-2
 
 etc:
   phase: train # test
-  resume: true
+  resume: false
   ckpt_dir: ../results/check_point/baselines/alexnet/daily_c/
   ckpt_name_tag: alexnet_daily_c_focal
   ckpt_file: last.ckpt
   ckpt_weights_only: false
+  max_epochs: 50
 
 wandb:
-  name: alexnet_daily_c_focal_nasgh_1
-  id: alexnet_daily_c_focal_nasgh_1
+  name: alexnet_daily_c_focal_nasgh_2
+  id: alexnet_daily_c_focal_nasgh_2
   resume: allow
   notes: alexnet
   offline: false

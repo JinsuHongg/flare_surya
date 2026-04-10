@@ -12,26 +12,27 @@ backbone:
 loss:
   type: focal 
   focal:
-    alpha: 0.25
-    gamma: 2.0
+    alpha: 0.95
+    gamma: 4.0
     reduction: mean
 
 optimizer:
   type: adamw
-  lr: 1e-5
-  weight_decay: 1e-2
+  lr: 1e-4
+  weight_decay: 1e-3
 
 etc:
   phase: train # test
-  resume: true
+  resume: false
   ckpt_dir: ../results/check_point/baselines/resnet18/daily_x/
   ckpt_name_tag: resnet18_daily_x
   ckpt_file: last.ckpt  
   ckpt_weights_only: false
+  max_epochs: 50
 
 wandb:
-  name: resnet18_daily_x_focal_nasgh_1
-  id: resnet18_daily_x_focal_nasgh_1
+  name: resnet18_daily_x_focal_nasgh_2
+  id: resnet18_daily_x_focal_nasgh_2
   resume: allow
   notes: resnet18
   offline: false

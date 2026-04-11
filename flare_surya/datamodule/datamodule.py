@@ -2,6 +2,7 @@
 from loguru import logger as lgr_logger
 from omegaconf import OmegaConf
 import lightning as L
+import xarray as xr
 from torch.utils.data import DataLoader
 from torch.utils.data import ConcatDataset
 
@@ -373,8 +374,10 @@ class SuryaFluxDataModule(L.LightningDataModule):
         self.cfg = cfg
 
         # load scalers
-        self.cfg["data"]["scalers"] = load_config(self.cfg["data"]["scalers_path"])
-        self.scalers = build_scalers(info=self.cfg["data"]["scalers"])
+        self.cfg["data"]["scalers"] = load_config(self.cfg.data.scalers_path)
+        self.scalers = build_scalers(info=self.cfg.data.scalers)
+        self.xrs_data = xr.open_dataset(self.cfg.data.xrs_zarr_path, engine="zarr", chunks="auto")
+        self.xrs_stat = OmegaConf.load(self.cfg.data.xrs_stat_path)
 
     def _get_dataset(self, phase, index_path, flare_index_path):
         return SolarFlareClsXRSDataset(
@@ -393,6 +396,8 @@ class SuryaFluxDataModule(L.LightningDataModule):
             flare_index_path=flare_index_path,
             pooling=self.cfg["data"]["pooling"],
             random_vert_flip=self.cfg["data"]["random_vert_flip"],
+            xrs_data=self.xrs_data,
+            xrs_stat=self.xrs_stat,
         )
 
     def setup(self, stage: str):

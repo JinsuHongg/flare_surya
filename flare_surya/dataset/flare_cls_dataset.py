@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 import torch
 import xarray as xr
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, DictConfig
+from typing import Optional
 from terratorch_surya.datasets.helio import HelioNetCDFDataset
 
 from flare_surya.dataset.helio_aws import HelioNetCDFDatasetAWS
@@ -426,7 +427,6 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
     def __len__(self):
         return self.adjusted_length
 
-
 class SolarFlareClsXRSDataset(SolarFlareClsDataset):
     """
     Add 24hour chunked Xray flux data into flare dataset.
@@ -449,8 +449,8 @@ class SolarFlareClsXRSDataset(SolarFlareClsDataset):
         phase="train",
         pooling: int | None = None,
         random_vert_flip: bool = False,
-        xrs_zarr_path: str = "",
-        xrs_stat_path: str = "",
+        xrs_data: Optional[xr.Dataset] = None,
+        xrs_stat: Optional[DictConfig] = None,
     ):
         super().__init__(
             sdo_data_root_path=sdo_data_root_path,
@@ -470,8 +470,8 @@ class SolarFlareClsXRSDataset(SolarFlareClsDataset):
             flare_index_path=flare_index_path,
         )
 
-        self.xrs_data = xr.open_dataset(xrs_zarr_path, engine="zarr", chunks="auto")
-        self.xrs_stat = OmegaConf.load(xrs_stat_path)
+        self.xrs_data = xrs_data
+        self.xrs_stat = xrs_stat
 
     def _get_index_data(self, idx: int) -> tuple[dict, dict]:
         data, metadata = super()._get_index_data(idx)

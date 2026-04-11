@@ -72,7 +72,8 @@ loss:
 optimizer:
   type: adamw
   lr: 1e-5
-  weight_decay: 0.5
+  weight_decay: 0.05
+  eps: 1e-6
   scheduler:
       use: cosine_warmup # The switch
       monitor: val_hss 
@@ -106,6 +107,8 @@ etc:
   limit_val_batches: null
   accumulate_grad_batches: 64
   enable_version_counter: False
+  gradient_clip_val: 1.0
+  gradient_clip_algorithm: norm
 
 wandb:
   name: resnet18_daily_c_nasgh_new_wg

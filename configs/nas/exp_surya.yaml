@@ -36,6 +36,9 @@ data:
   use_leaky_validation: false
   use_simplecache: true
   s3_cache_dir: /tmp/helio_s3_cache
+  #xray data path
+  xrs_zarr_path: ../data/xrs_24hour_slices.zarr
+  xrs_stat_path: ../data/xrs_stat.yaml
 
 backbone:
   img_size: 4096
@@ -66,9 +69,9 @@ backbone:
 fluxformer:
   in_channels: 2
   seq_len: 1440
-  fluxformer_embed_dim: 1280
-  fluxformer_depth: 4
-  fluxformer_num_heads: 12
+  embed_dim: 1280
+  depth: 4
+  num_heads: 16
 
 head:
   type: mlp
@@ -115,7 +118,8 @@ loss:
 optimizer:
   type: adamw
   lr: 1e-5
-  weight_decay: 0.5
+  weight_decay: 0.05
+  eps: 1e-6
   scheduler:
       use: cosine_warmup # The switch
       monitor: val_hss 
@@ -147,6 +151,8 @@ etc:
   limit_val_batches: null
   accumulate_grad_batches: 64
   enable_version_counter: False
+  gradient_clip_val: 1.0
+  gradient_clip_algorithm: norm
 
 wandb:
   name: mlp_8hour_c_nasgh

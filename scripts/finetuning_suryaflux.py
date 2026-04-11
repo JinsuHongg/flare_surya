@@ -9,7 +9,7 @@ from lightning.pytorch import Trainer
 from flare_surya.datamodule import (
     FlareDataModule,
 )
-from flare_surya.models import FlareSurya
+from flare_surya.models import SuryaFluxFormer
 from flare_surya.utils.logger_utils import build_wandb
 from flare_surya.utils.callbacks import build_callbacks
 
@@ -53,6 +53,12 @@ def build_model(cfg):
         "threshold": cfg.head.threshold,
         "batch_size": cfg.data.batch_size,
         "save_test_results_path": cfg.etc.save_test_results_path,
+        # FluxFormer hyper-parameters 
+        "in_channels": cfg.fluxformer.in_channels,
+        "seq_len": cfg.fluxformer.seq_len,
+        "fluxformer_embed_dim": cfg.fluxformer.embed_dim,
+        "fluxformer_depth": cfg.fluxformer.depth,
+        "fluxformer_num_heads": cfg.fluxformer.num_heads,
     }
     if cfg.etc.resume and cfg.etc.ckpt_weights_only:
         ckpt_path = os.path.join(
@@ -70,10 +76,10 @@ def build_model(cfg):
         lgr_logger.info(f"ckpt: {cfg.etc.ckpt_file}")
 
         # load weights and hyperparameters
-        model = FlareSurya(**model_hyperparameter)
+        model = SuryaFluxFormer(**model_hyperparameter)
         model.load_state_dict(ckpt["state_dict"], strict=False)
     else:
-        model = FlareSurya(**model_hyperparameter)
+        model = SuryaFluxFormer(**model_hyperparameter)
 
     return model
 

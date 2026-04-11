@@ -426,6 +426,7 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
     def __len__(self):
         return self.adjusted_length
 
+
 class SolarFlareClsXRSDataset(SolarFlareClsDataset):
     """
     Add 24hour chunked Xray flux data into flare dataset.

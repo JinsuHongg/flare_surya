@@ -59,9 +59,16 @@ backbone:
   init_weights: false
   checkpoint_layers: [0,1,2,3,4,5,6,7,8,9]
   nglo: 0
-  dtype: float32
+  # dtype: float32
   freeze_backbone: True
   path_weights: ../data/Surya-1.0/surya.366m.v1.pt
+
+fluxformer:
+  in_channels: 2
+  seq_len: 1440
+  fluxformer_embed_dim: 1280
+  fluxformer_depth: 4
+  fluxformer_num_heads: 12
 
 head:
   type: mlp

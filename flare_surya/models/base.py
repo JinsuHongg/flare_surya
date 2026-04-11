@@ -9,22 +9,22 @@ class BaseModule(L.LightningModule):
     def __init__(self, optimizer_dict):
         super().__init__()
         self.optimizer_dict = optimizer_dict
+        self.lr = self.optimizer_dict.get("lr", 1e-4)
+        self.weight_decay = self.optimizer_dict.get("weight_decay", 0.01)
+
 
     def configure_optimizers(self):
         opt_type = self.optimizer_dict.get("type", "adamw")
-        lr = self.optimizer_dict.get("lr", 1e-4)
-        weight_decay = self.optimizer_dict.get("weight_decay", 0.01)
-
         params = filter(lambda p: p.requires_grad, self.parameters())
 
         match opt_type.lower():
             case "adam":
                 optimizer = torch.optim.Adam(
-                    params, lr=lr, weight_decay=weight_decay, eps=1e-7
+                    params, lr=self.lr, weight_decay=self.weight_decay, eps=1e-7
                 )
             case "adamw":
                 optimizer = torch.optim.AdamW(
-                    params, lr=lr, weight_decay=weight_decay, eps=1e-7
+                    params, lr=self.lr, weight_decay=self.weight_decay, eps=1e-7
                 )
             case _:
                 raise ValueError(f"Unknown optimizer type: {opt_type}")

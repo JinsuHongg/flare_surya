@@ -1,6 +1,7 @@
 import os
 import hydra
 import datetime
+import wandb
 from omegaconf import DictConfig, OmegaConf
 from loguru import logger as lgr_logger
 
@@ -87,7 +88,6 @@ def train(cfg: OmegaConf):
         monitor=cfg.optimizer.scheduler.monitor,  # e.g., "val_loss"
         dirpath=cfg.etc.ckpt_dir,
         filename=(
-            f"{wandb_logger.experiment.id}_"
             f"{cfg.etc.ckpt_name_tag}_"
             f"{cfg.backbone.model_name}_"
             "{epoch}-{val_hss:.4f}"

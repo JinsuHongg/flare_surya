@@ -1,7 +1,7 @@
 # @package _global_
 
 data:
-  train_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/train_C24w_freq8.csv
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/train_C24w_freq24.csv
   valid_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/val_C24w.csv
   leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/leaky_val_C24w.csv
   test_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/test_C24w.csv
@@ -12,8 +12,8 @@ head:
 loss:
   type: focal
   focal:
-    alpha: 0.75
-    gamma: 2.0
+    alpha: 0.5
+    gamma: 0.75
     reduction: mean
 
 optimizer:
@@ -28,12 +28,13 @@ etc:
   ckpt_name_tag: mlp_daily_c_focal
   ckpt_file: last.ckpt
   ckpt_weights_only: false
+  max_epochs: 50
 
 wandb:
-  name: mlp_daily_c_focal_nasgh
-  id: mlp_daily_c_focal_nasgh
+  name: mlp_daily_c_focal_nasgh_2
+  id: mlp_daily_c_focal_nasgh_2
   resume: allow
   notes: "simple mlp head"
   offline: false
-  tag: ["mlp", "C", "8hour", "nasgh"] # backbone model, head type, task
+  tag: ["mlp", "C", "daily", "nasgh", "focal"] # backbone model, head type, task
 

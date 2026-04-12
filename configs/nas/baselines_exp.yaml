@@ -64,6 +64,7 @@ loss:
     alpha: 0.75
     gamma: 2.0
     reduction: mean
+    label_smoothing: 0.0
   flaressm:
     class_counts: [45000, 5000]  # [N_neg, N_pos] from your training set # please check manually
     lambda_bss: 3.0

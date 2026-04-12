@@ -130,9 +130,10 @@ class FlareSurya(BaseModule):
                 self.criterion = F.binary_cross_entropy_with_logits
             case "focal":
                 self.criterion = BinaryFocalLoss(
-                    alpha=loss_dict.focal.get("alpha", 0.25),
-                    gamma=loss_dict.focal.get("gamma", 2.0),
-                    reduction=loss_dict.focal.get("reduction", "mean")
+                    alpha=loss_dict["focal"].get("alpha", 0.25),
+                    gamma=loss_dict["focal"].get("gamma", 2.0),
+                    reduction=loss_dict["focal"].get("reduction", "mean"),
+                    label_smoothing=loss_dict["focal"].get("label_smoothing", 0.0)
                 )
             case "flare":
                 flare_cfg = loss_dict.get("flare", {})
@@ -428,9 +429,10 @@ class BaseLineModel(BaseModule):
                 self.criterion = F.binary_cross_entropy_with_logits
             case "focal":
                 self.criterion = BinaryFocalLoss(
-                    alpha=loss_dict.focal.get("alpha", 0.25),
-                    gamma=loss_dict.focal.get("gamma", 2.0),
-                    reduction=loss_dict.focal.get("reduction", "mean")
+                    alpha=loss_dict["focal"].get("alpha", 0.25),
+                    gamma=loss_dict["focal"].get("gamma", 2.0),
+                    reduction=loss_dict["focal"].get("reduction", "mean"),
+                    label_smoothing=loss_dict["focal"].get("label_smoothing", 0.0)
                 )
             case "flaressm":
                 raise ValueError(

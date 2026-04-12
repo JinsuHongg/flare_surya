@@ -23,7 +23,7 @@ optimizer:
 
 etc:
   phase: train # test
-  resume: false
+  resume: true
   ckpt_dir: ../results/check_point/baselines/alexnet/daily_m/
   ckpt_name_tag: alexnet_daily_m_focal
   ckpt_file: last.ckpt

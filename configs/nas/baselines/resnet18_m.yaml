@@ -15,11 +15,12 @@ loss:
     alpha: 0.75
     gamma: 2.0
     reduction: mean
+    label_smoothing: 0.2
 
 optimizer:
   type: adamw
   lr: 1e-4
-  weight_decay: 1e-3
+  weight_decay: 1e-2
 
 etc:
   phase: train # test
@@ -31,8 +32,8 @@ etc:
   max_epochs: 50
 
 wandb:
-  name: resnet18_daily_m_focal_nasgh_2
-  id: resnet18_daily_m_focal_nasgh_2
+  name: resnet18_daily_m_focal_nasgh_3
+  id: resnet18_daily_m_focal_nasgh_3
   resume: allow
   notes: resnet18
   offline: false

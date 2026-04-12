@@ -23,7 +23,7 @@ optimizer:
 
 etc:
   phase: train # test
-  resume: false
+  resume: true
   ckpt_dir: ../results/check_point/surya_flare/daily_m/
   ckpt_name_tag: mlp_daily_m_focal
   ckpt_file: last.ckpt

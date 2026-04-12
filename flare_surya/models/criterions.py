@@ -16,7 +16,7 @@ class BinaryFocalLoss(nn.Module):
             gamma: 2.0
             reduction: mean
     """
-    def __init__(self, alpha=0.25, gamma=2.0, reduction='mean'):
+    def __init__(self, alpha=0.25, gamma=2.0, label_smoothing=0.0, reduction='mean'):
         """
         alpha: weight for positive class (0.25 is common)
         gamma: focusing parameter (2.0 is common)
@@ -25,11 +25,20 @@ class BinaryFocalLoss(nn.Module):
         super().__init__()
         self.alpha = alpha
         self.gamma = gamma
+        self.label_smoothing = label_smoothing
         self.reduction = reduction
 
     def forward(self, logits, targets):
         # logits: raw model output (before sigmoid), shape (N,)
         # targets: binary labels 0 or 1, shape (N,)
+
+        # --- Label smoothing ---
+        # Hard targets: 0 → 0.0, 1 → 1.0
+        # Smoothed:     0 → ε/2,  1 → 1 - ε/2
+        # For binary case we split ε equally across both classes (ε/2 each side)
+        if self.label_smoothing > 0.0:
+            targets = targets * (1.0 - self.label_smoothing) + 0.5 * self.label_smoothing
+
         
         probs = torch.sigmoid(logits)
         bce = F.binary_cross_entropy_with_logits(logits, targets, reduction='none')

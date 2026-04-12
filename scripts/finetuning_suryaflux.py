@@ -6,9 +6,7 @@ from loguru import logger as lgr_logger
 import torch
 from lightning.pytorch import Trainer
 
-from flare_surya.datamodule import (
-    FlareDataModule,
-)
+from flare_surya.datamodule import SuryaFluxDataModule
 from flare_surya.models import SuryaFluxFormer
 from flare_surya.utils.logger_utils import build_wandb
 from flare_surya.utils.callbacks import build_callbacks
@@ -92,7 +90,7 @@ def build_model(cfg):
 def train(cfg: OmegaConf):
 
     # Datamodule
-    datamodule = FlareDataModule(cfg=cfg)
+    datamodule = SuryaFluxDataModule(cfg=cfg)
 
     # Load model
     model = build_model(cfg=cfg)
@@ -116,6 +114,8 @@ def train(cfg: OmegaConf):
         limit_val_batches=cfg.etc.limit_val_batches,
         strategy=cfg.etc.strategy,
         accumulate_grad_batches=cfg.etc.accumulate_grad_batches,
+        gradient_clip_val=cfg.etc.gradient_clip_val,
+        gradient_clip_algorithm=cfg.etc.gradient_clip_algorithm,
     )
 
     lgr_logger.info("Start training...")

@@ -13,13 +13,13 @@ loss:
   type: focal 
   focal:
     alpha: 0.5
-    gamma: 0.75
+    gamma: 0.99
     reduction: mean
 
 optimizer:
   type: adamw
   lr: 2e-4
-  weight_decay: 1e-2
+  weight_decay: 1e-3
 
 etc:
   phase: train # test
@@ -31,8 +31,8 @@ etc:
   max_epochs: 50
 
 wandb:
-  name: alexnet_daily_c_focal_nasgh_2
-  id: alexnet_daily_c_focal_nasgh_2
+  name: alexnet_daily_c_focal_nasgh_3
+  id: alexnet_daily_c_focal_nasgh_3
   resume: allow
   notes: alexnet
   offline: false

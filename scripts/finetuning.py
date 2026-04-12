@@ -110,6 +110,8 @@ def train(cfg: OmegaConf):
         limit_val_batches=cfg.etc.limit_val_batches,
         strategy=cfg.etc.strategy,
         accumulate_grad_batches=cfg.etc.accumulate_grad_batches,
+        gradient_clip_val=cfg.etc.gradient_clip_val,
+        gradient_clip_algorithm=cfg.etc.gradient_clip_algorithm,
     )
 
     lgr_logger.info("Start training...")

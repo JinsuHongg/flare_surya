@@ -8,12 +8,15 @@ import torch.nn.functional as F
 from loguru import logger
 from peft import LoraConfig, get_peft_model
 from terratorch_surya.downstream_examples.solar_flare_forecasting.models import (
-    AlexNetClassifier, MobileNetClassifier, ResNet18Classifier,
-    ResNet34Classifier, ResNet50Classifier)
+    AlexNetClassifier,
+    MobileNetClassifier,
+    ResNet18Classifier,
+    ResNet34Classifier,
+    ResNet50Classifier,
+)
 from terratorch_surya.models.helio_spectformer import HelioSpectFormer
 
-from flare_surya.metrics.classification_metrics import \
-    DistributedClassificationMetrics
+from flare_surya.metrics.classification_metrics import DistributedClassificationMetrics
 from .base import BaseModule
 from .heads import SuryaHead
 from .baselines_models import ResNet18
@@ -113,7 +116,7 @@ class FlareSurya(BaseModule):
             config = LoraConfig(**self.lora_dict["config"])
             # get peft model
             self.backbone = get_peft_model(self.backbone, config)
-        
+
         if self.pooling_type == "attention_pooling":
             self.attn_pooling = nn.Linear(in_feature, 1)
 
@@ -133,7 +136,7 @@ class FlareSurya(BaseModule):
                     alpha=loss_dict["focal"].get("alpha", 0.25),
                     gamma=loss_dict["focal"].get("gamma", 2.0),
                     reduction=loss_dict["focal"].get("reduction", "mean"),
-                    label_smoothing=loss_dict["focal"].get("label_smoothing", 0.0)
+                    label_smoothing=loss_dict["focal"].get("label_smoothing", 0.0),
                 )
             case "flare":
                 flare_cfg = loss_dict.get("flare", {})
@@ -167,7 +170,7 @@ class FlareSurya(BaseModule):
                 return tokens.max(dim=1).values
             case "attention_pooling":
                 w = torch.softmax(self.attn_pooling(tokens), dim=1)  # [B, T, 1]
-                return (w * tokens).sum(dim=1)                        # [B, D]
+                return (w * tokens).sum(dim=1)  # [B, D]
             case _:
                 raise ValueError(f"Unknown pooling_type: {self.pooling_type}")
 
@@ -323,7 +326,7 @@ class FlareSurya(BaseModule):
 
         # Every rank saves its own shard
         if batch_idx % 50 == 0:
-                self._flush_test_results()
+            self._flush_test_results()
 
         return loss
 
@@ -359,7 +362,9 @@ class FlareSurya(BaseModule):
             return
         df = pd.DataFrame(self.test_results)
         write_header = not os.path.exists(self.save_test_results_path)
-        df.to_csv(self.save_test_results_path, mode=mode, header=write_header, index=False)
+        df.to_csv(
+            self.save_test_results_path, mode=mode, header=write_header, index=False
+        )
         self.test_results = {"timestamps": [], "predictions": [], "targets": []}
 
 
@@ -421,7 +426,7 @@ class BaseLineModel(BaseModule):
                 )
             case _:
                 raise ValueError(f"Unknown model_name: {model_name}")
-        
+
         # define loss
         loss_type = loss_dict.get("type", "cross_entropy")
         match loss_type:
@@ -432,7 +437,7 @@ class BaseLineModel(BaseModule):
                     alpha=loss_dict["focal"].get("alpha", 0.25),
                     gamma=loss_dict["focal"].get("gamma", 2.0),
                     reduction=loss_dict["focal"].get("reduction", "mean"),
-                    label_smoothing=loss_dict["focal"].get("label_smoothing", 0.0)
+                    label_smoothing=loss_dict["focal"].get("label_smoothing", 0.0),
                 )
             case "flaressm":
                 raise ValueError(
@@ -441,7 +446,7 @@ class BaseLineModel(BaseModule):
                 )
             case _:
                 raise ValueError(f"Unsupported loss type: {loss_type}")
-        
+
         # Initialize the metrics instances
         self.train_metrics = DistributedClassificationMetrics(threshold=threshold)
         self.val_metrics = DistributedClassificationMetrics(threshold=threshold)
@@ -569,7 +574,7 @@ class BaseLineModel(BaseModule):
 
         # Every rank saves its own shard
         if batch_idx % 50 == 0:
-                self._flush_test_results()
+            self._flush_test_results()
 
         return loss
 
@@ -605,7 +610,9 @@ class BaseLineModel(BaseModule):
             return
         df = pd.DataFrame(self.test_results)
         write_header = not os.path.exists(self.save_test_results_path)
-        df.to_csv(self.save_test_results_path, mode=mode, header=write_header, index=False)
+        df.to_csv(
+            self.save_test_results_path, mode=mode, header=write_header, index=False
+        )
         self.test_results = {"timestamps": [], "predictions": [], "targets": []}
 
 
@@ -636,9 +643,9 @@ class SuryaFluxFormer(BaseModule):
         path_weights,
         # FluxFormer parameters
         in_channels,
-        seq_len, 
-        fluxformer_embed_dim, 
-        fluxformer_depth, 
+        seq_len,
+        fluxformer_embed_dim,
+        fluxformer_depth,
         fluxformer_num_heads,
         # head parameters
         pooling_type,
@@ -715,7 +722,7 @@ class SuryaFluxFormer(BaseModule):
             config = LoraConfig(**self.lora_dict["config"])
             # get peft model
             self.backbone = get_peft_model(self.backbone, config)
-        
+
         if self.pooling_type == "attention_pooling":
             self.attn_pooling = nn.Linear(in_feature, 1)
 
@@ -734,7 +741,7 @@ class SuryaFluxFormer(BaseModule):
                 self.criterion = BinaryFocalLoss(
                     alpha=loss_dict.focal.get("alpha", 0.25),
                     gamma=loss_dict.focal.get("gamma", 2.0),
-                    reduction=loss_dict.focal.get("reduction", "mean")
+                    reduction=loss_dict.focal.get("reduction", "mean"),
                 )
             case "flare":
                 flare_cfg = loss_dict.get("flare", {})
@@ -768,26 +775,29 @@ class SuryaFluxFormer(BaseModule):
                 return tokens.max(dim=1).values
             case "attention_pooling":
                 w = torch.softmax(self.attn_pooling(tokens), dim=1)  # [B, T, 1]
-                return (w * tokens).sum(dim=1)                        # [B, D]
+                return (w * tokens).sum(dim=1)  # [B, D]
             case _:
                 raise ValueError(f"Unknown pooling_type: {self.pooling_type}")
-    
+
     def forward(self, data):
         img_tokens = self.forward_features(data)
         xray_tokens = self.xrs_encoder(data["xrs"])
+        xray_tokens = xray_tokens.mean(dim=1)
         tokens = torch.cat([img_tokens, xray_tokens], dim=1)
-        
+
         if isinstance(self.criterion, FlareSSMLoss):
             x_hat, h = self.head.forward_with_hidden(tokens)
             return {"logits": x_hat, "hidden": h}
         else:
             x_hat = self.head(tokens)
-            return {"logits": x_hat} 
-    
+            return {"logits": x_hat}
+
     def _compute_loss(self, output, target):
         x_hat = output["logits"]
         if isinstance(self.criterion, FlareSSMLoss):
-            loss = self.criterion(x_hat, target, output["hidden"], current_epoch=self.current_epoch)
+            loss = self.criterion(
+                x_hat, target, output["hidden"], current_epoch=self.current_epoch
+            )
         else:
             loss = self.criterion(x_hat, target)
         return x_hat, loss
@@ -804,7 +814,7 @@ class SuryaFluxFormer(BaseModule):
         target = data["label"].float().unsqueeze(1)
 
         output = self(data)
-        x_hat, loss = self._compute_loss(output, target)  
+        x_hat, loss = self._compute_loss(output, target)
         probs = torch.sigmoid(x_hat)
 
         # Update Metrics
@@ -854,7 +864,7 @@ class SuryaFluxFormer(BaseModule):
         data, metadata = batch
         target = data["label"].float().unsqueeze(1)
         output = self(data)
-        x_hat, loss = self._compute_loss(output, target)  
+        x_hat, loss = self._compute_loss(output, target)
 
         probs = torch.sigmoid(x_hat)
 
@@ -887,7 +897,7 @@ class SuryaFluxFormer(BaseModule):
         data, metadata = batch
         target = data["label"].float().unsqueeze(1)
         output = self(data)
-        x_hat, loss = self._compute_loss(output, target)  
+        x_hat, loss = self._compute_loss(output, target)
         probs = torch.sigmoid(x_hat)
 
         # Store predictions and targets for later analysis
@@ -895,7 +905,9 @@ class SuryaFluxFormer(BaseModule):
             metadata["timestamps_input"][0].detach().cpu().numpy().tolist()
         )
         self.test_results["targets"].extend(target.detach().cpu().squeeze(1).tolist())
-        self.test_results["predictions"].extend(probs.detach().cpu().squeeze(1).tolist())
+        self.test_results["predictions"].extend(
+            probs.detach().cpu().squeeze(1).tolist()
+        )
 
         # Update Metrics
         # Pass predicted probabilities (sigmoid(x_hat)) and the target (squeezed to [B])
@@ -913,7 +925,7 @@ class SuryaFluxFormer(BaseModule):
 
         # Every rank saves its own shard
         if batch_idx % 50 == 0:
-                self._flush_test_results()
+            self._flush_test_results()
 
         return loss
 
@@ -951,5 +963,7 @@ class SuryaFluxFormer(BaseModule):
             return
         df = pd.DataFrame(self.test_results)
         write_header = not os.path.exists(self.save_test_results_path)
-        df.to_csv(self.save_test_results_path, mode=mode, header=write_header, index=False)
+        df.to_csv(
+            self.save_test_results_path, mode=mode, header=write_header, index=False
+        )
         self.test_results = {"timestamps": [], "predictions": [], "targets": []}

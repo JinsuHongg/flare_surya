@@ -427,6 +427,7 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
     def __len__(self):
         return self.adjusted_length
 
+
 class SolarFlareClsXRSDataset(SolarFlareClsDataset):
     """
     Add 24hour chunked Xray flux data into flare dataset.
@@ -481,18 +482,16 @@ class SolarFlareClsXRSDataset(SolarFlareClsDataset):
         xrs = self.xrs_data["xray"].sel(timestep=reference_timestamp)
         # shape: (minute_offset, channel) after timestep selection
 
-        data["xrs_soft"] = torch.tensor(
-            self.norm_log_zscore(
-                xrs.sel(channel="soft").values, self.xrs_stat.soft
-            ),
+        xrs_soft = torch.tensor(
+            self.norm_log_zscore(xrs.sel(channel="soft").values, self.xrs_stat.soft),
             dtype=torch.float32,
         )
-        data["xrs_hard"] = torch.tensor(
-            self.norm_log_zscore(
-                xrs.sel(channel="hard").values, self.xrs_stat.hard
-            ),
+        xrs_hard = torch.tensor(
+            self.norm_log_zscore(xrs.sel(channel="hard").values, self.xrs_stat.hard),
             dtype=torch.float32,
         )
+        # Stack soft and hard channels into single tensor [2, seq_len]
+        data["xrs"] = torch.stack([xrs_soft, xrs_hard], dim=0)
         return data, metadata
 
     def norm_log_zscore(self, data_arr, stats, eps=1e-10):

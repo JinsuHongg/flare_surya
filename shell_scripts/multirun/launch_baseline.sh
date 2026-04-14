@@ -14,9 +14,9 @@ echo "Configs: ${CONFIGS[*]}"
 echo ""
 
 for config in "${CONFIGS[@]}"; do
-  echo "Submitting job for config: $config"
-  qsub -N "baseline_${config}" -v TASK_NAME="$config" "$SCRIPT_DIR/train_baseline_gh.pbs"
-  sleep 1
+	echo "Submitting job for config: $config"
+	qsub -N "baseline_${config}" -v TASK_NAME="$config" "$SCRIPT_DIR/../nas/train_baseline_gh.pbs"
+	sleep 1
 done
 
 echo ""

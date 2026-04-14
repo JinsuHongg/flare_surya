@@ -16,7 +16,7 @@ echo ""
 
 for config in "${CONFIGS[@]}"; do
 	echo "Submitting job for config: $config"
-	qsub -N "finetune_${config}" -v TASK_NAME="$config" "$SCRIPT_DIR/finetune_flaresurya_gh.pbs"
+	qsub -N "finetune_${config}" -v TASK_NAME="$config" "$SCRIPT_DIR/../nas/finetune_flaresurya_gh.pbs"
 	sleep 1
 done
 

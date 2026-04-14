@@ -33,7 +33,7 @@ def test_dataset_loading(config_path):
         "num_mask_aia_channels": cfg.num_mask_aia_channels,
         "drop_hmi_probability": cfg.drop_hmi_probability,
         "use_latitude_in_learned_flow": cfg.use_latitude_in_learned_flow,
-        "channels": cfg.data.channels,
+        "channels": list(cfg.data.channels),
         "phase": "train",
         "pooling": cfg.data.pooling,
         "random_vert_flip": cfg.data.random_vert_flip,

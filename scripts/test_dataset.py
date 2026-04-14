@@ -10,6 +10,9 @@ sys.path.insert(0, project_root)
 from flare_surya.dataset.flare_cls_dataset import SolarFlareClsDataset
 
 
+from terratorch_surya.utils.data import build_scalers
+
+
 def test_dataset_loading(config_path):
     """
     Loads a dataset configuration, instantiates the SolarFlareClsDataset,
@@ -17,6 +20,13 @@ def test_dataset_loading(config_path):
     """
     print(f"Loading configuration from: {config_path}")
     cfg = OmegaConf.load(config_path)
+
+    print("Loading scalers...")
+    # Construct absolute path for the scalers file
+    scalers_path = os.path.join(project_root, cfg.data.scalers_path.lstrip("./"))
+    scaler_cfg = OmegaConf.load(scalers_path)
+    scalers = build_scalers(info=OmegaConf.to_container(scaler_cfg, resolve=True))
+    print("Scalers loaded successfully.")
 
     print("Initializing SolarFlareClsDataset for the 'train' phase...")
 
@@ -29,7 +39,7 @@ def test_dataset_loading(config_path):
         "time_delta_target_minutes": cfg.data.time_delta_target_minutes,
         "n_input_timestamps": cfg.data.n_input_timestamps,
         "rollout_steps": cfg.rollout_steps,
-        "scalers": cfg.data.scalers,
+        "scalers": scalers,
         "num_mask_aia_channels": cfg.num_mask_aia_channels,
         "drop_hmi_probability": cfg.drop_hmi_probability,
         "use_latitude_in_learned_flow": cfg.use_latitude_in_learned_flow,

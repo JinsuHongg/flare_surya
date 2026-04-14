@@ -67,9 +67,14 @@ def test_dataset_loading(config_path):
                 print(f"  - {key}: {value}")
 
     except Exception as e:
+        import traceback
+
         print(f"\nAn error occurred while retrieving a sample: {e}")
+        print("\n--- Full Traceback ---")
+        traceback.print_exc()
+        print("----------------------")
         print(
-            "This might be due to a missing/corrupt data file for this specific index."
+            "\nThis might be due to a missing/corrupt data file for this specific index, or an issue within the data loading code."
         )
 
 

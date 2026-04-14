@@ -231,36 +231,11 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
             self.create_logger()
             self.logger.info(f"HelioNetCDFDataset of length {self.__len__()}.")
 
-        exception_counter = 0
-        max_exception = 100
-
         self.logger.info(f"Starting to retrieve index {idx}.")
+        sample = self._get_index_data(idx)
+        self.logger.info(f"Returning index {idx}.")
+        return sample
 
-        while True:
-            try:
-                sample = self._get_index_data(idx)
-            except Exception as e:
-                exception_counter += 1
-                if exception_counter >= max_exception:
-                    raise e
-
-                reference_timestep = self.valid_indices[idx]
-                self.logger.warning(
-                    f"Failed retrieving index {idx}. Timestamp {reference_timestep}. Attempt {exception_counter}."
-                )
-
-                idx = (idx + 1) % self.__len__()
-            else:
-                self.logger.info(f"Returning index {idx}.")
-                return sample
-
-    # def _get_index_data(self, idx: int) -> tuple[dict, dict]:
-    #     data, metadata = super()._get_index_data(idx)
-
-    #     reference_timestamp = self.valid_indices[idx]
-    #     data["label"] = self.flare_index.loc[reference_timestamp, "label_max"]
-
-    #     return data, metadata
 
     def __len__(self):
         return self.adjusted_length

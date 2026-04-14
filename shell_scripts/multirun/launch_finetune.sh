@@ -8,7 +8,11 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Default configs if none provided
-CONFIGS=("${@:-c_focal x_focal m_focal}")
+if [ "$#" -eq 0 ]; then
+	CONFIGS=("c_focal" "x_focal" "m_focal")
+else
+	CONFIGS=("$@")
+fi
 
 echo "Launching ${#CONFIGS[@]} finetuning jobs..."
 echo "Configs: ${CONFIGS[*]}"

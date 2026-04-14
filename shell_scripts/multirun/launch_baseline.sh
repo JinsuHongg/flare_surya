@@ -7,7 +7,11 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
-CONFIGS=("${@:-alexnet_c resnet18_c alexnet_m}")
+if [ "$#" -eq 0 ]; then
+	CONFIGS=("alexnet_c" "resnet18_c" "alexnet_m")
+else
+	CONFIGS=("$@")
+fi
 
 echo "Launching ${#CONFIGS[@]} baseline training jobs..."
 echo "Configs: ${CONFIGS[*]}"

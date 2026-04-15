@@ -1,4 +1,3 @@
-import datetime
 from omegaconf import DictConfig, OmegaConf
 from lightning.pytorch.loggers import WandbLogger
 

@@ -6,6 +6,7 @@ from omegaconf import DictConfig, OmegaConf
 from loguru import logger as lgr_logger
 
 import torch
+import torch.multiprocessing as mp
 from lightning.pytorch import Trainer
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import (
@@ -24,7 +25,6 @@ torch.set_float32_matmul_precision("medium")
 
 
 def build_model(config):
-
     return BaseLineModel(
         model_name=config.backbone.model_name,
         in_channels=config.backbone.in_channels,
@@ -45,7 +45,6 @@ def build_model(config):
     config_name="baselines_exp",
 )
 def train(cfg: OmegaConf):
-
     # Datamodule
     datamodule = FlareDataModule(cfg=cfg)
 
@@ -150,4 +149,12 @@ def train(cfg: OmegaConf):
 
 
 if __name__ == "__main__":
+    # Set the start method to 'spawn' for cleaner, safer worker processes.
+    # This must be done inside the __main__ block and before any other
+    # multiprocessing or CUDA code is called.
+    try:
+        mp.set_start_method("spawn", force=True)
+    except RuntimeError:
+        pass  # Can only be set once
+
     train()

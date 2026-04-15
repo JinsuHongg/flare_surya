@@ -4,6 +4,7 @@ from omegaconf import DictConfig, OmegaConf
 from loguru import logger as lgr_logger
 
 import torch
+import torch.multiprocessing as mp
 from lightning.pytorch import Trainer
 
 from flare_surya.datamodule import SuryaFluxDataModule
@@ -15,7 +16,6 @@ torch.set_float32_matmul_precision("medium")
 
 
 def build_model(cfg):
-
     model_hyperparameter = {
         "img_size": cfg.backbone.img_size,
         "patch_size": cfg.backbone.patch_size,
@@ -51,7 +51,7 @@ def build_model(cfg):
         "threshold": cfg.head.threshold,
         "batch_size": cfg.data.batch_size,
         "save_test_results_path": cfg.etc.save_test_results_path,
-        # FluxFormer hyper-parameters 
+        # FluxFormer hyper-parameters
         "in_channels": cfg.fluxformer.in_channels,
         "seq_len": cfg.fluxformer.seq_len,
         "fluxformer_embed_dim": cfg.fluxformer.embed_dim,
@@ -88,7 +88,6 @@ def build_model(cfg):
     config_name="exp_surya",
 )
 def train(cfg: OmegaConf):
-
     # Datamodule
     datamodule = SuryaFluxDataModule(cfg=cfg)
 
@@ -141,4 +140,12 @@ def train(cfg: OmegaConf):
 
 
 if __name__ == "__main__":
+    # Set the start method to 'spawn' for cleaner, safer worker processes.
+    # This must be done inside the __main__ block and before any other
+    # multiprocessing or CUDA code is called.
+    try:
+        mp.set_start_method("spawn", force=True)
+    except RuntimeError:
+        pass  # Can only be set once
+
     train()

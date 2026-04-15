@@ -1,10 +1,10 @@
-
 import os
 import hydra
 from omegaconf import DictConfig, OmegaConf
 from loguru import logger as lgr_logger
 
 import torch
+import torch.multiprocessing as mp
 from lightning.pytorch import Trainer
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import (
@@ -18,8 +18,8 @@ from flare_surya.utils.callbacks import PerformanceMonitor, TimeLogger
 
 torch.set_float32_matmul_precision("medium")
 
-def build_model(config):
 
+def build_model(config):
     return BaseLineModel(
         model_name=config.backbone.model_name,
         in_channels=config.backbone.in_channels,
@@ -39,7 +39,6 @@ def build_model(config):
     config_name="baseline_exp_with_zarr.yaml",
 )
 def train(cfg: OmegaConf):
-
     # Datamodule
     datamodule = FlareDataModuleZarr(cfg=cfg)
 
@@ -78,19 +77,19 @@ def train(cfg: OmegaConf):
     )
 
     checkpoint_callback = ModelCheckpoint(
-    monitor=cfg.optimizer.scheduler.monitor, # e.g., "val_loss"
-    dirpath=cfg.etc.ckpt_dir,
-    filename=(
-        f"{wandb_logger.experiment.id}_"
-        f"{cfg.etc.ckpt_name_tag}_"
-        f"{cfg.backbone.model_name}_"
-        "{epoch}-{val_hss:.4f}"
-    ),
-    save_top_k=3,
-    mode="max", 
-    verbose=True,
-    save_last=True,
-    enable_version_counter=cfg.etc.enable_version_counter,
+        monitor=cfg.optimizer.scheduler.monitor,  # e.g., "val_loss"
+        dirpath=cfg.etc.ckpt_dir,
+        filename=(
+            f"{wandb_logger.experiment.id}_"
+            f"{cfg.etc.ckpt_name_tag}_"
+            f"{cfg.backbone.model_name}_"
+            "{epoch}-{val_hss:.4f}"
+        ),
+        save_top_k=3,
+        mode="max",
+        verbose=True,
+        save_last=True,
+        enable_version_counter=cfg.etc.enable_version_counter,
     )
 
     pf_monitor = PerformanceMonitor()
@@ -140,5 +139,12 @@ def train(cfg: OmegaConf):
 
 
 if __name__ == "__main__":
+    # Set the start method to 'spawn' for cleaner, safer worker processes.
+    # This must be done inside the __main__ block and before any other
+    # multiprocessing or CUDA code is called.
+    try:
+        mp.set_start_method("spawn", force=True)
+    except RuntimeError:
+        pass  # Can only be set once
 
     train()

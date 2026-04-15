@@ -32,6 +32,9 @@ logs/
 target/
 dist/
 
+# agent file
+AGENTS.md
+
 # JetBrains IDE
 .idea/
 

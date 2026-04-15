@@ -4,6 +4,7 @@ from omegaconf import DictConfig, OmegaConf
 from loguru import logger as lgr_logger
 
 import torch
+import torch.multiprocessing as mp
 from lightning.pytorch import Trainer
 
 from flare_surya.datamodule import (
@@ -17,7 +18,6 @@ torch.set_float32_matmul_precision("medium")
 
 
 def build_model(cfg):
-
     model_hyperparameter = {
         "img_size": cfg.backbone.img_size,
         "patch_size": cfg.backbone.patch_size,
@@ -55,7 +55,6 @@ def build_model(cfg):
         "save_test_results_path": cfg.etc.save_test_results_path,
     }
     if cfg.etc.resume and cfg.etc.ckpt_weights_only:
-
         ckpt_path = os.path.join(
             cfg.etc.ckpt_dir,
             cfg.etc.ckpt_file,
@@ -85,7 +84,6 @@ def build_model(cfg):
     config_name="experiment_with_zarr.yaml",
 )
 def train(cfg: OmegaConf):
-
     # Datamodule
     datamodule = FlareDataModuleZarr(cfg=cfg)
 
@@ -136,5 +134,12 @@ def train(cfg: OmegaConf):
 
 
 if __name__ == "__main__":
+    # Set the start method to 'spawn' for cleaner, safer worker processes.
+    # This must be done inside the __main__ block and before any other
+    # multiprocessing or CUDA code is called.
+    try:
+        mp.set_start_method("spawn", force=True)
+    except RuntimeError:
+        pass  # Can only be set once
 
     train()

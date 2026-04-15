@@ -1,5 +1,6 @@
 import sys
 import os
+import torch.multiprocessing as mp
 from omegaconf import OmegaConf
 
 # Add the project root to the Python path
@@ -89,6 +90,12 @@ def test_dataset_loading(config_path):
 
 
 if __name__ == "__main__":
+    # Set the start method to 'spawn' for cleaner, safer worker processes.
+    try:
+        mp.set_start_method("spawn", force=True)
+    except RuntimeError:
+        pass  # Can only be set once
+
     # The script assumes it is in ./scripts and the config is in ./configs
     config_file = os.path.join(project_root, "configs", "nas", "exp_surya.yaml")
     test_dataset_loading(config_file)

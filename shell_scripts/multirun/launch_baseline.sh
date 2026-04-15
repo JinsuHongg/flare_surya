@@ -8,9 +8,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 if [ "$#" -eq 0 ]; then
-	CONFIGS=("alexnet_c" "resnet18_c" "alexnet_m")
+  CONFIGS=("alexnet_c" "alexnet_m" "resnet18_c" "resnet18_m")
 else
-	CONFIGS=("$@")
+  CONFIGS=("$@")
 fi
 
 echo "Launching ${#CONFIGS[@]} baseline training jobs..."
@@ -18,9 +18,9 @@ echo "Configs: ${CONFIGS[*]}"
 echo ""
 
 for config in "${CONFIGS[@]}"; do
-	echo "Submitting job for config: $config"
-	qsub -N "baseline_${config}" -v TASK_NAME="$config" "$SCRIPT_DIR/../nas/train_baseline_gh.pbs"
-	sleep 1
+  echo "Submitting job for config: $config"
+  qsub -N "baseline_${config}" -v TASK_NAME="$config" "$SCRIPT_DIR/../nas/train_baseline_gh.pbs"
+  sleep 1
 done
 
 echo ""

@@ -9,9 +9,9 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Default configs if none provided
 if [ "$#" -eq 0 ]; then
-	CONFIGS=("c_focal" "x_focal" "m_focal")
+  CONFIGS=("c_focal" "x_focal" "m_focal")
 else
-	CONFIGS=("$@")
+  CONFIGS=("$@")
 fi
 
 echo "Launching ${#CONFIGS[@]} finetuning jobs..."
@@ -19,9 +19,9 @@ echo "Configs: ${CONFIGS[*]}"
 echo ""
 
 for config in "${CONFIGS[@]}"; do
-	echo "Submitting job for config: $config"
-	qsub -N "finetune_${config}" -v TASK_NAME="$config" "$SCRIPT_DIR/../nas/finetune_flaresurya_gh.pbs"
-	sleep 1
+  echo "Submitting job for config: $config"
+  qsub -N "${config}" -v TASK_NAME="$config" "$SCRIPT_DIR/../nas/finetune_flaresurya_gh.pbs"
+  sleep 1
 done
 
 echo ""

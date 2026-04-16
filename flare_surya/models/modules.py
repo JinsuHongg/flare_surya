@@ -1,5 +1,6 @@
 import os
 import time
+from functools import partial
 
 import pandas as pd
 import torch
@@ -20,7 +21,7 @@ from flare_surya.metrics.classification_metrics import DistributedClassification
 from .base import BaseModule
 from .heads import SuryaHead
 from .baselines_models import ResNet18
-from .criterions import BinaryFocalLoss, FlareSSMLoss
+from .criterions import BinaryFocalLoss, FlareSSMLoss, get_criterion
 from .flux_models import FluxFormer
 
 
@@ -127,26 +128,7 @@ class FlareSurya(BaseModule):
             layer_dict=head_layer_dict,
         )
 
-        loss_type = loss_dict.get("type", "cross_entropy")
-        match loss_type:
-            case "cross_entropy":
-                self.criterion = F.binary_cross_entropy_with_logits
-            case "focal":
-                self.criterion = BinaryFocalLoss(
-                    alpha=loss_dict["focal"].get("alpha", 0.25),
-                    gamma=loss_dict["focal"].get("gamma", 2.0),
-                    reduction=loss_dict["focal"].get("reduction", "mean"),
-                    label_smoothing=loss_dict["focal"].get("label_smoothing", 0.0),
-                )
-            case "flare":
-                flare_cfg = loss_dict.get("flare", {})
-                self.criterion = FlareSSMLoss(
-                    class_counts=list(flare_cfg.get("class_counts", [1, 1])),
-                    lambda_bss=flare_cfg.get("lambda_bss", 3.0),
-                    ib_start_epoch=flare_cfg.get("ib_start_epoch", 0),
-                )
-            case _:
-                raise ValueError(f"Unsupported loss type: {loss_type}")
+        self.criterion = get_criterion(loss_dict)
 
         # Initialize the metrics instances
         self.train_metrics = DistributedClassificationMetrics(threshold=threshold)
@@ -428,24 +410,7 @@ class BaseLineModel(BaseModule):
                 raise ValueError(f"Unknown model_name: {model_name}")
 
         # define loss
-        loss_type = loss_dict.get("type", "cross_entropy")
-        match loss_type:
-            case "cross_entropy":
-                self.criterion = F.binary_cross_entropy_with_logits
-            case "focal":
-                self.criterion = BinaryFocalLoss(
-                    alpha=loss_dict["focal"].get("alpha", 0.25),
-                    gamma=loss_dict["focal"].get("gamma", 2.0),
-                    reduction=loss_dict["focal"].get("reduction", "mean"),
-                    label_smoothing=loss_dict["focal"].get("label_smoothing", 0.0),
-                )
-            case "flaressm":
-                raise ValueError(
-                    "FlareSSMLoss requires hidden features (h) from the penultimate layer "
-                    "and is only supported for FlareSurya, not BaseLineModel."
-                )
-            case _:
-                raise ValueError(f"Unsupported loss type: {loss_type}")
+        self.criterion = get_criterion(loss_dict, module_name="BaseLineModel")
 
         # Initialize the metrics instances
         self.train_metrics = DistributedClassificationMetrics(threshold=threshold)
@@ -733,25 +698,7 @@ class SuryaFluxFormer(BaseModule):
             layer_dict=head_layer_dict,
         )
 
-        loss_type = loss_dict.get("type", "cross_entropy")
-        match loss_type:
-            case "cross_entropy":
-                self.criterion = F.binary_cross_entropy_with_logits
-            case "focal":
-                self.criterion = BinaryFocalLoss(
-                    alpha=loss_dict.focal.get("alpha", 0.25),
-                    gamma=loss_dict.focal.get("gamma", 2.0),
-                    reduction=loss_dict.focal.get("reduction", "mean"),
-                )
-            case "flare":
-                flare_cfg = loss_dict.get("flare", {})
-                self.criterion = FlareSSMLoss(
-                    class_counts=list(flare_cfg.get("class_counts", [1, 1])),
-                    lambda_bss=flare_cfg.get("lambda_bss", 3.0),
-                    ib_start_epoch=flare_cfg.get("ib_start_epoch", 0),
-                )
-            case _:
-                raise ValueError(f"Unsupported loss type: {loss_type}")
+        self.criterion = get_criterion(loss_dict, module_name="SuryaFluxFormer")
 
         # Initialize the metrics instances
         self.train_metrics = DistributedClassificationMetrics(threshold=threshold)

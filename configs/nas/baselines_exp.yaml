@@ -60,6 +60,8 @@ classifier_metrics:
 
 loss:
   type: focal 
+  cross_entropy:
+    class_weights: [1.0, 1.0]
   focal:
     alpha: 0.75
     gamma: 2.0

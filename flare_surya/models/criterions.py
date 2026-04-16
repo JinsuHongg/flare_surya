@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from functools import partial
 
 
 class BinaryFocalLoss(nn.Module):
@@ -16,7 +17,8 @@ class BinaryFocalLoss(nn.Module):
             gamma: 2.0
             reduction: mean
     """
-    def __init__(self, alpha=0.25, gamma=2.0, label_smoothing=0.0, reduction='mean'):
+
+    def __init__(self, alpha=0.25, gamma=2.0, label_smoothing=0.0, reduction="mean"):
         """
         alpha: weight for positive class (0.25 is common)
         gamma: focusing parameter (2.0 is common)
@@ -37,11 +39,12 @@ class BinaryFocalLoss(nn.Module):
         # Smoothed:     0 → ε/2,  1 → 1 - ε/2
         # For binary case we split ε equally across both classes (ε/2 each side)
         if self.label_smoothing > 0.0:
-            targets = targets * (1.0 - self.label_smoothing) + 0.5 * self.label_smoothing
+            targets = (
+                targets * (1.0 - self.label_smoothing) + 0.5 * self.label_smoothing
+            )
 
-        
         probs = torch.sigmoid(logits)
-        bce = F.binary_cross_entropy_with_logits(logits, targets, reduction='none')
+        bce = F.binary_cross_entropy_with_logits(logits, targets, reduction="none")
 
         p_t = probs * targets + (1 - probs) * (1 - targets)
         alpha_t = self.alpha * targets + (1 - self.alpha) * (1 - targets)
@@ -49,9 +52,9 @@ class BinaryFocalLoss(nn.Module):
 
         loss = focal_weight * bce
 
-        if self.reduction == 'mean':
+        if self.reduction == "mean":
             return loss.mean()
-        elif self.reduction == 'sum':
+        elif self.reduction == "sum":
             return loss.sum()
         return loss
 
@@ -101,7 +104,7 @@ class FlareSSMLoss(nn.Module):
         total = counts.sum()
         n_classes = len(counts)
         gamma_weights = total / (n_classes * counts)
-        self.register_buffer('gamma_weights', gamma_weights)
+        self.register_buffer("gamma_weights", gamma_weights)
         self.lambda_bss = lambda_bss
         self.ib_start_epoch = ib_start_epoch
         self.eps = eps
@@ -109,7 +112,7 @@ class FlareSSMLoss(nn.Module):
     def _per_sample_gamma(self, targets: torch.Tensor) -> torch.Tensor:
         """Return gamma(y) for each sample. targets: (N, 1) with values 0/1."""
         idx = targets.long().squeeze(1)  # (N,)
-        return self.gamma_weights.to(idx.device)[idx]   # (N,)
+        return self.gamma_weights.to(idx.device)[idx]  # (N,)
 
     def forward(
         self,
@@ -127,33 +130,33 @@ class FlareSSMLoss(nn.Module):
         Returns:
             Scalar loss.
         """
-        p_hat = torch.sigmoid(logits)                          # (N, 1)
+        p_hat = torch.sigmoid(logits)  # (N, 1)
 
         # Expand to 2-class representation to match the paper's multiclass notation.
         # For binary: p_hat_2 = [1-p, p],  y_onehot = [1-y, y]
-        p_hat_2 = torch.cat([1.0 - p_hat, p_hat], dim=1)     # (N, 2)
-        y_onehot = torch.cat([1.0 - targets, targets], dim=1) # (N, 2)
+        p_hat_2 = torch.cat([1.0 - p_hat, p_hat], dim=1)  # (N, 2)
+        y_onehot = torch.cat([1.0 - targets, targets], dim=1)  # (N, 2)
 
-        gamma = self._per_sample_gamma(targets)                # (N,)
+        gamma = self._per_sample_gamma(targets)  # (N,)
 
         # ── Component 1: Weighted CE ──────────────────────────────────────────
         # Binary CE = -[y*log(p) + (1-y)*log(1-p)]
         bce = F.binary_cross_entropy_with_logits(
-            logits, targets, reduction='none'
-        ).squeeze(1)                                           # (N,)
+            logits, targets, reduction="none"
+        ).squeeze(1)  # (N,)
         l_ce_weighted = (gamma * bce).mean()
 
         # ── Shared norms ──────────────────────────────────────────────────────
-        h_norm = h.abs().sum(dim=1).clamp(min=self.eps)       # (N,)
+        h_norm = h.abs().sum(dim=1).clamp(min=self.eps)  # (N,)
         # ||p_hat_2||_1 = sum of non-negative probs = 1.0 always (probability simplex)
-        p_norm = p_hat_2.sum(dim=1).clamp(min=self.eps)       # (N,)  ≈ 1.0
+        p_norm = p_hat_2.sum(dim=1).clamp(min=self.eps)  # (N,)  ≈ 1.0
 
         # ── Component 2: IB CE ───────────────────────────────────────────────
-        ib_ce_denom = (p_norm * h_norm).clamp(min=self.eps)   # (N,)
+        ib_ce_denom = (p_norm * h_norm).clamp(min=self.eps)  # (N,)
         l_ib_ce = (gamma * bce / ib_ce_denom).mean()
 
         # ── BSS per sample: Σ_k (p_k - y_k)^2 ───────────────────────────────
-        bss = ((p_hat_2 - y_onehot) ** 2).sum(dim=1)          # (N,)
+        bss = ((p_hat_2 - y_onehot) ** 2).sum(dim=1)  # (N,)
 
         # ── Component 3: Weighted BSS ─────────────────────────────────────────
         l_bss_weighted = (gamma * bss).mean()
@@ -164,11 +167,11 @@ class FlareSSMLoss(nn.Module):
         # inner = delta - dot_val                              (N, 2)
         # ib_term = p_hat_2 ⊙ inner                           (N, 2)
         # ib_norm = ||ib_term||_1                              (N,)
-        delta = p_hat_2 - y_onehot                            # (N, 2)
+        delta = p_hat_2 - y_onehot  # (N, 2)
         dot_val = (delta * p_hat_2).sum(dim=1, keepdim=True)  # (N, 1)
-        inner = delta - dot_val                                # (N, 2)
-        ib_term = p_hat_2 * inner                              # (N, 2)
-        ib_norm = ib_term.abs().sum(dim=1).clamp(min=self.eps) # (N,)
+        inner = delta - dot_val  # (N, 2)
+        ib_term = p_hat_2 * inner  # (N, 2)
+        ib_norm = ib_term.abs().sum(dim=1).clamp(min=self.eps)  # (N,)
         ib_bss_denom = (2.0 * ib_norm * h_norm).clamp(min=self.eps)  # (N,)
 
         # ── Component 4: IB BSS ───────────────────────────────────────────────
@@ -181,3 +184,40 @@ class FlareSSMLoss(nn.Module):
             l_ib_bss = torch.zeros_like(l_bss_weighted)
 
         return (l_ce_weighted + l_ib_ce) + self.lambda_bss * (l_bss_weighted + l_ib_bss)
+
+
+def get_criterion(loss_dict, module_name=None):
+    loss_type = loss_dict.get("type", "cross_entropy")
+    match loss_type:
+        case "cross_entropy":
+            ce_dict = loss_dict.get("cross_entropy", {})
+            if "class_weights" in ce_dict and ce_dict["class_weights"] is not None:
+                pos_weight = torch.tensor(
+                    [ce_dict["class_weights"][1] / ce_dict["class_weights"][0]]
+                )
+                return partial(
+                    F.binary_cross_entropy_with_logits, pos_weight=pos_weight
+                )
+            else:
+                return F.binary_cross_entropy_with_logits
+        case "focal":
+            return BinaryFocalLoss(
+                alpha=loss_dict["focal"].get("alpha", 0.25),
+                gamma=loss_dict["focal"].get("gamma", 2.0),
+                reduction=loss_dict["focal"].get("reduction", "mean"),
+                label_smoothing=loss_dict["focal"].get("label_smoothing", 0.0),
+            )
+        case "flaressm":
+            if module_name == "BaseLineModel":
+                raise ValueError(
+                    "FlareSSMLoss requires hidden features (h) from the penultimate layer "
+                    "and is only supported for FlareSurya, not BaseLineModel."
+                )
+            flaressm_cfg = loss_dict.get("flaressm", {})
+            return FlareSSMLoss(
+                class_counts=list(flaressm_cfg.get("class_counts", [1, 1])),
+                lambda_bss=flaressm_cfg.get("lambda_bss", 3.0),
+                ib_start_epoch=flaressm_cfg.get("ib_start_epoch", 0),
+            )
+        case _:
+            raise ValueError(f"Unsupported loss type: {loss_type}")

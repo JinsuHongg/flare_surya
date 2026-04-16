@@ -11,6 +11,8 @@ head:
 
 loss:
   type: cross_entropy
+  cross_entropy:
+    class_weights: [1.0, 1.0]
 
 optimizer:
   type: adamw

@@ -444,9 +444,16 @@ class SolarFlareClsXRSDataset(SolarFlareClsDataset):
             random_vert_flip=random_vert_flip,
             flare_index_path=flare_index_path,
         )
-
+        SolarFlareClsXRSDataset.__init__:
+        print(f"Initial valid_indices: {len(self.valid_indices)}")
+        
         self.xrs_data = xrs_data
         self.xrs_stat = xrs_stat
+        
+        xrs_timesteps = set(self.xrs_data["timestep"].values)
+        print(f"XRS timesteps: {len(xrs_timesteps)}")
+        new_valid_indices = [t for t in self.valid_indices if t in xrs_timesteps]
+        print(f"After filtering: {len(new_valid_indices)}")
 
         xrs_timesteps = set(self.xrs_data["timestep"].values)
         new_valid_indices = [t for t in self.valid_indices if t in xrs_timesteps]

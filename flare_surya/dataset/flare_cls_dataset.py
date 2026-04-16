@@ -451,6 +451,7 @@ class SolarFlareClsXRSDataset(SolarFlareClsDataset):
         xrs_timesteps = set(self.xrs_data["timestep"].values)
         new_valid_indices = [t for t in self.valid_indices if t in xrs_timesteps]
         self.valid_indices = new_valid_indices
+        self.adjusted_length = len(self.valid_indices)
 
     def _get_index_data(self, idx: int) -> tuple[dict, dict]:
         data, metadata = super()._get_index_data(idx)

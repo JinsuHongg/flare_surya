@@ -5,16 +5,16 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-CONFIGS=("${@:-suryaflux}")
+CONFIGS=("${@:-m_suryaflux}")
 
 echo "Launching ${#CONFIGS[@]} SuryaFlux finetuning jobs..."
 echo "Configs: ${CONFIGS[*]}"
 echo ""
 
 for config in "${CONFIGS[@]}"; do
-	echo "Submitting job for config: $config"
-	qsub -N "suryaflux_${config}" -v TASK_NAME="$config" "$SCRIPT_DIR/../nas/finetune_suryaflux.pbs"
-	sleep 1
+  echo "Submitting job for config: $config"
+  qsub -N "suryaflux_${config}" -v TASK_NAME="$config" "$SCRIPT_DIR/../nas/finetune_suryaflux.pbs"
+  sleep 1
 done
 
 echo ""

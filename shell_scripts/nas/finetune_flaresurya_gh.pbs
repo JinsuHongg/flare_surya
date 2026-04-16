@@ -10,6 +10,9 @@
 #PBS -m abe
 #PBS -W umask=002
 
+echo "Changing directory to: $PBS_O_WORKDIR"
+cd "$PBS_O_WORKDIR/scripts"
+
 task_name=${TASK_NAME:-default}
 JOBID=$(echo "$PBS_JOBID" | cut -d. -f1)
 exec >logs/surya/${task_name}.${JOBID}.out
@@ -20,9 +23,6 @@ if [[ ${#NODES[@]} -ne 1 ]]; then
   echo "ERROR: expected 1 node, got ${#NODES[@]}"
   exit 1
 fi
-
-echo "Changing directory to: $PBS_O_WORKDIR"
-cd "$PBS_O_WORKDIR/scripts"
 
 source /nobackupp17/jhong15/miniforge3_gh/etc/profile.d/conda.sh
 conda activate flare_surya

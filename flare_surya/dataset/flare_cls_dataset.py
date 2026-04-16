@@ -236,7 +236,6 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
         self.logger.info(f"Returning index {idx}.")
         return sample
 
-
     def __len__(self):
         return self.adjusted_length
 
@@ -448,6 +447,10 @@ class SolarFlareClsXRSDataset(SolarFlareClsDataset):
 
         self.xrs_data = xrs_data
         self.xrs_stat = xrs_stat
+
+        xrs_timesteps = set(self.xrs_data["timestep"].values)
+        new_valid_indices = [t for t in self.valid_indices if t in xrs_timesteps]
+        self.valid_indices = new_valid_indices
 
     def _get_index_data(self, idx: int) -> tuple[dict, dict]:
         data, metadata = super()._get_index_data(idx)

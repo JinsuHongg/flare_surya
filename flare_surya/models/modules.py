@@ -757,7 +757,7 @@ class SuryaMultiModal(BaseModule):
         else:
             img_tokens = self.backbone(data)
 
-        secondary_tokens = self.secondary_encoder(data["xrs"])
+        secondary_tokens = self.secondary_encoder(data["xrs"].to(self.device))
 
         if self.fusion.requires_pooled:
             secondary_tokens = self.pool_secondary(secondary_tokens)

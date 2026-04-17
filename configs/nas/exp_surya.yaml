@@ -37,7 +37,7 @@ data:
   use_simplecache: true
   s3_cache_dir: /tmp/helio_s3_cache
   #xray data path
-  xrs_zarr_path: ../data/xrs_24hour_slices.zarr
+  xrs_zarr_path: ../data/xrs_24hour_slices_g15_g16_merged.zarr
   xrs_stat_path: ../data/xrs_stat.yaml
 
 backbone:

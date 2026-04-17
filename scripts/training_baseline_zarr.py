@@ -28,7 +28,6 @@ def build_model(config):
         p_drop=config.backbone.p_drop,
         threshold=config.backbone.threshold,
         optimizer_dict=config.optimizer,
-        batch_size=config.data.batch_size,
         save_test_results_path=config.etc.save_test_results_path,
     )
 

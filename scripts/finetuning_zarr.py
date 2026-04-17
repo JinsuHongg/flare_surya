@@ -42,8 +42,7 @@ def build_model(cfg):
         "nglo": cfg.backbone.nglo,
         "path_weights": cfg.backbone.path_weights,
         # Put finetuning additions below this line
-        "token_type": cfg.head.token_type,
-        "in_feature": cfg.head.hyper_parameters.in_feature[cfg.head.token_type],
+        "pooling_type": cfg.backbone.pooling_type,
         "head_type": cfg.head.type,
         "head_layer_dict": cfg.head.hyper_parameters,
         "freeze_backbone": cfg.backbone.freeze_backbone,
@@ -51,7 +50,6 @@ def build_model(cfg):
         "optimizer_dict": cfg.optimizer,
         "loss_dict": cfg.loss,
         "threshold": cfg.head.threshold,
-        "batch_size": cfg.data.batch_size,
         "save_test_results_path": cfg.etc.save_test_results_path,
     }
     if cfg.etc.resume and cfg.etc.ckpt_weights_only:

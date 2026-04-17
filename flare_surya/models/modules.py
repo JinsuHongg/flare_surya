@@ -61,20 +61,11 @@ class FlareSurya(BaseModule):
         loss_dict,
         threshold=0.5,
         # misc
-        batch_size=1,
         save_test_results_path=None,
     ):
         super().__init__(optimizer_dict=optimizer_dict)
         self.save_hyperparameters()
         self.pooling_type = pooling_type
-        self.freeze_backbone = freeze_backbone
-        self.lora_dict = lora_dict
-        self.test_results = {
-            "timestamps": [],
-            "predictions": [],
-            "targets": [],
-        }
-        self.batch_size = batch_size
         self.save_test_results_path = save_test_results_path
 
         self.backbone = HelioSpectFormer(
@@ -200,7 +191,6 @@ class FlareSurya(BaseModule):
             on_step=True,
             prog_bar=False,
             sync_dist=False,
-            batch_size=self.batch_size,
         )
 
         # Log training loss every step
@@ -211,7 +201,6 @@ class FlareSurya(BaseModule):
             on_epoch=True,
             prog_bar=True,
             sync_dist=False,
-            batch_size=self.batch_size,
         )
 
         return loss
@@ -227,7 +216,6 @@ class FlareSurya(BaseModule):
             on_epoch=True,
             prog_bar=False,
             sync_dist=True,
-            batch_size=self.batch_size,
         )
 
         self.train_metrics.reset()
@@ -257,7 +245,6 @@ class FlareSurya(BaseModule):
             on_step=False,
             prog_bar=False,
             sync_dist=True,
-            batch_size=self.batch_size,
         )
 
     def on_validation_epoch_end(self):
@@ -303,7 +290,6 @@ class FlareSurya(BaseModule):
             on_step=False,
             on_epoch=True,
             sync_dist=True,
-            batch_size=self.batch_size,
         )
 
         # Every rank saves its own shard
@@ -363,7 +349,6 @@ class BaseLineModel(BaseModule):
         optimizer_dict,
         loss_dict,
         # misc
-        batch_size=1,
         save_test_results_path=None,
     ):
         super().__init__(optimizer_dict=optimizer_dict)
@@ -374,7 +359,6 @@ class BaseLineModel(BaseModule):
             "predictions": [],
             "targets": [],
         }
-        self.batch_size = batch_size
         self.model_name = model_name
 
         match model_name:
@@ -440,7 +424,6 @@ class BaseLineModel(BaseModule):
             on_step=True,
             prog_bar=False,
             sync_dist=False,
-            batch_size=self.batch_size,
         )
 
         # Log training loss every step
@@ -451,7 +434,6 @@ class BaseLineModel(BaseModule):
             on_epoch=True,
             prog_bar=True,
             sync_dist=False,
-            batch_size=self.batch_size,
         )
 
         return loss
@@ -467,7 +449,6 @@ class BaseLineModel(BaseModule):
             on_epoch=True,
             prog_bar=False,
             sync_dist=True,
-            batch_size=self.batch_size,
         )
 
         self.train_metrics.reset()
@@ -488,7 +469,6 @@ class BaseLineModel(BaseModule):
             on_epoch=True,
             prog_bar=False,
             sync_dist=True,
-            batch_size=self.batch_size,
         )
 
         # Update Metrics (x_hat contains the logits)
@@ -534,7 +514,6 @@ class BaseLineModel(BaseModule):
             on_step=False,
             on_epoch=True,
             sync_dist=True,
-            batch_size=self.batch_size,
         )
 
         # Every rank saves its own shard
@@ -627,7 +606,6 @@ class SuryaMultiModal(BaseModule):
         # secondary encoder parameters
         secondary_pooling_type="avg_pooling",
         # misc
-        batch_size=1,
         save_test_results_path=None,
     ):
         super().__init__(optimizer_dict=optimizer_dict)
@@ -641,7 +619,6 @@ class SuryaMultiModal(BaseModule):
             "predictions": [],
             "targets": [],
         }
-        self.batch_size = batch_size
         self.save_test_results_path = save_test_results_path
 
         self.backbone = HelioSpectFormer(
@@ -836,7 +813,6 @@ class SuryaMultiModal(BaseModule):
             on_step=True,
             prog_bar=False,
             sync_dist=False,
-            batch_size=self.batch_size,
         )
 
         # Log training loss every step
@@ -847,7 +823,6 @@ class SuryaMultiModal(BaseModule):
             on_epoch=True,
             prog_bar=True,
             sync_dist=False,
-            batch_size=self.batch_size,
         )
 
         return loss
@@ -863,7 +838,6 @@ class SuryaMultiModal(BaseModule):
             on_epoch=True,
             prog_bar=False,
             sync_dist=True,
-            batch_size=self.batch_size,
         )
 
         self.train_metrics.reset()
@@ -887,7 +861,6 @@ class SuryaMultiModal(BaseModule):
             on_step=False,
             prog_bar=False,
             sync_dist=True,
-            batch_size=self.batch_size,
         )
 
     def on_validation_epoch_end(self):
@@ -928,7 +901,6 @@ class SuryaMultiModal(BaseModule):
             on_step=False,
             on_epoch=True,
             sync_dist=True,
-            batch_size=self.batch_size,
         )
 
         # Every rank saves its own shard

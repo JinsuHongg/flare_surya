@@ -779,6 +779,7 @@ class SuryaMultiModal(BaseModule):
 
     def _compute_loss(self, output, target):
         x_hat = output["logits"]
+        target = target.to(x_hat.device)
         if isinstance(self.criterion, FlareSSMLoss):
             loss = self.criterion(
                 x_hat, target, output["hidden"], current_epoch=self.current_epoch

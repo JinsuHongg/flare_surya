@@ -64,7 +64,6 @@ def build_model(cfg):
         # Fusion hyper-parameters
         "fusion_type": cfg.fusion.type,
         "fuse_embed_dim": cfg.fusion.fuse_embed_dim,
-        "num_heads": cfg.fusion.num_heads,
         # Secondary encoder pooling
         "secondary_pooling_type": cfg.secondary.pooling_type,
     }

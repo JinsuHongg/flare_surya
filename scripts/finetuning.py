@@ -57,7 +57,6 @@ def build_model(cfg):
         "optimizer_dict": cfg.optimizer,
         "loss_dict": cfg.loss,
         "threshold": cfg.head.threshold,
-        "batch_size": cfg.data.batch_size,
         "save_test_results_path": cfg.etc.save_test_results_path,
     }
     if cfg.etc.resume and cfg.etc.ckpt_weights_only:

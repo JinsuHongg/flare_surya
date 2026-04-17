@@ -1,7 +1,13 @@
 import os
 import hydra
+import warnings
 from omegaconf import DictConfig, OmegaConf
 from loguru import logger as lgr_logger
+
+# Suppress the specific FutureWarning from timm
+warnings.filterwarnings(
+    "ignore", "Importing from timm.models.layers is deprecated.*", FutureWarning
+)
 
 import torch
 import torch.multiprocessing as mp

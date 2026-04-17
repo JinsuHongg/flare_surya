@@ -8,6 +8,9 @@ data:
 
 head:
   pooling_type: attention_pooling
+  hyper_parameters:
+    in_feature: {"cls_token": 2560, "avg_pooling": 2560, "max_pooling": 2560, "attention_pooling": 2560}
+    hidden_channels: [1024, 256, 1] #[256, 64, 1]
 
 loss:
   type: cross_entropy

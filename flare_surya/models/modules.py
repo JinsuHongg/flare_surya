@@ -22,7 +22,7 @@ from .base import BaseModule
 from .heads import SuryaHead
 from .baselines_models import ResNet18
 from .criterions import BinaryFocalLoss, FlareSSMLoss, get_criterion
-from .flux_models import SecondaryEncoder
+from .secondary_modality_models import SecondaryEncoder
 from .fusion import FusionModule
 
 
@@ -53,7 +53,6 @@ class FlareSurya(BaseModule):
         path_weights,
         # head parameters
         pooling_type,
-        in_feature,
         head_type,
         head_layer_dict,
         freeze_backbone,
@@ -120,11 +119,11 @@ class FlareSurya(BaseModule):
             self.backbone = get_peft_model(self.backbone, config)
 
         if self.pooling_type == "attention_pooling":
-            self.attn_pooling = nn.Linear(in_feature, 1)
+            self.attn_pooling = nn.Linear(embed_dim, 1)
 
         # define head
         self.head = SuryaHead(
-            in_feature=in_feature,
+            in_feature=embed_dim,
             layer_type=head_type,
             layer_dict=head_layer_dict,
         )
@@ -607,15 +606,14 @@ class SuryaMultiModal(BaseModule):
         finetune,
         nglo,
         path_weights,
-        # FluxFormer parameters
+        # second modality parameters
         in_channels,
         seq_len,
-        fluxformer_embed_dim,
-        fluxformer_depth,
-        fluxformer_num_heads,
+        secondary_embed_dim,
+        secondary_depth,
+        secondary_num_heads,
         # head parameters
         pooling_type,
-        in_feature,
         head_type,
         head_layer_dict,
         freeze_backbone,
@@ -673,15 +671,15 @@ class SuryaMultiModal(BaseModule):
         self.secondary_encoder = SecondaryEncoder(
             in_channels=in_channels,
             seq_len=seq_len,
-            embed_dim=fluxformer_embed_dim,
-            depth=fluxformer_depth,
-            num_heads=fluxformer_num_heads,
+            embed_dim=secondary_embed_dim,
+            depth=secondary_depth,
+            num_heads=secondary_num_heads,
         )
 
         self.fusion = FusionModule(
             fusion_type=fusion_type,
             img_dim=embed_dim,
-            secondary_dim=fluxformer_embed_dim,
+            secondary_dim=secondary_embed_dim,
             fuse_dim=fuse_embed_dim,
         )
 
@@ -703,7 +701,7 @@ class SuryaMultiModal(BaseModule):
             self.backbone = get_peft_model(self.backbone, config)
 
         if self.pooling_type == "attention_pooling":
-            self.attn_pooling = nn.Linear(in_feature, 1)
+            self.attn_pooling = nn.Linear(embed_dim, 1)
 
         # define head
         in_feature = self.fusion.output_dim
@@ -714,7 +712,7 @@ class SuryaMultiModal(BaseModule):
 
         # Create secondary encoder pooling layer
         if self.secondary_pooling_type == "attention_pooling":
-            self.secondary_attn_pooling = nn.Linear(fluxformer_embed_dim, 1)
+            self.secondary_attn_pooling = nn.Linear(secondary_embed_dim, 1)
 
         self.head = SuryaHead(
             in_feature=in_feature,

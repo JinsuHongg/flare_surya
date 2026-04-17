@@ -62,12 +62,11 @@ backbone:
   dtype: float32
   freeze_backbone: True
   path_weights: ../data/Surya-1.0/surya.366m.v1.pt
+  pooling_type: attention_pooling
 
 head:
   type: mlp
-  token_type: avg_pooling
   hyper_parameters:
-    in_feature: {"cls_token": 1280, "avg_pooling": 1280, "max_pooling": 1280}
     hidden_channels: [1024, 256, 1] #[256, 64, 1]
     norm_layer: LayerNorm
     activation_layer: GELU

@@ -46,8 +46,7 @@ def build_model(cfg):
         "nglo": cfg.backbone.nglo,
         "path_weights": cfg.backbone.path_weights,
         # Put finetuning additions below this line
-        "pooling_type": cfg.head.pooling_type,
-        "in_feature": cfg.head.hyper_parameters.in_feature,
+        "pooling_type": cfg.backbone.pooling_type,
         "head_type": cfg.head.type,
         "head_layer_dict": cfg.head.hyper_parameters,
         "freeze_backbone": cfg.backbone.freeze_backbone,
@@ -57,17 +56,17 @@ def build_model(cfg):
         "threshold": cfg.head.threshold,
         "batch_size": cfg.data.batch_size,
         "save_test_results_path": cfg.etc.save_test_results_path,
-        # FluxFormer hyper-parameters
-        "in_channels": cfg.fluxformer.in_channels,
-        "seq_len": cfg.fluxformer.seq_len,
-        "fluxformer_embed_dim": cfg.fluxformer.embed_dim,
-        "fluxformer_depth": cfg.fluxformer.depth,
-        "fluxformer_num_heads": cfg.fluxformer.num_heads,
+        # Secondary encoder hyper-parameters
+        "in_channels": cfg.secondary.in_channels,
+        "seq_len": cfg.secondary.seq_len,
+        "secondary_embed_dim": cfg.secondary.embed_dim,
+        "secondary_depth": cfg.secondary.depth,
+        "secondary_num_heads": cfg.secondary.num_heads,
         # Fusion hyper-parameters
         "fusion_type": cfg.fusion.type,
         "fuse_embed_dim": cfg.fusion.fuse_embed_dim,
         "num_heads": cfg.fusion.num_heads,
-        # Secondary encoder hyper-parameters
+        # Secondary encoder pooling
         "secondary_pooling_type": cfg.secondary.pooling_type,
     }
     if cfg.etc.resume and cfg.etc.ckpt_weights_only:

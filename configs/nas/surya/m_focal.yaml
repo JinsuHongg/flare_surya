@@ -7,7 +7,6 @@ data:
   test_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/test_M24w.csv
 
 head:
-  pooling_type: attention_pooling
 
 loss:
   type: focal
@@ -39,4 +38,3 @@ wandb:
   notes: "simple mlp head"
   offline: false
   tag: ["mlp", "M", "daily", "nasgh", "focal"] # backbone model, head type, task
-

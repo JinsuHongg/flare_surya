@@ -65,27 +65,24 @@ backbone:
   # dtype: float32
   freeze_backbone: True
   path_weights: ../data/Surya-1.0/surya.366m.v1.pt
+  pooling_type: avg_pooling
 
-fluxformer:
+secondary:
   in_channels: 2
   seq_len: 1440
   embed_dim: 1280
   depth: 4
   num_heads: 16
+  pooling_type: avg_pooling  # "avg_pooling", "max_pooling", "attention_pooling", "none"
 
 fusion:
   type: concat  # "concat", "gated", or "cross_attention"
   fuse_embed_dim: 1280  # used only for gated/cross_attention
   num_heads: 8  # used only for cross_attention
 
-secondary:
-  pooling_type: avg_pooling  # "avg_pooling", "max_pooling", "attention_pooling", "none"
-
 head:
   type: mlp
-  pooling_type: avg_pooling
   hyper_parameters:
-    in_feature: 1280
     hidden_channels: [1024, 256, 1] #[256, 64, 1]
     norm_layer: LayerNorm
     activation_layer: GELU

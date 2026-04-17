@@ -6,6 +6,9 @@ data:
   leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
   test_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/test_M24w.csv
 
+backbone:
+  pooling_type: attention_pooling
+
 fusion:
   type: concat  # "concat", "gated", or "cross_attention"
   fuse_embed_dim: 1280  # used only for gated/cross_attention
@@ -15,9 +18,7 @@ secondary:
   pooling_type: attention_pooling  # "avg_pooling", "max_pooling", "attention_pooling", "none"
 
 head:
-  pooling_type: attention_pooling
   hyper_parameters:
-    in_feature: 2560
     hidden_channels: [1024, 256, 1] #[256, 64, 1]
 
 loss:

@@ -39,4 +39,3 @@ wandb:
   notes: "simple mlp head"
   offline: false
   tag: ["mlp", "C", "daily", "nasgh", "focal"] # backbone model, head type, task
-

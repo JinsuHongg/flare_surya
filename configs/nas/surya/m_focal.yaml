@@ -6,7 +6,8 @@ data:
   leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
   test_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/test_M24w.csv
 
-head:
+backbone:
+  pooling_type: attention_pooling
 
 loss:
   type: focal

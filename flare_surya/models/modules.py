@@ -784,6 +784,19 @@ class SuryaMultiModal(BaseModule):
             loss = self.criterion(
                 x_hat, target, output["hidden"], current_epoch=self.current_epoch
             )
+        elif (
+            isinstance(self.criterion, tuple) and self.criterion[0] == "bce_with_logits"
+        ):
+            class_weights = self.criterion[1]
+            if class_weights is not None:
+                pos_weight = torch.tensor(
+                    [class_weights[1] / class_weights[0]], device=x_hat.device
+                )
+                loss = F.binary_cross_entropy_with_logits(
+                    x_hat, target, pos_weight=pos_weight
+                )
+            else:
+                loss = F.binary_cross_entropy_with_logits(x_hat, target)
         else:
             loss = self.criterion(x_hat, target)
         return x_hat, loss

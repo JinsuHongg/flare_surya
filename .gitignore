@@ -6,6 +6,7 @@
 # data
 data/
 .hydra/
+*.zarr
 
 # Node artifact files
 node_modules/

@@ -449,12 +449,9 @@ class SolarFlareClsXRSDataset(SolarFlareClsDataset):
         self.xrs_data = xrs_data
         self.xrs_stat = xrs_stat
 
-        xrs_timesteps = np.unique(self.xrs_data["timestep"].values).astype(
-            "datetime64[ns]"
-        )
-        xrs_timesteps_set = set(xrs_timesteps)
-        print(f"XRS timesteps: {len(xrs_timesteps_set)}")
-        new_valid_indices = [t for t in self.valid_indices if t in xrs_timesteps_set]
+        xrs_timesteps = pd.to_datetime(xrs_data["timestep"].values)
+        print(f"XRS timesteps: {len(xrs_timesteps)}")
+        new_valid_indices = [t for t in self.valid_indices if t in xrs_timesteps]
         print(f"After filtering: {len(new_valid_indices)}")
         self.valid_indices = new_valid_indices
         self.adjusted_length = len(self.valid_indices)

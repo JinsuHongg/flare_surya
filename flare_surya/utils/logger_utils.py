@@ -37,10 +37,7 @@ def build_wandb(cfg):
             "finetune": cfg["backbone"]["finetune"],
             # head
             "head_type": cfg["head"]["type"],
-            "pooling_type": cfg["head"]["pooling_type"],
-            "in_channels": cfg["head"]["hyper_parameters"]["in_feature"][
-                "cls_token"
-            ],  # example
+            "pooling_type": cfg["backbone"]["pooling_type"],
             "hidden_channels": cfg["head"]["hyper_parameters"]["hidden_channels"],
             "dropout_head": cfg["head"]["hyper_parameters"]["dropout"],
         }

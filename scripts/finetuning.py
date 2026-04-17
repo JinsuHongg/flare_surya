@@ -50,7 +50,7 @@ def build_model(cfg):
         "path_weights": cfg.backbone.path_weights,
         # Put finetuning additions below this line
         "pooling_type": cfg.head.pooling_type,
-        "in_feature": cfg.head.hyper_parameters.in_feature[cfg.head.pooling_type],
+        "in_feature": cfg.head.hyper_parameters.in_feature,
         "head_type": cfg.head.type,
         "head_layer_dict": cfg.head.hyper_parameters,
         "freeze_backbone": cfg.backbone.freeze_backbone,

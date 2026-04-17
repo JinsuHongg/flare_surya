@@ -626,6 +626,8 @@ class SuryaMultiModal(BaseModule):
         # fusion parameters
         fusion_type="concat",
         fuse_embed_dim=1280,
+        # secondary encoder parameters
+        secondary_pooling_type="avg_pooling",
         # misc
         batch_size=1,
         save_test_results_path=None,
@@ -633,6 +635,7 @@ class SuryaMultiModal(BaseModule):
         super().__init__(optimizer_dict=optimizer_dict)
         self.save_hyperparameters(ignore=["optimizer_dict", "loss_dict", "lora_dict"])
         self.pooling_type = pooling_type
+        self.secondary_pooling_type = secondary_pooling_type
         self.freeze_backbone = freeze_backbone
         self.lora_dict = lora_dict
         self.test_results = {
@@ -709,6 +712,10 @@ class SuryaMultiModal(BaseModule):
         if self.pooling_type == "attention_pooling":
             self.post_fusion_pooling = nn.Linear(in_feature, 1)
 
+        # Create secondary encoder pooling layer
+        if self.secondary_pooling_type == "attention_pooling":
+            self.secondary_attn_pooling = nn.Linear(fluxformer_embed_dim, 1)
+
         self.head = SuryaHead(
             in_feature=in_feature,
             layer_type=head_type,
@@ -753,6 +760,22 @@ class SuryaMultiModal(BaseModule):
         w = torch.softmax(attn_layer(tokens), dim=1)  # [B, T, 1]
         return (w * tokens).sum(dim=1)  # [B, D]
 
+    def pool_secondary(self, tokens: torch.Tensor) -> torch.Tensor:
+        """Apply pooling strategy to secondary tokens."""
+        match self.secondary_pooling_type:
+            case "avg_pooling":
+                return tokens.mean(dim=1)
+            case "max_pooling":
+                return tokens.max(dim=1).values
+            case "attention_pooling":
+                return self._attention_pool(tokens, self.secondary_attn_pooling)
+            case "none":
+                return tokens  # keep as sequence
+            case _:
+                raise ValueError(
+                    f"Unknown secondary_pooling_type: {self.secondary_pooling_type}"
+                )
+
     def forward(self, data):
         if self.fusion.requires_pooled:
             img_tokens = self.forward_features(data)
@@ -762,7 +785,7 @@ class SuryaMultiModal(BaseModule):
         secondary_tokens = self.secondary_encoder(data["xrs"])
 
         if self.fusion.requires_pooled:
-            secondary_tokens = secondary_tokens.mean(dim=1)
+            secondary_tokens = self.pool_secondary(secondary_tokens)
 
         tokens = self.fusion(img_tokens, secondary_tokens)
 

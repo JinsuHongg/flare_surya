@@ -47,7 +47,7 @@ def build_model(cfg):
         "path_weights": cfg.backbone.path_weights,
         # Put finetuning additions below this line
         "pooling_type": cfg.head.pooling_type,
-        "in_feature": cfg.head.hyper_parameters.in_feature[cfg.head.pooling_type],
+        "in_feature": cfg.head.hyper_parameters.in_feature,
         "head_type": cfg.head.type,
         "head_layer_dict": cfg.head.hyper_parameters,
         "freeze_backbone": cfg.backbone.freeze_backbone,
@@ -67,6 +67,8 @@ def build_model(cfg):
         "fusion_type": cfg.fusion.type,
         "fuse_embed_dim": cfg.fusion.fuse_embed_dim,
         "num_heads": cfg.fusion.num_heads,
+        # Secondary encoder hyper-parameters
+        "secondary_pooling_type": cfg.secondary.pooling_type,
     }
     if cfg.etc.resume and cfg.etc.ckpt_weights_only:
         ckpt_path = os.path.join(

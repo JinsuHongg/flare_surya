@@ -78,11 +78,14 @@ fusion:
   fuse_embed_dim: 1280  # used only for gated/cross_attention
   num_heads: 8  # used only for cross_attention
 
+secondary:
+  pooling_type: avg_pooling  # "avg_pooling", "max_pooling", "attention_pooling", "none"
+
 head:
   type: mlp
   pooling_type: avg_pooling
   hyper_parameters:
-    in_feature: {"cls_token": 1280, "avg_pooling": 1280, "max_pooling": 1280, "attention_pooling": 1280}
+    in_feature: 1280
     hidden_channels: [1024, 256, 1] #[256, 64, 1]
     norm_layer: LayerNorm
     activation_layer: GELU

@@ -14,7 +14,7 @@ import torch.multiprocessing as mp
 from lightning.pytorch import Trainer
 
 from flare_surya.datamodule import SuryaFluxDataModule
-from flare_surya.models import SuryaFluxFormer
+from flare_surya.models import SuryaMultiModal
 from flare_surya.utils.logger_utils import build_wandb
 from flare_surya.utils.callbacks import build_callbacks
 
@@ -63,6 +63,10 @@ def build_model(cfg):
         "fluxformer_embed_dim": cfg.fluxformer.embed_dim,
         "fluxformer_depth": cfg.fluxformer.depth,
         "fluxformer_num_heads": cfg.fluxformer.num_heads,
+        # Fusion hyper-parameters
+        "fusion_type": cfg.fusion.type,
+        "fuse_embed_dim": cfg.fusion.fuse_embed_dim,
+        "num_heads": cfg.fusion.num_heads,
     }
     if cfg.etc.resume and cfg.etc.ckpt_weights_only:
         ckpt_path = os.path.join(
@@ -80,10 +84,10 @@ def build_model(cfg):
         lgr_logger.info(f"ckpt: {cfg.etc.ckpt_file}")
 
         # load weights and hyperparameters
-        model = SuryaFluxFormer(**model_hyperparameter)
+        model = SuryaMultiModal(**model_hyperparameter)
         model.load_state_dict(ckpt["state_dict"], strict=False)
     else:
-        model = SuryaFluxFormer(**model_hyperparameter)
+        model = SuryaMultiModal(**model_hyperparameter)
 
     return model
 

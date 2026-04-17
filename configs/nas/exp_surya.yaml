@@ -73,6 +73,11 @@ fluxformer:
   depth: 4
   num_heads: 16
 
+fusion:
+  type: concat  # "concat", "gated", or "cross_attention"
+  fuse_embed_dim: 1280  # used only for gated/cross_attention
+  num_heads: 8  # used only for cross_attention
+
 head:
   type: mlp
   pooling_type: avg_pooling

@@ -22,7 +22,8 @@ from .base import BaseModule
 from .heads import SuryaHead
 from .baselines_models import ResNet18
 from .criterions import BinaryFocalLoss, FlareSSMLoss, get_criterion
-from .flux_models import FluxFormer
+from .flux_models import SecondaryEncoder
+from .fusion import FusionModule
 
 
 class FlareSurya(BaseModule):
@@ -581,7 +582,7 @@ class BaseLineModel(BaseModule):
         self.test_results = {"timestamps": [], "predictions": [], "targets": []}
 
 
-class SuryaFluxFormer(BaseModule):
+class SuryaMultiModal(BaseModule):
     def __init__(
         self,
         img_size,
@@ -622,6 +623,9 @@ class SuryaFluxFormer(BaseModule):
         optimizer_dict,
         loss_dict,
         threshold=0.5,
+        # fusion parameters
+        fusion_type="concat",
+        fuse_embed_dim=1280,
         # misc
         batch_size=1,
         save_test_results_path=None,
@@ -663,12 +667,19 @@ class SuryaFluxFormer(BaseModule):
             finetune=finetune,
         )
 
-        self.xrs_encoder = FluxFormer(
+        self.secondary_encoder = SecondaryEncoder(
             in_channels=in_channels,
             seq_len=seq_len,
             embed_dim=fluxformer_embed_dim,
             depth=fluxformer_depth,
             num_heads=fluxformer_num_heads,
+        )
+
+        self.fusion = FusionModule(
+            fusion_type=fusion_type,
+            img_dim=embed_dim,
+            secondary_dim=fluxformer_embed_dim,
+            fuse_dim=fuse_embed_dim,
         )
 
         # load pretrained weights for backbone
@@ -692,13 +703,19 @@ class SuryaFluxFormer(BaseModule):
             self.attn_pooling = nn.Linear(in_feature, 1)
 
         # define head
+        in_feature = self.fusion.output_dim
+
+        # Create post-fusion pooling layer for cross_attention fusion
+        if self.pooling_type == "attention_pooling":
+            self.post_fusion_pooling = nn.Linear(in_feature, 1)
+
         self.head = SuryaHead(
             in_feature=in_feature,
             layer_type=head_type,
             layer_dict=head_layer_dict,
         )
 
-        self.criterion = get_criterion(loss_dict, module_name="SuryaFluxFormer")
+        self.criterion = get_criterion(loss_dict, module_name="SuryaMultiModal")
 
         # Initialize the metrics instances
         self.train_metrics = DistributedClassificationMetrics(threshold=threshold)
@@ -712,7 +729,10 @@ class SuryaFluxFormer(BaseModule):
         Reduces repetition across train/val/test steps.
         """
         tokens = self.backbone(data)
+        return self.pool_tokens(tokens)
 
+    def pool_tokens(self, tokens: torch.Tensor) -> torch.Tensor:
+        """Apply pooling strategy to tokens."""
         match self.pooling_type:
             case "cls_token":
                 return tokens[:, 0, :]
@@ -721,16 +741,36 @@ class SuryaFluxFormer(BaseModule):
             case "max_pooling":
                 return tokens.max(dim=1).values
             case "attention_pooling":
-                w = torch.softmax(self.attn_pooling(tokens), dim=1)  # [B, T, 1]
-                return (w * tokens).sum(dim=1)  # [B, D]
+                return self._attention_pool(tokens)
             case _:
                 raise ValueError(f"Unknown pooling_type: {self.pooling_type}")
 
+    def _attention_pool(
+        self, tokens: torch.Tensor, attn_layer: nn.Module | None = None
+    ) -> torch.Tensor:
+        """Apply attention-based pooling."""
+        attn_layer = attn_layer or self.attn_pooling
+        w = torch.softmax(attn_layer(tokens), dim=1)  # [B, T, 1]
+        return (w * tokens).sum(dim=1)  # [B, D]
+
     def forward(self, data):
-        img_tokens = self.forward_features(data)
-        xray_tokens = self.xrs_encoder(data["xrs"])
-        xray_tokens = xray_tokens.mean(dim=1)
-        tokens = torch.cat([img_tokens, xray_tokens], dim=1)
+        if self.fusion.requires_pooled:
+            img_tokens = self.forward_features(data)
+        else:
+            img_tokens = self.backbone(data)
+
+        secondary_tokens = self.secondary_encoder(data["xrs"])
+
+        if self.fusion.requires_pooled:
+            secondary_tokens = secondary_tokens.mean(dim=1)
+
+        tokens = self.fusion(img_tokens, secondary_tokens)
+
+        if not self.fusion.requires_pooled:
+            if self.pooling_type == "attention_pooling":
+                tokens = self._attention_pool(tokens, self.post_fusion_pooling)
+            else:
+                tokens = self.pool_tokens(tokens)
 
         if isinstance(self.criterion, FlareSSMLoss):
             x_hat, h = self.head.forward_with_hidden(tokens)

@@ -6,6 +6,10 @@ data:
   leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
   test_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/test_M24w.csv
 
+fusion:
+  type: concat  # "concat", "gated", or "cross_attention"
+  fuse_embed_dim: 1280  # used only for gated/cross_attention
+
 head:
   pooling_type: attention_pooling
   hyper_parameters:

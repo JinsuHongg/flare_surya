@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 
-class ResidualFluxBlock(nn.Module):
+class ResidualSequenceBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1):
         super().__init__()
 
@@ -33,14 +33,14 @@ class ResidualFluxBlock(nn.Module):
         return self.act(out)
 
 
-class FluxTokenizer(nn.Module):
+class SecondaryTokenizer(nn.Module):
     def __init__(self, in_channels=2, embed_dim=768):
         super().__init__()
-        self.layer1 = ResidualFluxBlock(in_channels, embed_dim, kernel_size=7)
-        self.layer2 = ResidualFluxBlock(embed_dim, embed_dim, kernel_size=5)
+        self.layer1 = ResidualSequenceBlock(in_channels, embed_dim, kernel_size=7)
+        self.layer2 = ResidualSequenceBlock(embed_dim, embed_dim, kernel_size=5)
 
     def forward(self, x):
-        # x: [Batch, 1, 1440]
+        # x: [Batch, 1, seq_len]
         x = self.layer1(x)
         x = self.layer2(x)
 
@@ -72,7 +72,7 @@ class ViTBlock1D(nn.Module):
         )
 
     def forward(self, x):
-        # x shape: [Batch, 1440, 768]
+        # x shape: [Batch, seq_len, embed_dim]
 
         # 1. Attention path with Residual
         x_norm = self.norm1(x)
@@ -85,7 +85,7 @@ class ViTBlock1D(nn.Module):
         return x
 
 
-class TimeseriesTransformerEncoder(nn.Module):
+class SequenceEncoder(nn.Module):
     def __init__(self, seq_len=1440, embed_dim=768, depth=4, num_heads=12):
         super().__init__()
 
@@ -110,7 +110,7 @@ class TimeseriesTransformerEncoder(nn.Module):
         nn.init.trunc_normal_(self.pos_embed, std=0.02)
 
     def forward(self, x):
-        # x is the output from FluxTokenizer: [Batch, 1440, 768]
+        # x is the output from SecondaryTokenizer: [Batch, seq_len, embed_dim]
 
         # Add positional encoding
         x = x + self.pos_embed
@@ -123,15 +123,13 @@ class TimeseriesTransformerEncoder(nn.Module):
         return self.norm(x)
 
 
-class FluxFormer(nn.Module):
+class SecondaryEncoder(nn.Module):
     def __init__(
         self, in_channels=1, seq_len=1440, embed_dim=768, depth=4, num_heads=12
     ):
         super().__init__()
-        self.tokenizer = FluxTokenizer(in_channels, embed_dim)
-        self.encoder = TimeseriesTransformerEncoder(
-            seq_len, embed_dim, depth, num_heads
-        )
+        self.tokenizer = SecondaryTokenizer(in_channels, embed_dim)
+        self.encoder = SequenceEncoder(seq_len, embed_dim, depth, num_heads)
 
     def forward(self, x):
         token = self.tokenizer(x)

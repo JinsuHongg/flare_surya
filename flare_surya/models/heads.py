@@ -3,12 +3,7 @@ from torchvision.ops import MLP
 
 
 class SuryaHead(nn.Module):
-    def __init__(
-            self,
-            in_feature,
-            layer_type, 
-            layer_dict
-            ):
+    def __init__(self, in_feature, layer_type, layer_dict):
         super().__init__()
 
         # Registry for YAML → PyTorch class mapping
@@ -33,9 +28,11 @@ class SuryaHead(nn.Module):
                     in_channels=in_feature,
                     hidden_channels=layer_dict["hidden_channels"],
                     norm_layer=NORM_LAYERS[layer_dict.get("norm_layer", None)],
-                    activation_layer=ACTIVATIONS[layer_dict.get("activation_layer", None)],
+                    activation_layer=ACTIVATIONS[
+                        layer_dict.get("activation_layer", None)
+                    ],
                     bias=layer_dict.get("bias", True),
-                    dropout=layer_dict.get("dropout", 0.0)
+                    dropout=layer_dict.get("dropout", 0.0),
                 )
             case _:
                 raise ValueError(f"Unknown layer type: {layer_type}")
@@ -63,13 +60,13 @@ class CrossModalFusion(nn.Module):
         self.cross_attn = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True)
         self.norm = nn.LayerNorm(embed_dim)
 
-    def forward(self, xray, img):
-        # The X-ray sequence "looks at" the massive Image sequence
-        attn_output, _ = self.cross_attn(query=xray, key=img, value=img)
-        
+    def forward(self, secondary, img):
+        # The secondary sequence "looks at" the image sequence
+        attn_output, _ = self.cross_attn(query=secondary, key=img, value=img)
+
         # Add residual connection and normalize
-        fused_xray = self.norm(xray + attn_output)
-        
+        fused_secondary = self.norm(secondary + attn_output)
+
         # Output shape is strictly tied to the Query shape
-        # Returns: [Batch, 1440, 1280]
-        return fused_xray
+        # Returns: [Batch, seq_len, embed_dim]
+        return fused_secondary

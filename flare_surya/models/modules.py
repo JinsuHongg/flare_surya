@@ -211,7 +211,7 @@ class FlareSurya(BaseModule):
 
         # Log the computed metrics
         self.log_dict(
-            {f"train/step_{k}": v.float() for k, v in metrics.items()},
+            {f"train/{k}": v.float() for k, v in metrics.items()},
             on_step=False,
             on_epoch=True,
             prog_bar=False,
@@ -444,7 +444,7 @@ class BaseLineModel(BaseModule):
 
         # Log the computed metrics
         self.log_dict(
-            {f"train/step_{k}": v.float() for k, v in metrics.items()},
+            {f"train/{k}": v.float() for k, v in metrics.items()},
             on_step=False,
             on_epoch=True,
             prog_bar=False,
@@ -847,7 +847,7 @@ class SuryaMultiModal(BaseModule):
 
         # Log the computed metrics
         self.log_dict(
-            {f"train/step_{k}": v.float() for k, v in metrics.items()},
+            {f"train/{k}": v.float() for k, v in metrics.items()},
             on_step=False,
             on_epoch=True,
             prog_bar=False,

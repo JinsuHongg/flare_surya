@@ -169,6 +169,7 @@ wandb:
   save_dir: ../results
   entity: gsu-dmlab
   project: helio-fm
+  group: null
   log_model: false
   notes: "simple mlp head"
   offline: false

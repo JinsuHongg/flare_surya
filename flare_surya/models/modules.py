@@ -1,16 +1,17 @@
 import os
 import time
-from functools import partial
 
+import numpy as np
 import pandas as pd
 import torch
+import xarray as xr
 import torch.nn as nn
 import torch.nn.functional as F
+import wandb
 from loguru import logger
 from peft import LoraConfig, get_peft_model
 from terratorch_surya.downstream_examples.solar_flare_forecasting.models import (
     AlexNetClassifier,
-    MobileNetClassifier,
     ResNet18Classifier,
     ResNet34Classifier,
     ResNet50Classifier,
@@ -20,8 +21,7 @@ from terratorch_surya.models.helio_spectformer import HelioSpectFormer
 from flare_surya.metrics.classification_metrics import DistributedClassificationMetrics
 from .base import BaseModule
 from .heads import SuryaHead
-from .baselines_models import ResNet18
-from .criterions import BinaryFocalLoss, FlareSSMLoss, get_criterion
+from .criterions import FlareSSMLoss, get_criterion
 from .secondary_modality_models import SecondaryEncoder
 from .fusion import FusionModule
 
@@ -61,6 +61,7 @@ class FlareSurya(BaseModule):
         loss_dict,
         threshold=0.5,
         # misc
+        save_embeddings_path=None,
         save_test_results_path=None,
     ):
         super().__init__(optimizer_dict=optimizer_dict)
@@ -126,6 +127,10 @@ class FlareSurya(BaseModule):
         self.val_metrics = DistributedClassificationMetrics(threshold=threshold)
         self.test_metrics = DistributedClassificationMetrics(threshold=threshold)
         self.threshold = threshold
+        self.save_embeddings_path = save_embeddings_path
+        if save_embeddings_path is not None:
+            self.embeddings_buffer = {"timestamps": [], "embeddings": []}
+            self.embeddings_zarr = None
 
     def forward_features(self, data):
         """
@@ -298,6 +303,71 @@ class FlareSurya(BaseModule):
 
         return loss
 
+    def predict_step(self, batch, batch_idx):
+        data, metadata = batch
+        tokens = self.backbone(data)
+
+        timestamps = metadata["timestamps_input"][0].detach().cpu().numpy().tolist()
+        embeddings = tokens.detach().cpu().numpy()
+
+        if self.save_embeddings_path:
+            zarr_path = self.save_embeddings_path
+
+            # Check if zarr file exists
+            if not os.path.exists(zarr_path):
+                # Create new zarr file with xarray
+                ds = xr.Dataset(
+                    {
+                        "embeddings": (["time", "token_dim"], embeddings),
+                        "timestamps": (["time"], np.array(timestamps, dtype=np.int64)),
+                    }
+                )
+                ds.to_zarr(zarr_path, mode="w")
+                logger.info(f"Created new zarr file: {zarr_path}")
+            else:
+                # Load existing zarr file and check which timestamps are new
+                existing_ds = xr.open_zarr(zarr_path)
+                existing_timestamps = existing_ds["timestamps"].values
+                current_timestamps_arr = np.array(timestamps, dtype=np.int64)
+
+                # Find timestamps that don't exist yet
+                existing_set = set(existing_timestamps)
+                new_mask = np.array(
+                    [ts not in existing_set for ts in current_timestamps_arr]
+                )
+
+                # Only save new timestamps
+                new_timestamps = current_timestamps_arr[new_mask]
+                new_embeddings = embeddings[new_mask]
+
+                if len(new_timestamps) > 0:
+                    # Append new data using xarray
+                    # Load existing data, concat with new data, and save
+                    existing_embeddings = existing_ds["embeddings"].values
+                    combined_embeddings = np.concatenate(
+                        [existing_embeddings, new_embeddings], axis=0
+                    )
+                    combined_timestamps = np.concatenate(
+                        [existing_timestamps, new_timestamps]
+                    )
+
+                    ds = xr.Dataset(
+                        {
+                            "embeddings": (["time", "token_dim"], combined_embeddings),
+                            "timestamps": (["time"], combined_timestamps),
+                        }
+                    )
+                    ds.to_zarr(zarr_path, mode="w")
+                    logger.info(
+                        f"Appended {len(new_timestamps)} new embeddings to {zarr_path}"
+                    )
+                else:
+                    logger.info(
+                        f"All {len(timestamps)} timestamps already exist in {zarr_path}"
+                    )
+
+        return {"embeddings": tokens}
+
     def on_test_epoch_end(self):
         metrics = self.test_metrics.compute()
         print("\n=== Test Metrics ===")
@@ -307,6 +377,85 @@ class FlareSurya(BaseModule):
         self.log_dict(
             {f"test/{k}": v.float() for k, v in metrics.items()}, sync_dist=False
         )
+
+        # Log ROC and PR curves to wandb
+        if self.test_results["predictions"]:
+            y_true = np.array(self.test_results["targets"])
+            y_probas = np.array(self.test_results["predictions"])
+
+            # Log ROC curve
+            self.log({"test/roc_curve": wandb.plot.roc_curve(y_true, y_probas)})
+
+            # Log PR curve
+            self.log({"test/pr_curve": wandb.plot.pr_curve(y_true, y_probas)})
+
+            # Compute skill scores at multiple thresholds
+            thresholds = np.linspace(0.01, 0.99, 99)
+            tss_scores = []
+            hss_scores = []
+            f1_macro_scores = []
+
+            for thresh in thresholds:
+                preds = (y_probas > thresh).astype(int)
+
+                tp = np.sum((preds == 1) & (y_true == 1))
+                tn = np.sum((preds == 0) & (y_true == 0))
+                fp = np.sum((preds == 1) & (y_true == 0))
+                fn = np.sum((preds == 0) & (y_true == 1))
+
+                eps = 1e-7
+
+                # TSS = Sensitivity + Specificity - 1
+                sensitivity = tp / (tp + fn + eps)
+                specificity = tn / (tn + fp + eps)
+                tss = sensitivity + specificity - 1
+                tss_scores.append(tss)
+
+                # HSS
+                numerator = 2 * (tp * tn - fn * fp)
+                denominator = (tp + fn) * (fn + tn) + (tp + fp) * (tn + fp)
+                hss = numerator / (denominator + eps)
+                hss_scores.append(hss)
+
+                # F1-macro (average of F1 for each class)
+                precision = tp / (tp + fp + eps)
+                recall = tp / (tp + fn + eps)
+                f1_pos = 2 * (precision * recall) / (precision + recall + eps)
+
+                # F1 for negative class
+                precision_neg = tn / (tn + fn + eps)
+                recall_neg = tn / (tn + fp + eps)
+                f1_neg = (
+                    2
+                    * (precision_neg * recall_neg)
+                    / (precision_neg + recall_neg + eps)
+                )
+
+                f1_macro = (f1_pos + f1_neg) / 2
+                f1_macro_scores.append(f1_macro)
+
+            # Log skill scores table and line plot to wandb
+            df = pd.DataFrame(
+                {
+                    "threshold": thresholds,
+                    "TSS": tss_scores,
+                    "HSS": hss_scores,
+                    "F1_macro": f1_macro_scores,
+                }
+            )
+            self.log({"test/threshold_df": wandb.Table(dataframe=df)})
+            self.log(
+                {
+                    "test/threshold_vs_scores": wandb.plot.line_series(
+                        xs=thresholds,
+                        ys=[tss_scores, hss_scores, f1_macro_scores],
+                        keys=["TSS", "HSS", "F1_macro"],
+                        title="Threshold vs Skill Scores",
+                        xname="Threshold",
+                    )
+                }
+            )
+
         self.test_metrics.reset()
         self._flush_test_results()
 
@@ -531,6 +680,85 @@ class BaseLineModel(BaseModule):
         self.log_dict(
             {f"test/{k}": v.float() for k, v in metrics.items()}, sync_dist=False
         )
+
+        # Log ROC and PR curves to wandb
+        if self.test_results["predictions"]:
+            y_true = np.array(self.test_results["targets"])
+            y_probas = np.array(self.test_results["predictions"])
+
+            # Log ROC curve
+            self.log({"test/roc_curve": wandb.plot.roc_curve(y_true, y_probas)})
+
+            # Log PR curve
+            self.log({"test/pr_curve": wandb.plot.pr_curve(y_true, y_probas)})
+
+            # Compute skill scores at multiple thresholds
+            thresholds = np.linspace(0.01, 0.99, 99)
+            tss_scores = []
+            hss_scores = []
+            f1_macro_scores = []
+
+            for thresh in thresholds:
+                preds = (y_probas > thresh).astype(int)
+
+                tp = np.sum((preds == 1) & (y_true == 1))
+                tn = np.sum((preds == 0) & (y_true == 0))
+                fp = np.sum((preds == 1) & (y_true == 0))
+                fn = np.sum((preds == 0) & (y_true == 1))
+
+                eps = 1e-7
+
+                # TSS = Sensitivity + Specificity - 1
+                sensitivity = tp / (tp + fn + eps)
+                specificity = tn / (tn + fp + eps)
+                tss = sensitivity + specificity - 1
+                tss_scores.append(tss)
+
+                # HSS
+                numerator = 2 * (tp * tn - fn * fp)
+                denominator = (tp + fn) * (fn + tn) + (tp + fp) * (tn + fp)
+                hss = numerator / (denominator + eps)
+                hss_scores.append(hss)
+
+                # F1-macro (average of F1 for each class)
+                precision = tp / (tp + fp + eps)
+                recall = tp / (tp + fn + eps)
+                f1_pos = 2 * (precision * recall) / (precision + recall + eps)
+
+                # F1 for negative class
+                precision_neg = tn / (tn + fn + eps)
+                recall_neg = tn / (tn + fp + eps)
+                f1_neg = (
+                    2
+                    * (precision_neg * recall_neg)
+                    / (precision_neg + recall_neg + eps)
+                )
+
+                f1_macro = (f1_pos + f1_neg) / 2
+                f1_macro_scores.append(f1_macro)
+
+            # Log skill scores table and line plot to wandb
+            df = pd.DataFrame(
+                {
+                    "threshold": thresholds,
+                    "TSS": tss_scores,
+                    "HSS": hss_scores,
+                    "F1_macro": f1_macro_scores,
+                }
+            )
+            self.log({"test/threshold_df": wandb.Table(dataframe=df)})
+            self.log(
+                {
+                    "test/threshold_vs_scores": wandb.plot.line_series(
+                        xs=thresholds,
+                        ys=[tss_scores, hss_scores, f1_macro_scores],
+                        keys=["TSS", "HSS", "F1_macro"],
+                        title="Threshold vs Skill Scores",
+                        xname="Threshold",
+                    )
+                }
+            )
+
         self.test_metrics.reset()
         self._flush_test_results()
 
@@ -933,6 +1161,85 @@ class SuryaMultiModal(BaseModule):
         self.log_dict(
             {f"test/{k}": v.float() for k, v in metrics.items()}, sync_dist=False
         )
+
+        # Log ROC and PR curves to wandb
+        if self.test_results["predictions"]:
+            y_true = np.array(self.test_results["targets"])
+            y_probas = np.array(self.test_results["predictions"])
+
+            # Log ROC curve
+            self.log({"test/roc_curve": wandb.plot.roc_curve(y_true, y_probas)})
+
+            # Log PR curve
+            self.log({"test/pr_curve": wandb.plot.pr_curve(y_true, y_probas)})
+
+            # Compute skill scores at multiple thresholds
+            thresholds = np.linspace(0.01, 0.99, 99)
+            tss_scores = []
+            hss_scores = []
+            f1_macro_scores = []
+
+            for thresh in thresholds:
+                preds = (y_probas > thresh).astype(int)
+
+                tp = np.sum((preds == 1) & (y_true == 1))
+                tn = np.sum((preds == 0) & (y_true == 0))
+                fp = np.sum((preds == 1) & (y_true == 0))
+                fn = np.sum((preds == 0) & (y_true == 1))
+
+                eps = 1e-7
+
+                # TSS = Sensitivity + Specificity - 1
+                sensitivity = tp / (tp + fn + eps)
+                specificity = tn / (tn + fp + eps)
+                tss = sensitivity + specificity - 1
+                tss_scores.append(tss)
+
+                # HSS
+                numerator = 2 * (tp * tn - fn * fp)
+                denominator = (tp + fn) * (fn + tn) + (tp + fp) * (tn + fp)
+                hss = numerator / (denominator + eps)
+                hss_scores.append(hss)
+
+                # F1-macro (average of F1 for each class)
+                precision = tp / (tp + fp + eps)
+                recall = tp / (tp + fn + eps)
+                f1_pos = 2 * (precision * recall) / (precision + recall + eps)
+
+                # F1 for negative class
+                precision_neg = tn / (tn + fn + eps)
+                recall_neg = tn / (tn + fp + eps)
+                f1_neg = (
+                    2
+                    * (precision_neg * recall_neg)
+                    / (precision_neg + recall_neg + eps)
+                )
+
+                f1_macro = (f1_pos + f1_neg) / 2
+                f1_macro_scores.append(f1_macro)
+
+            # Log skill scores table and line plot to wandb
+            df = pd.DataFrame(
+                {
+                    "threshold": thresholds,
+                    "TSS": tss_scores,
+                    "HSS": hss_scores,
+                    "F1_macro": f1_macro_scores,
+                }
+            )
+            self.log({"test/threshold_df": wandb.Table(dataframe=df)})
+            self.log(
+                {
+                    "test/threshold_vs_scores": wandb.plot.line_series(
+                        xs=thresholds,
+                        ys=[tss_scores, hss_scores, f1_macro_scores],
+                        keys=["TSS", "HSS", "F1_macro"],
+                        title="Threshold vs Skill Scores",
+                        xname="Threshold",
+                    )
+                }
+            )
+
         self.test_metrics.reset()
         self._flush_test_results()
 

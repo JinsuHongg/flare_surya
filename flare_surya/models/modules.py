@@ -658,6 +658,7 @@ class SuryaMultiModal(BaseModule):
             img_dim=embed_dim,
             secondary_dim=secondary_embed_dim,
             fuse_dim=fuse_embed_dim,
+            num_heads=secondary_num_heads,
         )
 
         # load pretrained weights for backbone

@@ -14,6 +14,7 @@ def build_wandb(cfg):
         notes=cfg["wandb"]["notes"],
         tags=cfg["wandb"]["tag"],
         name=cfg.wandb.name,
+        group=cfg.wandb.group,
         config=cfg_dict,
         id=cfg.wandb.id,
         resume=cfg.wandb.resume,

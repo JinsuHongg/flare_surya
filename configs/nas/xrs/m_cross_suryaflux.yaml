@@ -10,7 +10,7 @@ backbone:
   pooling_type: attention_pooling
 
 fusion:
-  type: concat  # "concat", "gated", or "cross_attention"
+  type: cross_attention  # "concat", "gated", or "cross_attention"
   fuse_embed_dim: 1280  # used only for gated/cross_attention
   num_heads: 8  # used only for cross_attention
 
@@ -38,16 +38,17 @@ optimizer:
 etc:
   phase: train # test
   resume: false
-  ckpt_dir: ../results/check_point/suryaflux/daily_m/
-  ckpt_name_tag: flux_daily_m_crossen
+  ckpt_dir: ../results/check_point/suryaflux/daily_m/cross/
+  ckpt_name_tag: flux_daily_m_crossen_cross
   ckpt_file: last.ckpt
   ckpt_weights_only: false
   max_epochs: 50
 
 wandb:
-  name: flux_daily_m_crossen_nasgh
-  id: flux_daily_m_crossen_nasgh
+  name: flux_daily_m_crossen_cross_nasgh
+  id: flux_daily_m_crossen_cross_nasgh
+  group: xrs
   resume: allow
   notes: "xray flux head"
   offline: false
-  tag: ["fluxhead", "M", "daily", "nasgh", "crossen"] # backbone model, head type, task
+  tag: ["fluxhead", "M", "daily", "nasgh", "crossen", "cross"] # backbone model, head type, task

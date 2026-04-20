@@ -5,7 +5,12 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-CONFIGS=("${@:-m_suryaflux}")
+# Default configs if none provided
+if [ "$#" -eq 0 ]; then
+  CONFIGS=("m_concat" "m_cross" "m_gated")
+else
+  CONFIGS=("$@")
+fi
 
 echo "Launching ${#CONFIGS[@]} SuryaFlux finetuning jobs..."
 echo "Configs: ${CONFIGS[*]}"

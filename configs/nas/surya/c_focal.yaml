@@ -5,6 +5,8 @@ data:
   valid_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/val_C24w.csv
   leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/leaky_val_C24w.csv
   test_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/test_C24w.csv
+  undersample_factor: null
+  seed: null
 
 backbone:
   pooling_type: attention_pooling

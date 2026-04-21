@@ -37,8 +37,8 @@ data:
   use_simplecache: true
   s3_cache_dir: /tmp/helio_s3_cache
   label_type: label_max
-  undersample_factor: 1
-  seed: 1004
+  undersample_factor: null
+  seed: null
 
 backbone:
   model_name: resnet18 # resnet18, resnet34, resnet50, alexnet,

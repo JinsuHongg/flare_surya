@@ -21,9 +21,13 @@ class FlareDataModule(L.LightningDataModule):
         super().__init__()
         self.cfg = cfg
 
-        # Undersampling parameters
-        self.undersample_factor = self.cfg["data"].get("undersample_factor")
-        self.seed = self.cfg["data"].get("seed")
+        # Undersampling parameters - use direct access with validation
+        try:
+            self.undersample_factor = self.cfg["data"]["undersample_factor"]
+            self.seed = self.cfg["data"]["seed"]
+        except KeyError:
+            self.undersample_factor = None
+            self.seed = None
         lgr_logger.info(
             f"Undersampling: factor={self.undersample_factor}, seed={self.seed}"
         )

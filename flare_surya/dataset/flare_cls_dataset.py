@@ -557,6 +557,8 @@ class SolarFlareClsXRSDataset(SolarFlareClsDataset):
         undersample_factor: Optional[float] = None,
         seed: Optional[int] = None,
     ):
+        # Set undersample_factor BEFORE calling parent init so logging shows correct value
+        self.undersample_factor = undersample_factor
         # Pass label_type and seed to parent, but NOT undersample_factor
         # since we want to apply it after XRS filtering
         super().__init__(
@@ -578,7 +580,6 @@ class SolarFlareClsXRSDataset(SolarFlareClsDataset):
             label_type=label_type,
             seed=seed,
         )
-        self.undersample_factor = undersample_factor
         self.xrs_data = xrs_data
         self.xrs_stat = xrs_stat
 

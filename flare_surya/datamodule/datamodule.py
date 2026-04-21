@@ -42,6 +42,8 @@ class FlareDataModule(L.LightningDataModule):
             flare_index_path=flare_index_path,
             pooling=self.cfg["data"]["pooling"],
             random_vert_flip=self.cfg["data"]["random_vert_flip"],
+            undersample_factor=self.cfg["data"].get("undersample_factor"),
+            seed=self.cfg["data"].get("seed"),
         )
 
     def setup(self, stage: str):

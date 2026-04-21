@@ -1,6 +1,6 @@
+# @package _global_
+
 defaults:
-  - _self_
-  - exp: null
   - override hydra/job_logging: disabled
   - override hydra/hydra_logging: disabled
 
@@ -14,17 +14,17 @@ data:
   train_data_path: ../data/surya-bench_sdo.csv
   valid_data_path: ../data/surya-bench_sdo.csv
   test_data_path: ../data/surya-bench_sdo.csv
-  train_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/train_C24w_freq8.csv
-  valid_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/val_C24w.csv
-  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/leaky_val_C24w.csv
-  test_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/test_C24w.csv
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/train_M24w_freq8.csv
+  valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/val_M24w.csv
+  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
+  test_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/test_M24w.csv
   channels: ['aia94', 'aia131', 'aia171', 'aia193', 'aia211', 'aia304', 'aia335', 'aia1600', 'hmi_m', 'hmi_bx', 'hmi_by', 'hmi_bz', 'hmi_v']
   time_delta_input_minutes: [-60,0]
   time_delta_target_minutes: 0
   n_input_timestamps: 2 # must be equal to time_delta_input_minutes
   is_downstream: true
   batch_size: 1
-  num_data_workers: 8
+  num_data_workers: 6
   pin_memory: true
   prefetch_factor: 2
   persistent_workers: true
@@ -36,12 +36,6 @@ data:
   use_leaky_validation: false
   use_simplecache: true
   s3_cache_dir: /tmp/helio_s3_cache
-  label_type: label_max
-  undersample_factor: 1
-  seed: 1004
-  #xray data path
-  xrs_zarr_path: ../data/xrs_24hour_slices_g15_g16_merged.zarr
-  xrs_stat_path: ../data/xrs_stat.yaml
 
 backbone:
   img_size: 4096
@@ -65,23 +59,10 @@ backbone:
   init_weights: false
   checkpoint_layers: [0,1,2,3,4,5,6,7,8,9]
   nglo: 0
-  # dtype: float32
+  dtype: float32
   freeze_backbone: True
   path_weights: ../data/Surya-1.0/surya.366m.v1.pt
-  pooling_type: avg_pooling
-
-secondary:
-  in_channels: 2
-  seq_len: 1440
-  embed_dim: 1280
-  depth: 4
-  num_heads: 16
-  pooling_type: avg_pooling  # "avg_pooling", "max_pooling", "attention_pooling", "none"
-
-fusion:
-  type: concat  # "concat", "gated", or "cross_attention"
-  fuse_embed_dim: 1280  # used only for gated/cross_attention
-  num_heads: 8  # used only for cross_attention
+  pooling_type: attention_pooling
 
 head:
   type: mlp
@@ -113,14 +94,13 @@ classifier_metrics:
     metrics_to_report: ['accuracy', 'precision', 'recall', 'f1']
 
 loss:
-  type: cross_entropy
+  type: focal 
   cross_entropy:
     class_weights: [1.0, 1.0]
   focal:
     alpha: 0.75
     gamma: 2.0
     reduction: mean
-    label_smoothing: 0.0
   flaressm:
     class_counts: [45000, 5000]  # [N_neg, N_pos] from your training set # please check manually
     lambda_bss: 3.0
@@ -129,8 +109,7 @@ loss:
 optimizer:
   type: adamw
   lr: 1e-5
-  weight_decay: 0.05
-  eps: 1e-6
+  weight_decay: 0.5
   scheduler:
       use: cosine_warmup # The switch
       monitor: val_hss 
@@ -145,39 +124,36 @@ optimizer:
         patience: 10
 
 etc:
-  phase: train # test
+  phase: test # test
   resume: true
-  ckpt_dir: ../results/check_point/surya_flare/8hour_c/
-  ckpt_name_tag: mlp_8hour_c
-  ckpt_file: last.ckpt
+  ckpt_dir: ../results/check_point/best/
+  ckpt_name_tag: mlp_daily_m_test
+  ckpt_file: mlp_daily_zarr_best.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ../results/
+  save_test_results_path: ../results/surya_test_result.csv
   precision: bf16-mixed #16-mixed
   accelerator: gpu
   devices: 1 #[0, 1, 2, 3]
   num_nodes: 1
-  strategy: auto #auto, ddp, fsdp
+  strategy: ddp #auto, ddp, fsdp
   max_epochs: 300
   limit_train_batches: null
   limit_val_batches: null
   accumulate_grad_batches: 64
   enable_version_counter: False
-  gradient_clip_val: 1.0
-  gradient_clip_algorithm: norm
 
 wandb:
-  name: mlp_8hour_c_nasgh
-  id: mlp_8hour_c_nasgh
+  name: mlp_daily_M_nasgh_test
+  id: mlp_daily_M_nasgh_test
   resume: allow
   save_dir: ../results
   entity: gsu-dmlab
   project: helio-fm
-  group: null
   log_model: false
   notes: "simple mlp head"
   offline: false
   save_code: false
-  tag: ["mlp", "C", "8hour", "nasgh"] # backbone model, head type, task
+  tag: ["mlp", "M", "8hour", "nasgh", "test"] # backbone model, head type, task
 
 use_latitude_in_learned_flow: false
 loss_weights: [] # [] or list of weights per channel

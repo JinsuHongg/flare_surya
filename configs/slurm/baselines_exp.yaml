@@ -31,6 +31,9 @@ data:
   scalers: null
   class_names: ["FL", "NFL"]
   use_leaky_validation: false
+  label_type: label_max
+  undersample_factor: 1
+  seed: 1004
 
 backbone:
   model_name: alexnet # resnet18, resnet34, resnet50, alexnet,

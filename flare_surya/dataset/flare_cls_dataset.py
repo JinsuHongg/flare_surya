@@ -8,6 +8,7 @@ import torch
 import xarray as xr
 from omegaconf import OmegaConf, DictConfig
 from typing import Optional
+from numpy.random import default_rng
 from terratorch_surya.datasets.helio import HelioNetCDFDataset
 
 from flare_surya.dataset.helio_aws import HelioNetCDFDatasetAWS
@@ -45,7 +46,13 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
         phase="train",
         pooling: int | None = None,
         random_vert_flip: bool = False,
+        label_type: str = "label_max",
+        undersample_factor: Optional[float] = None,
+        seed: Optional[int] = None,
     ):
+        self.label_type = label_type
+        self.undersample_factor = undersample_factor
+        self.seed = seed
         self.flare_index = pd.read_csv(flare_index_path)
         self.flare_index["timestamp"] = pd.to_datetime(
             self.flare_index["timestamp"]
@@ -72,12 +79,75 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
         self.valid_indices = self.filter_valid_indices()
         self.adjusted_length = len(self.valid_indices)
 
+        # Apply undersampling for training phase
+        if self.phase == "train" and self.undersample_factor is not None:
+            self.valid_indices = self._apply_undersampling(
+                self.flare_index,
+                self.valid_indices,
+                self.label_type,
+                self.undersample_factor,
+                self.seed,
+            )
+            self.adjusted_length = len(self.valid_indices)
+
     def filter_valid_indices(self) -> list:
         valid_indices = super().filter_valid_indices()
 
         valid_indices = [t for t in valid_indices if t in self.flare_index.index]
 
         return valid_indices
+
+    @staticmethod
+    def _apply_undersampling(
+        flare_index: pd.DataFrame,
+        valid_indices: list,
+        label_type: str,
+        undersample_factor: float,
+        seed: int | None,
+    ) -> list:
+        """Apply undersampling to balance the dataset.
+
+        Args:
+            flare_index: The flare index DataFrame containing labels.
+            valid_indices: List of valid indices (timestamps).
+            label_type: The label column to use ('label_max' or 'label_cum').
+            undersample_factor: Ratio of majority to minority samples.
+                E.g., 2.0 means 2x non-flaring samples per flaring sample.
+            seed: Random seed for reproducibility.
+
+        Returns:
+            New list of indices with undersampling applied (if applicable).
+        """
+        # Separate majority (label=0) and minority (label>0) indices
+        majority_indices = []
+        minority_indices = []
+
+        for idx in valid_indices:
+            label = flare_index.loc[idx, label_type]
+            if label == 0:
+                majority_indices.append(idx)
+            else:
+                minority_indices.append(idx)
+
+        # If there are no minority samples, return original indices
+        if not minority_indices:
+            return valid_indices
+
+        # Calculate the target number of majority samples
+        target_majority_count = int(len(minority_indices) * undersample_factor)
+
+        # If there are fewer majority samples than needed, return all
+        if len(majority_indices) <= target_majority_count:
+            return valid_indices
+
+        # Sample from majority indices using seeded generator
+        rng = default_rng(seed)
+        selected_majority_indices = list(
+            rng.choice(majority_indices, size=target_majority_count, replace=False)
+        )
+
+        # Combine and sort
+        return sorted(minority_indices + selected_majority_indices)
 
     def load_nc_data(self, filepath: str, channels: list[str]) -> np.ndarray:
         """
@@ -200,7 +270,7 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
                 # "forecast": stacked_targets,
                 # "lead_time_delta": lead_time_delta_float,
                 # "forecast_latitude": target_latitude,
-                "label": self.flare_index.loc[reference_timestep, "label_max"],
+                "label": self.flare_index.loc[reference_timestep, self.label_type],
                 "debug": debug,
             }, metadata
 
@@ -210,7 +280,7 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
             # "forecast": stacked_targets,
             # "lead_time_delta": lead_time_delta_float,
             "debug": debug,
-            "label": self.flare_index.loc[reference_timestep, "label_max"],
+            "label": self.flare_index.loc[reference_timestep, self.label_type],
         }, metadata
 
     def __getitem__(self, idx: int) -> dict:
@@ -276,8 +346,12 @@ class SolarFlareClsDatasetAWS(HelioNetCDFDatasetAWS):
         return_surya_stack: bool = True,
         max_number_of_samples: int | None = None,
         flare_index_path: str = "",
+        undersample_factor: Optional[float] = None,
+        seed: Optional[int] = None,
     ):
         self.label_type = label_type
+        self.undersample_factor = undersample_factor
+        self.seed = seed
         self.return_surya_stack = return_surya_stack
         self.flare_index = pd.read_csv(flare_index_path)
         self.flare_index["timestamp"] = pd.to_datetime(
@@ -309,6 +383,17 @@ class SolarFlareClsDatasetAWS(HelioNetCDFDatasetAWS):
 
         self.valid_indices = self.filter_valid_indices()
 
+        # Apply undersampling for training phase
+        if self.phase == "train" and self.undersample_factor is not None:
+            self.valid_indices = self._apply_undersampling(
+                self.flare_index,
+                self.valid_indices,
+                self.label_type,
+                self.undersample_factor,
+                self.seed,
+            )
+            self.adjusted_length = len(self.valid_indices)
+
     def filter_valid_indices(self) -> list:
         valid_indices = super().filter_valid_indices()
 
@@ -320,7 +405,7 @@ class SolarFlareClsDatasetAWS(HelioNetCDFDatasetAWS):
         data, metadata = super()._get_index_data(idx)
 
         reference_timestamp = self.valid_indices[idx]
-        data["label"] = self.flare_index.loc[reference_timestamp, "label_max"]
+        data["label"] = self.flare_index.loc[reference_timestamp, self.label_type]
 
         return data, metadata
 
@@ -356,7 +441,13 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
         random_vert_flip: bool = False,
         zarr_path: str = "",
         is_downstream: bool = False,
+        label_type: str = "label_max",
+        undersample_factor: Optional[float] = None,
+        seed: Optional[int] = None,
     ):
+        self.label_type = label_type
+        self.undersample_factor = undersample_factor
+        self.seed = seed
         self.flare_index = pd.read_csv(flare_index_path)
         self.flare_index["timestamp"] = pd.to_datetime(
             self.flare_index["timestamp"]
@@ -383,6 +474,17 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
         self.valid_indices = self.filter_valid_indices()
         self.adjusted_length = len(self.valid_indices)
 
+        # Apply undersampling for training phase
+        if self.phase == "train" and self.undersample_factor is not None:
+            self.valid_indices = self._apply_undersampling(
+                self.flare_index,
+                self.valid_indices,
+                self.label_type,
+                self.undersample_factor,
+                self.seed,
+            )
+            self.adjusted_length = len(self.valid_indices)
+
     def filter_valid_indices(self) -> list:
         valid_indices = super().filter_valid_indices()
 
@@ -394,7 +496,7 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
         data, metadata = super()._get_index_data(idx)
 
         reference_timestamp = self.valid_indices[idx]
-        data["label"] = self.flare_index.loc[reference_timestamp, "label_max"]
+        data["label"] = self.flare_index.loc[reference_timestamp, self.label_type]
 
         return data, metadata
 
@@ -426,7 +528,12 @@ class SolarFlareClsXRSDataset(SolarFlareClsDataset):
         random_vert_flip: bool = False,
         xrs_data: Optional[xr.Dataset] = None,
         xrs_stat: Optional[DictConfig] = None,
+        label_type: str = "label_max",
+        undersample_factor: Optional[float] = None,
+        seed: Optional[int] = None,
     ):
+        # Pass label_type and seed to parent, but NOT undersample_factor
+        # since we want to apply it after XRS filtering
         super().__init__(
             sdo_data_root_path=sdo_data_root_path,
             index_path=index_path,
@@ -443,7 +550,10 @@ class SolarFlareClsXRSDataset(SolarFlareClsDataset):
             pooling=pooling,
             random_vert_flip=random_vert_flip,
             flare_index_path=flare_index_path,
+            label_type=label_type,
+            seed=seed,
         )
+        self.undersample_factor = undersample_factor
         self.xrs_data = xrs_data
         self.xrs_stat = xrs_stat
 
@@ -452,10 +562,21 @@ class SolarFlareClsXRSDataset(SolarFlareClsDataset):
         self.valid_indices = new_valid_indices
         self.adjusted_length = len(self.valid_indices)
 
+        # Apply undersampling for training phase after XRS filtering
+        if self.phase == "train" and self.undersample_factor is not None:
+            self.valid_indices = self._apply_undersampling(
+                self.flare_index,
+                self.valid_indices,
+                self.label_type,
+                self.undersample_factor,
+                self.seed,
+            )
+            self.adjusted_length = len(self.valid_indices)
+
     def _get_index_data(self, idx: int) -> tuple[dict, dict]:
         data, metadata = super()._get_index_data(idx)
         reference_timestamp = self.valid_indices[idx]
-        data["label"] = self.flare_index.loc[reference_timestamp, "label_max"]
+        data["label"] = self.flare_index.loc[reference_timestamp, self.label_type]
 
         xrs = self.xrs_data["xray"].sel(timestep=reference_timestamp)
         # shape: (minute_offset, channel) after timestep selection

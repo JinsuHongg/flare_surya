@@ -1,0 +1,41 @@
+# @package _global_
+
+data:
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/train_M24w_freq24.csv
+  valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/val_M24w.csv
+  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
+  test_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/test_M24w.csv
+
+backbone:
+  model_name: alexnet # resnet18, resnet34, resnet50, alexnet,
+
+loss:
+  type: focal 
+  cross_entropy:
+    class_weights: [1.0, 1.0]
+  focal:
+    alpha: 0.75
+    gamma: 2.0
+    reduction: mean
+
+optimizer:
+  type: adamw
+  lr: 2e-4
+  weight_decay: 1e-2
+
+etc:
+  phase: train # test
+  resume: true
+  ckpt_dir: ../results/check_point/baselines/alexnet/daily_m/
+  ckpt_name_tag: alexnet_daily_m_focal
+  ckpt_file: last.ckpt
+  ckpt_weights_only: false
+  max_epochs: 50
+
+wandb:
+  name: alexnet_daily_m_focal_nasgh_2
+  id: alexnet_daily_m_focal_nasgh_2
+  resume: allow
+  notes: alexnet
+  offline: false
+  tag: ["alexnet", "M", "nasgh", "daily", "focal"] # backbone model, head type, task

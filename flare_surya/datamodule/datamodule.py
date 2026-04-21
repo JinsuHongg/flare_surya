@@ -21,6 +21,13 @@ class FlareDataModule(L.LightningDataModule):
         super().__init__()
         self.cfg = cfg
 
+        # Undersampling parameters
+        self.undersample_factor = self.cfg["data"].get("undersample_factor")
+        self.seed = self.cfg["data"].get("seed")
+        lgr_logger.info(
+            f"Undersampling: factor={self.undersample_factor}, seed={self.seed}"
+        )
+
         # load scalers
         self.cfg["data"]["scalers"] = load_config(self.cfg["data"]["scalers_path"])
         self.scalers = build_scalers(info=self.cfg["data"]["scalers"])
@@ -42,8 +49,8 @@ class FlareDataModule(L.LightningDataModule):
             flare_index_path=flare_index_path,
             pooling=self.cfg["data"]["pooling"],
             random_vert_flip=self.cfg["data"]["random_vert_flip"],
-            undersample_factor=self.cfg["data"].get("undersample_factor"),
-            seed=self.cfg["data"].get("seed"),
+            undersample_factor=self.undersample_factor,
+            seed=self.seed,
         )
 
     def setup(self, stage: str):

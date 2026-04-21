@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import torch
 import xarray as xr
+from loguru import logger as lgr_logger
 from omegaconf import OmegaConf, DictConfig
 from typing import Optional
 from numpy.random import default_rng
@@ -53,6 +54,9 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
         self.label_type = label_type
         self.undersample_factor = undersample_factor
         self.seed = seed
+        lgr_logger.info(
+            f"Dataset init: undersample_factor={undersample_factor}, seed={seed}"
+        )
         self.flare_index = pd.read_csv(flare_index_path)
         self.flare_index["timestamp"] = pd.to_datetime(
             self.flare_index["timestamp"]
@@ -81,6 +85,16 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
 
         # Apply undersampling for training phase
         if self.phase == "train" and self.undersample_factor is not None:
+            # Count labels before undersampling
+            majority_count = sum(
+                1 for t in self.valid_indices
+                if self.flare_index.loc[t, self.label_type] == 0
+            )
+            minority_count = len(self.valid_indices) - majority_count
+            lgr_logger.info(
+                f"Before undersampling: {len(self.valid_indices)} samples "
+                f"(majority={majority_count}, minority={minority_count})"
+            )
             self.valid_indices = self._apply_undersampling(
                 self.flare_index,
                 self.valid_indices,
@@ -89,6 +103,9 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
                 self.seed,
             )
             self.adjusted_length = len(self.valid_indices)
+            lgr_logger.info(
+                f"After undersampling: {self.adjusted_length} samples"
+            )
 
     def filter_valid_indices(self) -> list:
         valid_indices = super().filter_valid_indices()
@@ -129,15 +146,22 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
             else:
                 minority_indices.append(idx)
 
+        lgr_logger.info(
+            f"_apply_undersampling: majority={len(majority_indices)}, "
+            f"minority={len(minority_indices)}, factor={undersample_factor}"
+        )
+
         # If there are no minority samples, return original indices
         if not minority_indices:
             return valid_indices
 
         # Calculate the target number of majority samples
         target_majority_count = int(len(minority_indices) * undersample_factor)
+        lgr_logger.info(f"Target majority count: {target_majority_count}")
 
         # If there are fewer majority samples than needed, return all
         if len(majority_indices) <= target_majority_count:
+            lgr_logger.info("Not undersampling: not enough majority samples")
             return valid_indices
 
         # Sample from majority indices using seeded generator
@@ -145,6 +169,7 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
         selected_majority_indices = list(
             rng.choice(majority_indices, size=target_majority_count, replace=False)
         )
+        lgr_logger.info(f"Sampled {len(selected_majority_indices)} from majority")
 
         # Combine and sort
         return sorted(minority_indices + selected_majority_indices)

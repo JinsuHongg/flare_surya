@@ -87,7 +87,8 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
         if self.phase == "train" and self.undersample_factor is not None:
             # Count labels before undersampling
             majority_count = sum(
-                1 for t in self.valid_indices
+                1
+                for t in self.valid_indices
                 if self.flare_index.loc[t, self.label_type] == 0
             )
             minority_count = len(self.valid_indices) - majority_count
@@ -103,9 +104,7 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
                 self.seed,
             )
             self.adjusted_length = len(self.valid_indices)
-            lgr_logger.info(
-                f"After undersampling: {self.adjusted_length} samples"
-            )
+            lgr_logger.info(f"After undersampling: {self.adjusted_length} samples")
 
     def filter_valid_indices(self) -> list:
         valid_indices = super().filter_valid_indices()
@@ -558,7 +557,6 @@ class SolarFlareClsXRSDataset(SolarFlareClsDataset):
         seed: Optional[int] = None,
     ):
         # Set undersample_factor BEFORE calling parent init so logging shows correct value
-        self.undersample_factor = undersample_factor
         # Pass label_type and seed to parent, but NOT undersample_factor
         # since we want to apply it after XRS filtering
         super().__init__(
@@ -578,6 +576,7 @@ class SolarFlareClsXRSDataset(SolarFlareClsDataset):
             random_vert_flip=random_vert_flip,
             flare_index_path=flare_index_path,
             label_type=label_type,
+            undersample_factor=undersample_factor,
             seed=seed,
         )
         self.xrs_data = xrs_data

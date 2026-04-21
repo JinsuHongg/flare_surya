@@ -34,6 +34,7 @@ data:
   label_type: label_max
   undersample_factor: 1
   seed: 1004
+  apply_undersampling: true
 
 backbone:
   model_name: alexnet # resnet18, resnet34, resnet50, alexnet,

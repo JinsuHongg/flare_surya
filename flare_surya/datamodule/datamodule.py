@@ -26,13 +26,15 @@ class FlareDataModule(L.LightningDataModule):
             self.undersample_factor = self.cfg["data"]["undersample_factor"]
             self.seed = self.cfg["data"]["seed"]
             self.label_type = self.cfg["data"]["label_type"]
+            self.apply_undersampling = self.cfg["data"]["apply_undersampling"]
         except KeyError:
             self.undersample_factor = None
             self.seed = None
             self.label_type = "label_max"
+            self.apply_undersampling = True
         lgr_logger.info(
             f"Undersampling: factor={self.undersample_factor}, seed={self.seed}, "
-            f"label_type={self.label_type}"
+            f"label_type={self.label_type}, apply={self.apply_undersampling}"
         )
 
         # load scalers
@@ -59,6 +61,7 @@ class FlareDataModule(L.LightningDataModule):
             undersample_factor=self.undersample_factor,
             seed=self.seed,
             label_type=self.label_type,
+            apply_undersampling=self.apply_undersampling,
         )
 
     def setup(self, stage: str):
@@ -163,13 +166,15 @@ class FlareDataModuleAWS(L.LightningDataModule):
             self.undersample_factor = self.cfg.data.undersample_factor
             self.seed = self.cfg.data.seed
             self.label_type = self.cfg.data.label_type
+            self.apply_undersampling = self.cfg.data.apply_undersampling
         except AttributeError:
             self.undersample_factor = None
             self.seed = None
             self.label_type = "label_max"
+            self.apply_undersampling = True
         lgr_logger.info(
             f"Undersampling: factor={self.undersample_factor}, seed={self.seed}, "
-            f"label_type={self.label_type}"
+            f"label_type={self.label_type}, apply={self.apply_undersampling}"
         )
 
         # load scalers
@@ -197,6 +202,7 @@ class FlareDataModuleAWS(L.LightningDataModule):
             undersample_factor=self.undersample_factor,
             seed=self.seed,
             label_type=self.label_type,
+            apply_undersampling=self.apply_undersampling,
         )
 
     def setup(self, stage: str):
@@ -292,13 +298,15 @@ class FlareDataModuleZarr(L.LightningDataModule):
             self.undersample_factor = self.cfg["data"]["undersample_factor"]
             self.seed = self.cfg["data"]["seed"]
             self.label_type = self.cfg["data"]["label_type"]
+            self.apply_undersampling = self.cfg["data"]["apply_undersampling"]
         except KeyError:
             self.undersample_factor = None
             self.seed = None
             self.label_type = "label_max"
+            self.apply_undersampling = True
         lgr_logger.info(
             f"Undersampling: factor={self.undersample_factor}, seed={self.seed}, "
-            f"label_type={self.label_type}"
+            f"label_type={self.label_type}, apply={self.apply_undersampling}"
         )
 
         # load scalers
@@ -325,6 +333,7 @@ class FlareDataModuleZarr(L.LightningDataModule):
             undersample_factor=self.undersample_factor,
             seed=self.seed,
             label_type=self.label_type,
+            apply_undersampling=self.apply_undersampling,
         )
 
     def setup(self, stage: str):
@@ -429,13 +438,15 @@ class SuryaFluxDataModule(L.LightningDataModule):
             self.undersample_factor = self.cfg.data.undersample_factor
             self.seed = self.cfg.data.seed
             self.label_type = self.cfg.data.label_type
+            self.apply_undersampling = self.cfg.data.apply_undersampling
         except AttributeError:
             self.undersample_factor = None
             self.seed = None
             self.label_type = "label_max"
+            self.apply_undersampling = True
         lgr_logger.info(
             f"Undersampling: factor={self.undersample_factor}, seed={self.seed}, "
-            f"label_type={self.label_type}"
+            f"label_type={self.label_type}, apply={self.apply_undersampling}"
         )
 
         # load scalers
@@ -468,6 +479,7 @@ class SuryaFluxDataModule(L.LightningDataModule):
             undersample_factor=self.undersample_factor,
             seed=self.seed,
             label_type=self.label_type,
+            apply_undersampling=self.apply_undersampling,
         )
 
     def setup(self, stage: str):

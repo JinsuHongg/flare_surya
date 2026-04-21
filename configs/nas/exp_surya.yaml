@@ -39,6 +39,7 @@ data:
   label_type: label_max
   undersample_factor: 1
   seed: 1004
+  apply_undersampling: true
   #xray data path
   xrs_zarr_path: ../data/xrs_24hour_slices_g15_g16_merged.zarr
   xrs_stat_path: ../data/xrs_stat.yaml

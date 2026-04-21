@@ -50,10 +50,12 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
         label_type: str = "label_max",
         undersample_factor: Optional[float] = None,
         seed: Optional[int] = None,
+        apply_undersampling: bool = True,
     ):
         self.label_type = label_type
         self.undersample_factor = undersample_factor
         self.seed = seed
+        self.apply_undersampling = apply_undersampling
         lgr_logger.info(
             f"Dataset init: undersample_factor={undersample_factor}, seed={seed}"
         )
@@ -84,7 +86,7 @@ class SolarFlareClsDataset(HelioNetCDFDataset):
         self.adjusted_length = len(self.valid_indices)
 
         # Apply undersampling for training phase
-        if self.phase == "train" and self.undersample_factor is not None:
+        if self.apply_undersampling and self.phase == "train":
             # Count labels before undersampling
             majority_count = sum(
                 1
@@ -395,10 +397,12 @@ class SolarFlareClsDatasetAWS(HelioNetCDFDatasetAWS):
         flare_index_path: str = "",
         undersample_factor: Optional[float] = None,
         seed: Optional[int] = None,
+        apply_undersampling: bool = True,
     ):
         self.label_type = label_type
         self.undersample_factor = undersample_factor
         self.seed = seed
+        self.apply_undersampling = apply_undersampling
         self.return_surya_stack = return_surya_stack
         self.flare_index = pd.read_csv(flare_index_path)
         self.flare_index["timestamp"] = pd.to_datetime(
@@ -431,7 +435,7 @@ class SolarFlareClsDatasetAWS(HelioNetCDFDatasetAWS):
         self.valid_indices = self.filter_valid_indices()
 
         # Apply undersampling for training phase
-        if self.phase == "train" and self.undersample_factor is not None:
+        if self.apply_undersampling and self.phase == "train":
             self.valid_indices = self._apply_undersampling(
                 self.flare_index,
                 self.valid_indices,
@@ -491,10 +495,12 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
         label_type: str = "label_max",
         undersample_factor: Optional[float] = None,
         seed: Optional[int] = None,
+        apply_undersampling: bool = True,
     ):
         self.label_type = label_type
         self.undersample_factor = undersample_factor
         self.seed = seed
+        self.apply_undersampling = apply_undersampling
         self.flare_index = pd.read_csv(flare_index_path)
         self.flare_index["timestamp"] = pd.to_datetime(
             self.flare_index["timestamp"]
@@ -522,7 +528,7 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
         self.adjusted_length = len(self.valid_indices)
 
         # Apply undersampling for training phase
-        if self.phase == "train" and self.undersample_factor is not None:
+        if self.apply_undersampling and self.phase == "train":
             self.valid_indices = self._apply_undersampling(
                 self.flare_index,
                 self.valid_indices,
@@ -530,7 +536,6 @@ class SolarFlareClsDatasetZarr(HelioNetCDFDatasetZarr):
                 self.undersample_factor,
                 self.seed,
             )
-            self.adjusted_length = len(self.valid_indices)
 
     def filter_valid_indices(self) -> list:
         valid_indices = super().filter_valid_indices()
@@ -599,10 +604,13 @@ class SolarFlareClsXRSDataset(SolarFlareClsDataset):
             random_vert_flip=random_vert_flip,
             flare_index_path=flare_index_path,
             label_type=label_type,
+            undersample_factor=undersample_factor,  # Pass to parent for logging
             seed=seed,
+            apply_undersampling=False,  # Don't apply in parent - apply after XRS filtering
         )
         self.xrs_data = xrs_data
         self.xrs_stat = xrs_stat
+        self.apply_undersampling = True  # Enable undersampling for XRS-specific logic
 
         xrs_timesteps = pd.to_datetime(xrs_data["timestep"].values)
         new_valid_indices = [t for t in self.valid_indices if t in xrs_timesteps]
@@ -610,7 +618,7 @@ class SolarFlareClsXRSDataset(SolarFlareClsDataset):
         self.adjusted_length = len(self.valid_indices)
 
         # Apply undersampling for training phase after XRS filtering
-        if self.phase == "train" and self.undersample_factor is not None:
+        if self.apply_undersampling and self.phase == "train":
             majority_count = sum(
                 1
                 for t in self.valid_indices

@@ -24,6 +24,10 @@ from .heads import SuryaHead
 from .criterions import FlareSSMLoss, get_criterion
 from .secondary_modality_models import SecondaryEncoder
 from .fusion import FusionModule
+from flare_surya.models.solar_models import (
+    SolarDecoder,
+    SolarEncoder,
+)
 
 
 class FlareSurya(BaseModule):
@@ -1268,4 +1272,183 @@ class SuryaMultiModal(BaseModule):
         df.to_csv(
             self.save_test_results_path, mode=mode, header=write_header, index=False
         )
+
+
+class PretrainSolarModel(pl.LightningModule):
+    def __init__(
+        self,
+        in_channels=1,
+        seq_len=1440,
+        embed_dim=768,
+        encoder_depth=4,
+        decoder_depth=2,
+        num_heads=12,
+        data_type="1d",
+        lr=1e-4,
+        save_embeddings_path: str | None = None,
+    ):
+        super().__init__()
+        self.save_hyperparameters()
+
+        self.encoder = SolarEncoder(
+            in_channels=in_channels,
+            seq_len=seq_len,
+            embed_dim=embed_dim,
+            depth=encoder_depth,
+            num_heads=num_heads,
+            data_type=data_type,
+        )
+
+        self.decoder = SolarDecoder(
+            in_channels=in_channels,
+            seq_len=seq_len,
+            embed_dim=embed_dim,
+            depth=decoder_depth,
+            num_heads=num_heads,
+            data_type=data_type,
+        )
+
+        self.lr = lr
+        self.data_type = data_type
+        self.save_embeddings_path = save_embeddings_path
+
+        # Store timestamps and embeddings for prediction
+        self.pred_timestamps = []
+        self.pred_embeddings = []
+
+    def forward(self, x):
+        embedding = self.encoder(x)
+        reconstruction = self.decoder(embedding)
+        return reconstruction
+
+    def encode(self, x):
+        """Encode input to embeddings without decoding."""
+        return self.encoder(x)
+
+    def training_step(self, batch, batch_idx):
+        # Assuming batch contains (input, target) or just input where target is input
+        # For self-supervised, we predict the input itself
+        # Expects batch to be a tuple (x, y) or (x, y, timestamp)
+
+        if len(batch) == 3:
+            x, y, _ = batch
+        else:
+            x, y = batch
+
+        pred = self.forward(x)
+        loss = nn.functional.mse_loss(pred, y)
+
+        self.log("train_loss", loss, prog_bar=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        if len(batch) == 3:
+            x, y, _ = batch
+        else:
+            x, y = batch
+
+        pred = self.forward(x)
+
+        # Calculate metrics
+        # MAE
+        mae = torch.mean(torch.abs(pred - y))
+        # MSE
+        mse = torch.mean((pred - y) ** 2)
+        # RMSE
+        rmse = torch.sqrt(mse)
+
+        # R-squared
+        # SS_res = torch.sum((y - pred) ** 2)
+        # SS_tot = torch.sum((y - torch.mean(y)) ** 2)
+        # r2 = 1 - SS_res / (SS_tot + 1e-8)
+
+        # R2 score using sk-learn style computation for batched data
+        # Flatten for R2 calculation
+        y_flat = y.reshape(y.shape[0], -1)
+        pred_flat = pred.reshape(pred.shape[0], -1)
+
+        ss_res = torch.sum((y_flat - pred_flat) ** 2, dim=1)
+        ss_tot = torch.sum(
+            (y_flat - torch.mean(y_flat, dim=1, keepdim=True)) ** 2, dim=1
+        )
+        r2 = 1 - ss_res / (ss_tot + 1e-8)
+        r2 = torch.mean(r2)
+
+        self.log("val_mae", mae, prog_bar=True, sync_dist=True)
+        self.log("val_mse", mse, prog_bar=True, sync_dist=True)
+        self.log("val_rmse", rmse, prog_bar=True, sync_dist=True)
+        self.log("val_r2", r2, prog_bar=True, sync_dist=True)
+
+        return mse
+
+    def predict_step(self, batch, batch_idx):
+        # Expects batch to contain (x, timestamp) or just x
+        # If batch is a tuple, assume it's (x, timestamp)
+        if isinstance(batch, (list, tuple)):
+            x, timestamps = batch[0], batch[1]
+        else:
+            x = batch
+            timestamps = None
+
+        embeddings = self.encode(x)
+
+        # Store embeddings and timestamps
+        # Convert to numpy for storage
+        emb_np = embeddings.cpu().detach().numpy()
+
+        if timestamps is not None:
+            # Assuming timestamps are datetime or int
+            # If they are tensors, convert to list or numpy
+            if isinstance(timestamps, torch.Tensor):
+                ts_np = timestamps.cpu().detach().numpy()
+            else:
+                ts_np = np.array(timestamps)
+        else:
+            ts_np = np.arange(len(emb_np))
+
+        # Append to lists (be careful with memory usage for large datasets)
+        self.pred_timestamps.append(ts_np)
+        self.pred_embeddings.append(emb_np)
+
+        return embeddings
+
+    def on_predict_epoch_end(self, results):
+        # Save embeddings to Zarr
+        if self.save_embeddings_path:
+            lgr_logger.info(f"Saving embeddings to {self.save_embeddings_path}")
+
+            # Concatenate all batches
+            all_timestamps = np.concatenate(self.pred_timestamps, axis=0)
+            all_embeddings = np.concatenate(self.pred_embeddings, axis=0)
+
+            # Create xarray Dataset
+            # Embeddings shape: [total_samples, seq_len, embed_dim]
+            # Or flatten to [total_samples, seq_len * embed_dim] if preferred
+
+            # We need to be careful with dimensions.
+            # Let's assume we keep it as [time, seq, dim]
+
+            ds = xr.Dataset(
+                {
+                    "embeddings": (["timestep", "seq", "feature"], all_embeddings),
+                },
+                coords={
+                    "timestep": all_timestamps,
+                },
+            )
+
+            # Save to zarr
+            # Using consolidated=True for faster loading later
+            ds.to_zarr(self.save_embeddings_path, mode="w", consolidated=True)
+
+            lgr_logger.info(
+                f"Embeddings saved successfully. Shape: {all_embeddings.shape}"
+            )
+
+            # Clear buffers
+            self.pred_timestamps = []
+            self.pred_embeddings = []
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=self.lr)
         self.test_results = {"timestamps": [], "predictions": [], "targets": []}

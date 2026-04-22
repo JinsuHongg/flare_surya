@@ -583,6 +583,7 @@ class SolarFlareClsXRSDataset(SolarFlareClsDataset):
         label_type: str = "label_max",
         undersample_factor: Optional[float] = None,
         seed: Optional[int] = None,
+        apply_undersampling: bool = False,
     ):
         # Set undersample_factor BEFORE calling parent init so logging shows correct value
         # Pass label_type and seed to parent, but NOT undersample_factor
@@ -610,7 +611,7 @@ class SolarFlareClsXRSDataset(SolarFlareClsDataset):
         )
         self.xrs_data = xrs_data
         self.xrs_stat = xrs_stat
-        self.apply_undersampling = True  # Enable undersampling for XRS-specific logic
+        self.apply_undersampling = apply_undersampling
 
         xrs_timesteps = pd.to_datetime(xrs_data["timestep"].values)
         new_valid_indices = [t for t in self.valid_indices if t in xrs_timesteps]

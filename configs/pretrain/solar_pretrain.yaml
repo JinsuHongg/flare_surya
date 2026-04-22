@@ -1,0 +1,46 @@
+defaults:
+  - _self_
+  - trainer: default  # This assumes you have a default.yaml in configs/trainer/ or similar, or you can remove this line
+
+# Model Configuration
+model:
+  in_channels: 1
+  seq_len: 1440
+  embed_dim: 256  # Reduced embed_dim for lightweight model
+  encoder_depth: 4
+  decoder_depth: 2
+  num_heads: 8
+  data_type: "1d"  # Options: "1d" or "2d"
+  image_size: 224  # Only used if data_type is "2d"
+  patch_size: 16   # Only used if data_type is "2d"
+  lr: 1e-4
+
+# DataModule Configuration
+data:
+  zarr_path: /path/to/zarr/store
+  train_index_path: /path/to/train_index.csv
+  val_index_path: /path/to/val_index.csv
+  test_index_path: /path/to/test_index.csv
+  channels:  # List of channels to load
+    - xray
+  batch_size: 32
+  num_workers: 4
+  data_type: "1d"  # Must match model.data_type
+  scalers:  # Normalization statistics
+    xray:
+      mean: 0.0
+      std: 1.0
+
+# Trainer Configuration
+trainer:
+  max_epochs: 100
+  accelerator: auto
+  devices: 1
+  precision: 16
+  accumulate_grad_batches: 1
+  gradient_clip_val: 1.0
+
+# Logging
+logger:
+  tensorboard: true
+  log_every_n_steps: 50

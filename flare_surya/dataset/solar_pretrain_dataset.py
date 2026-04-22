@@ -48,8 +48,7 @@ class SolarPretrainDataset(Dataset):
         self.transform = transform
 
         # Load index
-        self.logger = lgr_logger
-        self.logger.info(f"Loading index from {index_path}")
+        lgr_logger.info(f"Loading index from {index_path}")
         self.index = pd.read_csv(index_path)
         self.index["timestamp"] = pd.to_datetime(self.index["timestamp"]).values.astype(
             "datetime64[ns]"
@@ -57,16 +56,20 @@ class SolarPretrainDataset(Dataset):
         self.index.set_index("timestamp", inplace=True)
         self.index.sort_index(inplace=True)
 
-        # Open Zarr store
-        self.logger.info(f"Opening Zarr store at {zarr_path}")
-        # We don't load data here to avoid memory issues, we open it lazily or load per sample
-        self.zarr_data = xr.open_zarr(zarr_path, consolidated=True)
+        # Don't open Zarr store here - each worker will open its own lazily in __getitem__
+        lgr_logger.info(f"Zarr store path stored: {zarr_path}")
+        self._zarr_data = None
 
         # Validate index against available Zarr timestamps
         # Handle timestamp misalignment: filter timestamps from index that don't exist in Zarr
+        # We only check this if we're in the main process (len(index) is reasonable)
+        # In worker processes, we'll skip this check to avoid opening Zarr for each worker
         available_timestamps = set()
-        for var_name in self.zarr_data.data_vars:
-            var_data = self.zarr_data[var_name]
+        if self._zarr_data is None:
+            self._open_zarr()
+
+        for var_name in self._zarr_data.data_vars:
+            var_data = self._zarr_data[var_name]
             if "timestep" in var_data.dims:
                 available_timestamps.update(var_data.timestep.values)
 
@@ -75,13 +78,19 @@ class SolarPretrainDataset(Dataset):
         filtered_length = len(self.index)
 
         if original_length != filtered_length:
-            self.logger.info(
+            lgr_logger.info(
                 f"Filtered {original_length - filtered_length} samples from index "
                 f"(not found in Zarr data). "
                 f"Using {filtered_length} samples."
             )
 
         self.length = len(self.index)
+
+    def _open_zarr(self):
+        """Open Zarr store lazily. Each worker opens its own handle."""
+        if self._zarr_data is None:
+            lgr_logger.info(f"Opening Zarr store at {self.zarr_path}")
+            self._zarr_data = xr.open_zarr(self.zarr_path, consolidated=True)
 
     def __len__(self):
         return self.length
@@ -106,6 +115,10 @@ class SolarPretrainDataset(Dataset):
         Returns:
             tuple: (input, target, timestamp) where both are tensors.
         """
+        # Open Zarr lazily if not already open
+        if self._zarr_data is None:
+            self._open_zarr()
+
         timestamp = self.index.index[idx]
 
         # Detect data format:
@@ -113,15 +126,15 @@ class SolarPretrainDataset(Dataset):
         # Format B: Separate variables per channel (e.g., 'soft', 'hard' as separate data vars)
 
         channel_data = []
-        first_var = list(self.zarr_data.data_vars.keys())[0]
-        first_var_dims = self.zarr_data[first_var].dims
+        first_var = list(self._zarr_data.data_vars.keys())[0]
+        first_var_dims = self._zarr_data[first_var].dims
 
         if "channel" in first_var_dims:
             # Format A: Single variable with channel dimension
             try:
-                da = self.zarr_data[first_var].sel(timestep=timestamp)
+                da = self._zarr_data[first_var].sel(timestep=timestamp)
             except KeyError:
-                self.logger.error(
+                lgr_logger.error(
                     f"Timestamp {timestamp} not found in Zarr data variable {first_var}."
                 )
                 raise IndexError(f"Timestamp {timestamp} not found in Zarr.")
@@ -132,7 +145,7 @@ class SolarPretrainDataset(Dataset):
                 try:
                     ch_data = da.sel(channel=ch).values
                 except KeyError:
-                    self.logger.error(f"Channel {ch} not found in Zarr.")
+                    lgr_logger.error(f"Channel {ch} not found in Zarr.")
                     raise IndexError(f"Channel {ch} not found in Zarr.")
 
                 # Normalize if scaler is available
@@ -145,9 +158,9 @@ class SolarPretrainDataset(Dataset):
             # Format B: Separate variables per channel
             for ch in self.channels:
                 try:
-                    da = self.zarr_data[ch].sel(timestep=timestamp)
+                    da = self._zarr_data[ch].sel(timestep=timestamp)
                 except KeyError:
-                    self.logger.error(
+                    lgr_logger.error(
                         f"Channel {ch} at timestamp {timestamp} not found in Zarr."
                     )
                     raise IndexError(

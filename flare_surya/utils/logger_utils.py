@@ -43,7 +43,7 @@ def build_wandb(cfg):
     elif "model" in cfg:
         wandb_logger.log_hyperparams(
             {
-                "lr": cfg["model"]["lr"],
+                "lr": cfg["optimizer"]["lr"],
                 "batch_size": cfg["data"]["batch_size"],
                 "embed_dim": cfg["model"]["embed_dim"],
                 "encoder_depth": cfg["model"]["encoder_depth"],

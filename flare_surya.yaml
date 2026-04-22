@@ -1,0 +1,19 @@
+name: flare-surya
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.11
+  - pip
+
+  - pip:
+      - loguru>=0.7.3
+      - terratorch>=1.1.1
+      - terratorch-surya>=0.1.0
+      - huggingface-hub>=0.10.0
+      - hf-transfer>=0.1.9
+      - peft>=0.4.0
+      - transformers>=4.41,<5.0
+      - zarr<=3.0.0
+      - hydra-core>=1.3.2

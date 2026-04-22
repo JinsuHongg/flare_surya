@@ -62,6 +62,25 @@ class SolarPretrainDataset(Dataset):
         # We don't load data here to avoid memory issues, we open it lazily or load per sample
         self.zarr_data = xr.open_zarr(zarr_path, consolidated=True)
 
+        # Validate index against available Zarr timestamps
+        # Handle timestamp misalignment: filter timestamps from index that don't exist in Zarr
+        available_timestamps = set()
+        for var_name in self.zarr_data.data_vars:
+            var_data = self.zarr_data[var_name]
+            if "timestep" in var_data.dims:
+                available_timestamps.update(var_data.timestep.values)
+
+        original_length = len(self.index)
+        self.index = self.index[self.index.index.isin(available_timestamps)]
+        filtered_length = len(self.index)
+
+        if original_length != filtered_length:
+            self.logger.info(
+                f"Filtered {original_length - filtered_length} samples from index "
+                f"(not found in Zarr data). "
+                f"Using {filtered_length} samples."
+            )
+
         self.length = len(self.index)
 
     def __len__(self):
@@ -89,27 +108,64 @@ class SolarPretrainDataset(Dataset):
         """
         timestamp = self.index.index[idx]
 
-        # Load data for this timestamp
-        # Assuming Zarr has a dimension 'timestep' matching the index
-        try:
-            data = self.zarr_data[self.channels].sel(timestep=timestamp)
-        except KeyError:
-            self.logger.error(f"Timestamp {timestamp} not found in Zarr.")
-            # Return a dummy sample or raise error
-            raise IndexError(f"Timestamp {timestamp} not found in Zarr.")
+        # Detect data format:
+        # Format A: Single variable with channel dimension (e.g., 'xray' with dims: timestep, minute_offset, channel)
+        # Format B: Separate variables per channel (e.g., 'soft', 'hard' as separate data vars)
 
-        # Convert to numpy
-        data_np = data.to_numpy()
+        channel_data = []
+        first_var = list(self.zarr_data.data_vars.keys())[0]
+        first_var_dims = self.zarr_data[first_var].dims
 
-        # Normalize
-        if self.scalers:
-            # Assuming scalers has a key for each channel or a global scaler
-            # Here we apply a generic normalization if scaler is provided
-            # In a real scenario, you'd match channels to scalers
-            for i, ch in enumerate(self.channels):
-                if ch in self.scalers:
+        if "channel" in first_var_dims:
+            # Format A: Single variable with channel dimension
+            try:
+                da = self.zarr_data[first_var].sel(timestep=timestamp)
+            except KeyError:
+                self.logger.error(
+                    f"Timestamp {timestamp} not found in Zarr data variable {first_var}."
+                )
+                raise IndexError(f"Timestamp {timestamp} not found in Zarr.")
+
+            # da now has shape (minute_offset, channel)
+            # Extract each channel and stack them
+            for ch in self.channels:
+                try:
+                    ch_data = da.sel(channel=ch).values
+                except KeyError:
+                    self.logger.error(f"Channel {ch} not found in Zarr.")
+                    raise IndexError(f"Channel {ch} not found in Zarr.")
+
+                # Normalize if scaler is available
+                if self.scalers and ch in self.scalers:
                     stats = self.scalers[ch]
-                    data_np[i] = self.norm_log_zscore(data_np[i], stats)
+                    ch_data = self.norm_log_zscore(ch_data, stats)
+
+                channel_data.append(ch_data)
+        else:
+            # Format B: Separate variables per channel
+            for ch in self.channels:
+                try:
+                    da = self.zarr_data[ch].sel(timestep=timestamp)
+                except KeyError:
+                    self.logger.error(
+                        f"Channel {ch} at timestamp {timestamp} not found in Zarr."
+                    )
+                    raise IndexError(
+                        f"Channel {ch} at timestamp {timestamp} not found in Zarr."
+                    )
+
+                # Get numpy array from DataArray
+                data_np = np.array(da.values)
+
+                # Normalize if scaler is available
+                if self.scalers and ch in self.scalers:
+                    stats = self.scalers[ch]
+                    data_np = self.norm_log_zscore(data_np, stats)
+
+                channel_data.append(data_np)
+
+        # Stack channels together: (channels, minute_offset)
+        data_np = np.stack(channel_data, axis=0)
 
         # Convert to tensor
         data_tensor = torch.tensor(data_np, dtype=torch.float32)
@@ -119,5 +175,6 @@ class SolarPretrainDataset(Dataset):
             data_tensor = self.transform(data_tensor)
 
         # For self-supervised, input and target are the same
-        # Return timestamp as well for predict step
-        return data_tensor, data_tensor, timestamp
+        # Convert timestamp to string for PyTorch DataLoader collation
+        timestamp_str = str(timestamp)
+        return data_tensor, data_tensor, timestamp_str

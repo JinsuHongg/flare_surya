@@ -9,12 +9,15 @@ warnings.filterwarnings(
     "ignore", "Importing from timm.models.layers is deprecated.*", FutureWarning
 )
 
+
 import torch
 import torch.multiprocessing as mp
 from lightning.pytorch import Trainer
 
-from flare_surya.datamodule import SuryaFluxDataModule
-from flare_surya.models import SuryaMultiModal
+from flare_surya.datamodule import (
+    FlareDataModule,
+)
+from flare_surya.models import FlareSurya
 from flare_surya.utils.logger_utils import build_wandb
 from flare_surya.utils.callbacks import build_callbacks
 
@@ -55,17 +58,6 @@ def build_model(cfg):
         "loss_dict": cfg.loss,
         "threshold": cfg.head.threshold,
         "save_test_results_path": cfg.etc.save_test_results_path,
-        # Secondary encoder hyper-parameters
-        "in_channels": cfg.secondary.in_channels,
-        "seq_len": cfg.secondary.seq_len,
-        "secondary_embed_dim": cfg.secondary.embed_dim,
-        "secondary_depth": cfg.secondary.depth,
-        "secondary_num_heads": cfg.secondary.num_heads,
-        # Fusion hyper-parameters
-        "fusion_type": cfg.fusion.type,
-        "fuse_embed_dim": cfg.fusion.fuse_embed_dim,
-        # Secondary encoder pooling
-        "secondary_pooling_type": cfg.secondary.pooling_type,
     }
     if cfg.etc.resume and cfg.etc.ckpt_weights_only:
         ckpt_path = os.path.join(
@@ -83,22 +75,22 @@ def build_model(cfg):
         lgr_logger.info(f"ckpt: {cfg.etc.ckpt_file}")
 
         # load weights and hyperparameters
-        model = SuryaMultiModal(**model_hyperparameter)
+        model = FlareSurya(**model_hyperparameter)
         model.load_state_dict(ckpt["state_dict"], strict=False)
     else:
-        model = SuryaMultiModal(**model_hyperparameter)
+        model = FlareSurya(**model_hyperparameter)
 
     return model
 
 
 @hydra.main(
     version_base=None,
-    config_path="../configs/nas/",
+    config_path="../../configs/nas/",
     config_name="exp_surya",
 )
 def train(cfg: OmegaConf):
     # Datamodule
-    datamodule = SuryaFluxDataModule(cfg=cfg)
+    datamodule = FlareDataModule(cfg=cfg)
 
     # Load model
     model = build_model(cfg=cfg)

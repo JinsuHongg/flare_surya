@@ -86,17 +86,12 @@ class SolarTokenizer2D(nn.Module):
         self.patch_size = patch_size
         self.num_patches = (image_size // patch_size) ** 2
 
-        # Convert image into patches and embed them
-        # Conv2d with stride=patch_size acts as a linear projection of each patch
         self.proj = nn.Conv2d(
             in_channels, embed_dim, kernel_size=patch_size, stride=patch_size
         )
 
     def forward(self, x):
-        # x: [Batch, C, H, W]
-        x = self.proj(x)  # [Batch, embed_dim, num_patches_h, num_patches_w]
-
-        # Flatten spatial dimensions: [Batch, embed_dim, num_patches] -> [Batch, num_patches, embed_dim]
+        x = self.proj(x)
         x = x.flatten(2).transpose(1, 2)
         return x
 
@@ -150,7 +145,10 @@ class SolarSequenceEncoder(nn.Module):
 
         # Stack the ViT blocks
         self.blocks = nn.ModuleList(
-            [SolarViTBlock1D(embed_dim=embed_dim, num_heads=num_heads) for _ in range(depth)]
+            [
+                SolarViTBlock1D(embed_dim=embed_dim, num_heads=num_heads)
+                for _ in range(depth)
+            ]
         )
 
         # Final norm (standard in ViT before pooling or fusion)
@@ -201,7 +199,9 @@ class SolarEncoder(nn.Module):
             )
             # For 2D, seq_len is the number of patches
             num_patches = (image_size // patch_size) ** 2
-            self.encoder = SolarSequenceEncoder(num_patches, embed_dim, depth, num_heads)
+            self.encoder = SolarSequenceEncoder(
+                num_patches, embed_dim, depth, num_heads
+            )
         else:
             raise ValueError(f"Unknown data_type: {data_type}")
 
@@ -224,7 +224,10 @@ class SolarSequenceDecoder(nn.Module):
 
         # Stack the ViT blocks
         self.blocks = nn.ModuleList(
-            [SolarViTBlock1D(embed_dim=embed_dim, num_heads=num_heads) for _ in range(depth)]
+            [
+                SolarViTBlock1D(embed_dim=embed_dim, num_heads=num_heads)
+                for _ in range(depth)
+            ]
         )
 
         # Final norm (standard in ViT before pooling or fusion)
@@ -274,22 +277,28 @@ class SolarDetokenizer1D(nn.Module):
 class SolarDetokenizer2D(nn.Module):
     def __init__(self, in_channels=3, embed_dim=768, image_size=224):
         super().__init__()
-        # Invert the tokenization: embed_dim -> in_channels
-        # We use transposed convolutions (ConvTranspose2d) to upsample
-        self.layer1 = ResidualBlock2D(embed_dim, embed_dim // 2, kernel_size=5, stride=2)
-        self.layer2 = ResidualBlock2D(embed_dim // 2, in_channels, kernel_size=7, stride=2)
+        self.image_size = image_size
+        self.embed_dim = embed_dim
+        patch_size = 16
+        num_patches_per_side = image_size // patch_size
+        self.num_patches_per_side = num_patches_per_side
+
+        self.proj = nn.ConvTranspose2d(
+            embed_dim, embed_dim, kernel_size=patch_size, stride=patch_size
+        )
+        self.layer1 = ResidualBlock2D(
+            embed_dim, embed_dim // 2, kernel_size=3, stride=1
+        )
+        self.layer2 = ResidualBlock2D(
+            embed_dim // 2, in_channels, kernel_size=3, stride=1
+        )
 
     def forward(self, x):
-        # x: [Batch, seq_len, embed_dim] - Output from SequenceDecoder
-        # We need to convert back to [Batch, in_channels, H, W]
+        B, num_patches, D = x.shape
+        H = W = self.num_patches_per_side
 
-        # First convert to [Batch, embed_dim, H/4, W/4]
-        B, _, _ = x.shape
-        H = W = int((x.shape[1]) ** 0.5)  # Assuming square input sequence
-
-        # Convert to [Batch, embed_dim, H, W]
-        x = x.transpose(1, 2).reshape(B, -1, H, W)
-
+        x = x.transpose(1, 2).reshape(B, D, H, W)
+        x = self.proj(x)
         x = self.layer1(x)
         x = self.layer2(x)
 
@@ -305,27 +314,26 @@ class SolarDecoder(nn.Module):
         depth=2,
         num_heads=12,
         data_type="1d",
+        image_size=224,
     ):
         super().__init__()
         self.data_type = data_type
 
-        # Build the sequence decoder
-        self.sequence_decoder = SolarSequenceDecoder(seq_len, embed_dim, depth, num_heads)
+        self.sequence_decoder = SolarSequenceDecoder(
+            seq_len, embed_dim, depth, num_heads
+        )
 
-        # Build the detokenizer based on data type
         if data_type == "1d":
             self.detokenizer = SolarDetokenizer1D(in_channels, embed_dim)
         elif data_type == "2d":
-            # Assuming image_size is seq_len for 2D (flattened image size)
-            # If seq_len is H*W, then H = W = sqrt(seq_len)
-            image_size = int(seq_len**0.5)
             self.detokenizer = SolarDetokenizer2D(in_channels, embed_dim, image_size)
         else:
             raise ValueError(f"Unknown data_type: {data_type}")
 
     def forward(self, x):
-        # x is the embedding from the encoder: [Batch, seq_len, embed_dim]
         x = self.sequence_decoder(x)
         reconstruction = self.detokenizer(x)
-
         return reconstruction
+
+    def decode_sequence(self, x):
+        return self.sequence_decoder(x)

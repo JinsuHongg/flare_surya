@@ -7,8 +7,9 @@ import torch
 import xarray as xr
 import torch.nn as nn
 import torch.nn.functional as F
+import pytorch_lightning as pl
 import wandb
-from loguru import logger
+from loguru import logger as lgr_logger
 from peft import LoraConfig, get_peft_model
 from terratorch_surya.downstream_examples.solar_flare_forecasting.models import (
     AlexNetClassifier,
@@ -22,7 +23,9 @@ from flare_surya.metrics.classification_metrics import DistributedClassification
 from .base import BaseModule
 from .heads import SuryaHead
 from .criterions import FlareSSMLoss, get_criterion
-from .secondary_modality_models import SecondaryEncoder
+
+# SecondaryEncoder is now SolarEncoder from solar_models.py
+from .solar_models import SolarEncoder as SecondaryEncoder
 from .fusion import FusionModule
 from flare_surya.models.solar_models import (
     SolarDecoder,
@@ -99,7 +102,7 @@ class FlareSurya(BaseModule):
 
         # load pretrained weights for backbone
         if path_weights:
-            logger.info(f"Pretrained weights loaded from: {path_weights}")
+            lgr_logger.info(f"Pretrained weights loaded from: {path_weights}")
             weights = torch.load(
                 path_weights, map_location=torch.device("cpu"), weights_only=True
             )
@@ -327,7 +330,7 @@ class FlareSurya(BaseModule):
                     }
                 )
                 ds.to_zarr(zarr_path, mode="w")
-                logger.info(f"Created new zarr file: {zarr_path}")
+                lgr_logger.info(f"Created new zarr file: {zarr_path}")
             else:
                 # Load existing zarr file and check which timestamps are new
                 existing_ds = xr.open_zarr(zarr_path)
@@ -362,11 +365,11 @@ class FlareSurya(BaseModule):
                         }
                     )
                     ds.to_zarr(zarr_path, mode="w")
-                    logger.info(
+                    lgr_logger.info(
                         f"Appended {len(new_timestamps)} new embeddings to {zarr_path}"
                     )
                 else:
-                    logger.info(
+                    lgr_logger.info(
                         f"All {len(timestamps)} timestamps already exist in {zarr_path}"
                     )
 
@@ -895,7 +898,7 @@ class SuryaMultiModal(BaseModule):
 
         # load pretrained weights for backbone
         if path_weights:
-            logger.info(f"Pretrained weights loaded from: {path_weights}")
+            lgr_logger.info(f"Pretrained weights loaded from: {path_weights}")
             weights = torch.load(
                 path_weights, map_location=torch.device("cpu"), weights_only=True
             )
@@ -1284,11 +1287,36 @@ class PretrainSolarModel(pl.LightningModule):
         decoder_depth=2,
         num_heads=12,
         data_type="1d",
-        lr=1e-4,
         save_embeddings_path: str | None = None,
+        mask_ratio: float = 0.5,
+        image_size: int = 224,
+        patch_size: int = 16,
+        optimizer_dict=None,
+        loss_dict=None,
     ):
         super().__init__()
         self.save_hyperparameters()
+        self.data_type = data_type
+        self.image_size = image_size
+        self.patch_size = patch_size
+
+        self.optimizer_dict = optimizer_dict or {
+            "type": "adamw",
+            "lr": 1e-4,
+            "weight_decay": 0.01,
+            "eps": 1e-8,
+            "betas": [0.9, 0.999],
+            "scheduler": {
+                "use": "cosine_warmup",
+                "monitor": "val_loss",
+                "cosine_warmup": {
+                    "total_steps": 10000,
+                    "warmup_ratio": 0.1,
+                    "min_lr": 1e-6,
+                },
+            },
+        }
+        self.loss_dict = loss_dict or {"type": "mse"}
 
         self.encoder = SolarEncoder(
             in_channels=in_channels,
@@ -1297,6 +1325,8 @@ class PretrainSolarModel(pl.LightningModule):
             depth=encoder_depth,
             num_heads=num_heads,
             data_type=data_type,
+            image_size=image_size,
+            patch_size=patch_size,
         )
 
         self.decoder = SolarDecoder(
@@ -1306,37 +1336,116 @@ class PretrainSolarModel(pl.LightningModule):
             depth=decoder_depth,
             num_heads=num_heads,
             data_type=data_type,
+            image_size=image_size,
         )
 
-        self.lr = lr
         self.data_type = data_type
         self.save_embeddings_path = save_embeddings_path
+        self.mask_ratio = mask_ratio
 
-        # Store timestamps and embeddings for prediction
+        self.mask_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+        nn.init.trunc_normal_(self.mask_token, std=0.02)
+
         self.pred_timestamps = []
         self.pred_embeddings = []
+        self._last_mask_indices = None
+        self._last_seq_mask_indices = None
 
-    def forward(self, x):
-        embedding = self.encoder(x)
-        reconstruction = self.decoder(embedding)
+    def random_mask(
+        self, tokens: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        B, N, D = tokens.shape
+        num_mask = int(N * self.mask_ratio)
+
+        noise = torch.rand(B, N, device=tokens.device)
+        ids_shuffle = torch.argsort(noise, dim=1)
+        ids_restore = torch.argsort(ids_shuffle, dim=1)
+
+        ids_mask = ids_shuffle[:, :num_mask]
+
+        tokens_masked = tokens.clone()
+        mask_token = self.mask_token.to(tokens.dtype).to(tokens.device)
+
+        mask_2d = torch.zeros(B, N, dtype=torch.bool, device=tokens.device)
+        mask_2d.scatter_(1, ids_mask, torch.ones_like(ids_mask, dtype=torch.bool))
+        tokens_masked = torch.where(mask_2d.unsqueeze(-1), mask_token, tokens_masked)
+
+        return tokens_masked, ids_restore, ids_mask
+
+    def forward(self, x, use_mask: bool = True):
+        tokens = self.encoder.tokenizer(x)
+
+        if use_mask and self.training:
+            tokens, ids_restore, ids_mask = self.random_mask(tokens)
+            self._last_mask_indices = ids_mask
+            self._last_seq_mask_indices = ids_mask
+        else:
+            self._last_mask_indices = None
+            self._last_seq_mask_indices = None
+
+        embedding = self.encoder.encoder(tokens)
+        decoded = self.decoder.sequence_decoder(embedding)
+
+        reconstruction = self.decoder.detokenizer(decoded)
         return reconstruction
 
     def encode(self, x):
         """Encode input to embeddings without decoding."""
         return self.encoder(x)
 
-    def training_step(self, batch, batch_idx):
-        # Assuming batch contains (input, target) or just input where target is input
-        # For self-supervised, we predict the input itself
-        # Expects batch to be a tuple (x, y) or (x, y, timestamp)
+    def _compute_loss(self, pred, target):
+        loss_type = self.loss_dict.get("type", "mse").lower()
+        if loss_type == "mae":
+            return nn.functional.l1_loss(pred, target)
+        elif loss_type == "rmse":
+            return torch.sqrt(nn.functional.mse_loss(pred, target))
+        else:
+            return nn.functional.mse_loss(pred, target)
 
+    def training_step(self, batch, batch_idx):
         if len(batch) == 3:
             x, y, _ = batch
         else:
             x, y = batch
 
-        pred = self.forward(x)
-        loss = nn.functional.mse_loss(pred, y)
+        pred = self.forward(x, use_mask=True)
+        mask_indices = self._last_seq_mask_indices
+
+        if mask_indices is not None:
+            if self.data_type == "2d":
+                patch_size = self.encoder.tokenizer.patch_size
+                image_size = self.encoder.tokenizer.image_size
+                num_patches_per_side = image_size // patch_size
+
+                def to_patches(tensor):
+                    B, C, H, W = tensor.shape
+                    patches = tensor.unfold(2, patch_size, patch_size).unfold(3, patch_size, patch_size)
+                    patches = patches.permute(0, 2, 3, 1, 4, 5).reshape(
+                        B, num_patches_per_side * num_patches_per_side, C, patch_size * patch_size
+                    )
+                    patches = patches.mean(-1)
+                    return patches
+
+                y_patches = to_patches(y)
+                pred_patches = to_patches(pred)
+
+                B_mask, num_mask = mask_indices.shape
+                y_masked = y_patches[torch.arange(B_mask, device=mask_indices.device).unsqueeze(1), mask_indices]
+                pred_masked = pred_patches[torch.arange(B_mask, device=mask_indices.device).unsqueeze(1), mask_indices]
+            else:
+                y_masked = torch.gather(
+                    y,
+                    dim=2,
+                    index=mask_indices.unsqueeze(1).expand(-1, y.shape[1], -1),
+                )
+                pred_masked = torch.gather(
+                    pred,
+                    dim=2,
+                    index=mask_indices.unsqueeze(1).expand(-1, pred.shape[1], -1),
+                )
+            loss = self._compute_loss(pred_masked, y_masked)
+        else:
+            loss = self._compute_loss(pred, y)
 
         self.log("train_loss", loss, prog_bar=True)
         return loss
@@ -1347,7 +1456,7 @@ class PretrainSolarModel(pl.LightningModule):
         else:
             x, y = batch
 
-        pred = self.forward(x)
+        pred = self.forward(x, use_mask=False)
 
         # Calculate metrics
         # MAE
@@ -1450,5 +1559,63 @@ class PretrainSolarModel(pl.LightningModule):
             self.pred_embeddings = []
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=self.lr)
-        self.test_results = {"timestamps": [], "predictions": [], "targets": []}
+        optimizer_type = self.optimizer_dict.get("type", "adamw").lower()
+        lr = self.optimizer_dict.get("lr", 1e-4)
+        weight_decay = self.optimizer_dict.get("weight_decay", 0.0)
+        eps = self.optimizer_dict.get("eps", 1e-8)
+        betas = tuple(self.optimizer_dict.get("betas", [0.9, 0.999]))
+
+        if optimizer_type == "adam":
+            optimizer = torch.optim.Adam(
+                self.parameters(),
+                lr=lr,
+                weight_decay=weight_decay,
+                eps=eps,
+                betas=betas,
+            )
+        else:
+            optimizer = torch.optim.AdamW(
+                self.parameters(),
+                lr=lr,
+                weight_decay=weight_decay,
+                eps=eps,
+                betas=betas,
+            )
+
+        scheduler_cfg = self.optimizer_dict.get("scheduler")
+        if scheduler_cfg and scheduler_cfg.get("use") == "cosine_warmup":
+            from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
+
+            total_steps = scheduler_cfg["cosine_warmup"].get("total_steps", 10000)
+            warmup_ratio = scheduler_cfg["cosine_warmup"].get("warmup_ratio", 0.1)
+            min_lr = scheduler_cfg["cosine_warmup"].get("min_lr", 1e-6)
+
+            warmup_steps = int(total_steps * warmup_ratio)
+            train_steps = total_steps - warmup_steps
+
+            warmup_scheduler = LinearLR(
+                optimizer,
+                start_factor=1e-6 / lr,
+                end_factor=1.0,
+                total_iters=warmup_steps,
+            )
+            cosine_scheduler = CosineAnnealingLR(
+                optimizer,
+                T_max=train_steps,
+                eta_min=min_lr,
+            )
+            scheduler = SequentialLR(
+                optimizer,
+                schedulers=[warmup_scheduler, cosine_scheduler],
+                milestones=[warmup_steps],
+            )
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": scheduler,
+                    "interval": "step",
+                    "frequency": 1,
+                },
+            }
+
+        return optimizer

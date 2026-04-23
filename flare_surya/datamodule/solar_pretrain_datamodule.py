@@ -1,5 +1,5 @@
 import pytorch_lightning as pl
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader
 
 from flare_surya.dataset.solar_pretrain_dataset import SolarPretrainDataset
@@ -43,7 +43,7 @@ class SolarPretrainDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.data_type = data_type
-        self.scalers = scalers
+        self.scalers = OmegaConf.load(self.scalers)
 
     def setup(self, stage=None):
         """

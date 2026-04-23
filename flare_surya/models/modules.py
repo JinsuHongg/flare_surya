@@ -8,6 +8,7 @@ import xarray as xr
 import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
+from torchmetrics import MetricCollection, MeanAbsoluteError, MeanSquaredError, R2Score
 import wandb
 from loguru import logger as lgr_logger
 from peft import LoraConfig, get_peft_model
@@ -31,6 +32,30 @@ from flare_surya.models.solar_models import (
     SolarDecoder,
     SolarEncoder,
 )
+
+
+class SolarPretrainingMetrics(MetricCollection):
+    def __init__(self, prefix: str = None, postfix: str = None):
+        super().__init__(
+            {
+                "mae": MeanAbsoluteError(),
+                "mse": MeanSquaredError(),
+                "r2": R2Score(),
+            },
+            prefix=prefix,
+            postfix=postfix,
+        )
+
+    def update(self, preds: torch.Tensor, target: torch.Tensor) -> None:
+        preds_flat = preds.reshape(preds.shape[0], -1)
+        target_flat = target.reshape(target.shape[0], -1)
+        super().update(preds_flat, target_flat)
+
+    def compute(self):
+        computed = super().compute()
+        if "mse" in computed:
+            computed["rmse"] = torch.sqrt(computed["mse"])
+        return computed
 
 
 class FlareSurya(BaseModule):
@@ -1351,6 +1376,10 @@ class PretrainSolarModel(pl.LightningModule):
         self._last_mask_indices = None
         self._last_seq_mask_indices = None
 
+        self.train_metrics = SolarPretrainingMetrics(prefix="train_")
+        self.val_metrics = SolarPretrainingMetrics(prefix="val_")
+        self.test_metrics = SolarPretrainingMetrics(prefix="test_")
+
     def random_mask(
         self, tokens: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -1444,10 +1473,12 @@ class PretrainSolarModel(pl.LightningModule):
                     index=mask_indices.unsqueeze(1).expand(-1, pred.shape[1], -1),
                 )
             loss = self._compute_loss(pred_masked, y_masked)
+            self.train_metrics.update(pred_masked, y_masked)
         else:
             loss = self._compute_loss(pred, y)
+            self.train_metrics.update(pred, y)
 
-        self.log("train_loss", loss, prog_bar=True)
+        self.log("train/loss", loss, prog_bar=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -1458,37 +1489,20 @@ class PretrainSolarModel(pl.LightningModule):
 
         pred = self.forward(x, use_mask=False)
 
-        # Calculate metrics
-        # MAE
-        mae = torch.mean(torch.abs(pred - y))
-        # MSE
-        mse = torch.mean((pred - y) ** 2)
-        # RMSE
-        rmse = torch.sqrt(mse)
+        self.val_metrics.update(pred, y)
 
-        # R-squared
-        # SS_res = torch.sum((y - pred) ** 2)
-        # SS_tot = torch.sum((y - torch.mean(y)) ** 2)
-        # r2 = 1 - SS_res / (SS_tot + 1e-8)
+        loss = nn.functional.mse_loss(pred, y)
+        self.log("val/loss", loss, prog_bar=True, sync_dist=True)
 
-        # R2 score using sk-learn style computation for batched data
-        # Flatten for R2 calculation
-        y_flat = y.reshape(y.shape[0], -1)
-        pred_flat = pred.reshape(pred.shape[0], -1)
+    def on_train_epoch_end(self):
+        metrics = self.train_metrics.compute()
+        self.log_dict({k: v for k, v in metrics.items()}, sync_dist=True)
+        self.train_metrics.reset()
 
-        ss_res = torch.sum((y_flat - pred_flat) ** 2, dim=1)
-        ss_tot = torch.sum(
-            (y_flat - torch.mean(y_flat, dim=1, keepdim=True)) ** 2, dim=1
-        )
-        r2 = 1 - ss_res / (ss_tot + 1e-8)
-        r2 = torch.mean(r2)
-
-        self.log("val_mae", mae, prog_bar=True, sync_dist=True)
-        self.log("val_mse", mse, prog_bar=True, sync_dist=True)
-        self.log("val_rmse", rmse, prog_bar=True, sync_dist=True)
-        self.log("val_r2", r2, prog_bar=True, sync_dist=True)
-
-        return mse
+    def on_validation_epoch_end(self):
+        metrics = self.val_metrics.compute()
+        self.log_dict({k: v for k, v in metrics.items()}, sync_dist=True)
+        self.val_metrics.reset()
 
     def predict_step(self, batch, batch_idx):
         # Expects batch to contain (x, timestamp) or just x

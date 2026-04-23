@@ -155,12 +155,11 @@ def test_pretrain_model(toy_data_paths):
     model = PretrainSolarModel(
         in_channels=2,
         seq_len=1440,
-        embed_dim=64,  # Small for testing
+        embed_dim=64,
         encoder_depth=1,
         decoder_depth=1,
         num_heads=2,
         data_type="1d",
-        lr=1e-3,
     )
 
     # Create a batch

@@ -90,7 +90,7 @@ class SolarPretrainDataset(Dataset):
         """Open Zarr store lazily. Each worker opens its own handle."""
         if self._zarr_data is None:
             lgr_logger.info(f"Opening Zarr store at {self.zarr_path}")
-            self._zarr_data = xr.open_zarr(self.zarr_path, consolidated=True)
+            self._zarr_data = xr.open_zarr(self.zarr_path, consolidated=False)
 
     def __len__(self):
         return self.length

@@ -43,7 +43,7 @@ class SolarPretrainDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.data_type = data_type
-        self.scalers = OmegaConf.load(self.scalers)
+        self.scalers = OmegaConf.load(scalers)
 
     def setup(self, stage=None):
         """

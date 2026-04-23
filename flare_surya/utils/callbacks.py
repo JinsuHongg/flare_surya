@@ -145,11 +145,23 @@ def build_callbacks(cfg):
 
 def build_pretrain_callbacks(cfg):
     """Build callbacks for pretraining without downstream-specific checkpoints."""
+    checkpoint_callback = ModelCheckpoint(
+        monitor="val/loss",
+        dirpath=cfg.etc.ckpt_dir,
+        filename=f"{cfg.etc.ckpt_name_tag}_" "{epoch}-{val_loss:.4f}",
+        save_top_k=3,
+        mode="min",
+        verbose=True,
+        save_last=True,
+        enable_version_counter=cfg.etc.enable_version_counter,
+    )
+
     performance_monitor = PerformanceMonitor()
     time_monitor = TimeLogger()
 
     return [
         LearningRateMonitor(logging_interval="step"),
+        checkpoint_callback,
         performance_monitor,
         time_monitor,
     ]

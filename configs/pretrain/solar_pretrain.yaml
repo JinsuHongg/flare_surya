@@ -77,3 +77,12 @@ wandb:
   offline: false
   save_code: false
   tag: ["pretrain", "mae"]
+
+etc:
+  resume: false
+  ckpt_dir: ../results/check_point/pretrain/xrs/
+  ckpt_name_tag: xrs_1e-4
+  ckpt_file: last.ckpt
+  ckpt_weights_only: false
+  save_test_results_path: ../results/
+  

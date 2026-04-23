@@ -235,9 +235,10 @@ class FlareSurya(BaseModule):
             "train/loss",
             loss,
             on_step=True,
-            on_epoch=True,
-            prog_bar=True,
+            on_epoch=False,
+            prog_bar=False,
             sync_dist=False,
+            batch_size=target.shape[0],
         )
 
         return loss
@@ -646,10 +647,11 @@ class BaseLineModel(BaseModule):
         self.log(
             "val/loss",
             loss,
-            on_step=False,
             on_epoch=True,
+            on_step=False,
             prog_bar=False,
             sync_dist=True,
+            batch_size=target.shape[0],
         )
 
         # Update Metrics (x_hat contains the logits)
@@ -1098,6 +1100,7 @@ class SuryaMultiModal(BaseModule):
             on_epoch=True,
             prog_bar=True,
             sync_dist=False,
+            batch_size=target.shape[0],
         )
 
         return loss
@@ -1136,6 +1139,7 @@ class SuryaMultiModal(BaseModule):
             on_step=False,
             prog_bar=False,
             sync_dist=True,
+            batch_size=target.shape[0],
         )
 
     def on_validation_epoch_end(self):
@@ -1489,7 +1493,7 @@ class PretrainSolarModel(pl.LightningModule):
             loss = self._compute_loss(pred, y)
             self.train_metrics.update(pred, y)
 
-        self.log("train/loss", loss, prog_bar=True)
+        self.log("train/loss", loss, prog_bar=True, batch_size=x.shape[0])
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -1503,7 +1507,7 @@ class PretrainSolarModel(pl.LightningModule):
         self.val_metrics.update(pred, y)
 
         loss = nn.functional.mse_loss(pred, y)
-        self.log("val/loss", loss, prog_bar=True, sync_dist=True)
+        self.log("val/loss", loss, prog_bar=True, sync_dist=True, batch_size=x.shape[0])
 
     def on_train_epoch_end(self):
         metrics = self.train_metrics.compute()

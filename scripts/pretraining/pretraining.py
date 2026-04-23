@@ -1,7 +1,13 @@
+import warnings
+
+# Suppress the specific FutureWarning from timm
+warnings.filterwarnings(
+    "ignore", "Importing from timm.models.layers is deprecated.*", FutureWarning
+)
+
 import hydra
 import torch
 import torch.multiprocessing as mp
-import warnings
 import pytorch_lightning as pl
 from loguru import logger as lgr_logger
 from omegaconf import OmegaConf
@@ -12,11 +18,6 @@ from flare_surya.utils.callbacks import build_pretrain_callbacks
 from flare_surya.utils.logger_utils import build_wandb
 
 torch.set_float32_matmul_precision("medium")
-
-# Suppress the specific FutureWarning from timm
-warnings.filterwarnings(
-    "ignore", "Importing from timm.models.layers is deprecated.*", FutureWarning
-)
 
 
 def build_model(cfg):

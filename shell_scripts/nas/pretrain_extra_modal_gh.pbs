@@ -12,8 +12,8 @@
 
 task_name=${TASK_NAME:-default}
 JOBID=$(echo "$PBS_JOBID" | cut -d. -f1)
-exec >logs/xrs/${task_name}.${JOBID}.out
-exec 2>logs/xrs/${task_name}.${JOBID}.err
+exec >logs/pretrain/${task_name}.${JOBID}.out
+exec 2>logs/pretrain/${task_name}.${JOBID}.err
 
 mapfile -t NODES < <(sort -u "$PBS_NODEFILE")
 if [[ ${#NODES[@]} -ne 1 ]]; then

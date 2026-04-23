@@ -74,12 +74,12 @@ class TimeLogger(pl.Callback):
     def on_train_epoch_end(self, trainer, pl_module):
         elapsed = time.time() - self._epoch_start
         metrics = trainer.callback_metrics
-        loss = metrics.get("train/loss", float("nan"))
-        val_loss = metrics.get("val_loss", float("nan"))
+        train_loss = metrics.get("train_loss", metrics.get("train/loss", float("nan")))
+        val_loss = metrics.get("val_loss", metrics.get("val/loss", float("nan")))
         print(
             f"[Epoch {trainer.current_epoch+1}/{trainer.max_epochs}] "
             f"time={elapsed:.1f}s | "
-            f"train_loss={loss:.4f} | val_loss={val_loss:.4f}",
+            f"train_loss={train_loss:.4f} | val_loss={val_loss:.4f}",
             flush=True
         )
 
@@ -139,6 +139,18 @@ def build_callbacks(cfg):
     return [
         LearningRateMonitor(logging_interval="step"),
         checkpoint_callback,
+        performance_monitor,
+        time_monitor,
+    ]
+
+
+def build_pretrain_callbacks(cfg):
+    """Build callbacks for pretraining without downstream-specific checkpoints."""
+    performance_monitor = PerformanceMonitor()
+    time_monitor = TimeLogger()
+
+    return [
+        LearningRateMonitor(logging_interval="step"),
         performance_monitor,
         time_monitor,
     ]

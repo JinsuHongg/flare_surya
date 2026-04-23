@@ -47,18 +47,15 @@ data:
   batch_size: 32
   num_workers: 4
   data_type: "1d"  # Must match model.data_type
-  scalers:  # Normalization statistics
-    xray:
-      mean: 0.0
-      std: 1.0
+  scalers: ../data/xrs_stats.yaml # Normalization statistics
 
 # Trainer Configuration
 trainer:
   max_epochs: 100
   accelerator: auto
   devices: 1
-  precision: 16
-  accumulate_grad_batches: 1
+  precision: bf16-mixed
+  accumulate_grad_batches: 8
   gradient_clip_val: 1.0
 
 # Logging

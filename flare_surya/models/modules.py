@@ -276,7 +276,7 @@ class FlareSurya(BaseModule):
 
         # Log step loss normally
         self.log(
-            "val_loss",
+            "val/loss",
             loss,
             on_epoch=True,
             on_step=False,
@@ -289,7 +289,7 @@ class FlareSurya(BaseModule):
         metrics = self.val_metrics.compute()
 
         self.log_dict(
-            {f"val_{k}": v.float() for k, v in metrics.items()}, sync_dist=True
+            {f"val/{k}": v.float() for k, v in metrics.items()}, sync_dist=True
         )
 
         # Reset for next epoch
@@ -644,7 +644,7 @@ class BaseLineModel(BaseModule):
 
         # Log Training Loss
         self.log(
-            "val_loss",
+            "val/loss",
             loss,
             on_step=False,
             on_epoch=True,
@@ -663,7 +663,7 @@ class BaseLineModel(BaseModule):
 
         # Log all computed metrics
         self.log_dict(
-            {f"val_{k}": v.float() for k, v in metrics.items()}, sync_dist=True
+            {f"val/{k}": v.float() for k, v in metrics.items()}, sync_dist=True
         )
 
         self.val_metrics.reset()
@@ -1130,7 +1130,7 @@ class SuryaMultiModal(BaseModule):
 
         # Log step loss normally
         self.log(
-            "val_loss",
+            "val/loss",
             loss,
             on_epoch=True,
             on_step=False,
@@ -1143,7 +1143,7 @@ class SuryaMultiModal(BaseModule):
         metrics = self.val_metrics.compute()
 
         self.log_dict(
-            {f"val_{k}": v.float() for k, v in metrics.items()}, sync_dist=True
+            {f"val/{k}": v.float() for k, v in metrics.items()}, sync_dist=True
         )
 
         # Reset for next epoch
@@ -1333,7 +1333,7 @@ class PretrainSolarModel(pl.LightningModule):
             "betas": [0.9, 0.999],
             "scheduler": {
                 "use": "cosine_warmup",
-                "monitor": "val_loss",
+                "monitor": "val/loss",
                 "cosine_warmup": {
                     "total_steps": 10000,
                     "warmup_ratio": 0.1,
@@ -1376,9 +1376,9 @@ class PretrainSolarModel(pl.LightningModule):
         self._last_mask_indices = None
         self._last_seq_mask_indices = None
 
-        self.train_metrics = SolarPretrainingMetrics(prefix="train_")
-        self.val_metrics = SolarPretrainingMetrics(prefix="val_")
-        self.test_metrics = SolarPretrainingMetrics(prefix="test_")
+        self.train_metrics = SolarPretrainingMetrics(prefix="train/")
+        self.val_metrics = SolarPretrainingMetrics(prefix="val/")
+        self.test_metrics = SolarPretrainingMetrics(prefix="test/")
 
     def random_mask(
         self, tokens: torch.Tensor
@@ -1448,9 +1448,14 @@ class PretrainSolarModel(pl.LightningModule):
 
                 def to_patches(tensor):
                     B, C, H, W = tensor.shape
-                    patches = tensor.unfold(2, patch_size, patch_size).unfold(3, patch_size, patch_size)
+                    patches = tensor.unfold(2, patch_size, patch_size).unfold(
+                        3, patch_size, patch_size
+                    )
                     patches = patches.permute(0, 2, 3, 1, 4, 5).reshape(
-                        B, num_patches_per_side * num_patches_per_side, C, patch_size * patch_size
+                        B,
+                        num_patches_per_side * num_patches_per_side,
+                        C,
+                        patch_size * patch_size,
                     )
                     patches = patches.mean(-1)
                     return patches
@@ -1459,8 +1464,14 @@ class PretrainSolarModel(pl.LightningModule):
                 pred_patches = to_patches(pred)
 
                 B_mask, num_mask = mask_indices.shape
-                y_masked = y_patches[torch.arange(B_mask, device=mask_indices.device).unsqueeze(1), mask_indices]
-                pred_masked = pred_patches[torch.arange(B_mask, device=mask_indices.device).unsqueeze(1), mask_indices]
+                y_masked = y_patches[
+                    torch.arange(B_mask, device=mask_indices.device).unsqueeze(1),
+                    mask_indices,
+                ]
+                pred_masked = pred_patches[
+                    torch.arange(B_mask, device=mask_indices.device).unsqueeze(1),
+                    mask_indices,
+                ]
             else:
                 y_masked = torch.gather(
                     y,
@@ -1598,9 +1609,22 @@ class PretrainSolarModel(pl.LightningModule):
 
         scheduler_cfg = self.optimizer_dict.get("scheduler")
         if scheduler_cfg and scheduler_cfg.get("use") == "cosine_warmup":
-            from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
+            from torch.optim.lr_scheduler import (
+                CosineAnnealingLR,
+                LinearLR,
+                SequentialLR,
+            )
 
-            total_steps = scheduler_cfg["cosine_warmup"].get("total_steps", 10000)
+            total_steps = self.trainer.estimated_stepping_batches
+            # Check for edge cases where Lightning returns infinity or valid steps are unknown
+            if isinstance(total_steps, (float, int)) and (
+                total_steps == float("inf") or total_steps == 0
+            ):
+                lgr_logger.warning(
+                    "Warning: Could not calculate total steps automatically."
+                )
+                total_steps = scheduler_cfg["cosine_warmup"].get("total_steps", 10000)
+
             warmup_ratio = scheduler_cfg["cosine_warmup"].get("warmup_ratio", 0.1)
             min_lr = scheduler_cfg["cosine_warmup"].get("min_lr", 1e-6)
 

@@ -8,6 +8,7 @@ from omegaconf import OmegaConf
 
 from flare_surya.datamodule import SolarPretrainDataModule
 from flare_surya.models import PretrainSolarModel
+from flare_surya.utils.callbacks import build_pretrain_callbacks
 from flare_surya.utils.logger_utils import build_wandb
 
 torch.set_float32_matmul_precision("medium")
@@ -79,6 +80,7 @@ def train(cfg: OmegaConf):
         accumulate_grad_batches=cfg.trainer.get("accumulate_grad_batches", 1),
         gradient_clip_val=cfg.trainer.get("gradient_clip_val", 1.0),
         gradient_clip_algorithm=cfg.trainer.get("gradient_clip_algorithm", "norm"),
+        callbacks=build_pretrain_callbacks(cfg),
     )
 
     lgr_logger.info("Start training...")

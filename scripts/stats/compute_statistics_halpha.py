@@ -3,19 +3,26 @@ import os
 
 import dask
 import dask.array as da
+import pandas as pd
 import xarray as xr
 import yaml
 import zarr
 from loguru import logger
 
 
-def compute_statistics(zarr_path: str, variable_name: str, output_path: str = None):
+def compute_statistics(
+    zarr_path: str,
+    variable_name: str,
+    index_path: str | None = None,
+    output_path: str | None = None,
+):
     """
     Compute statistics for a given variable in a Zarr dataset.
 
     Args:
         zarr_path (str): Path to the Zarr dataset.
         variable_name (str): Name of the variable to compute statistics on.
+        index_path (str, optional): Path to the index CSV file (containing timestamps) to filter data. Defaults to None.
         output_path (str, optional): Path to save the statistics as a YAML file. Defaults to None.
     """
     logger.info(f"Opening Zarr store at {zarr_path}")
@@ -43,7 +50,6 @@ def compute_statistics(zarr_path: str, variable_name: str, output_path: str = No
         f"Found variable '{variable_name}' with shape {zarr_array.shape} and {zarr_array.ndim} dimensions."
     )
 
-    # Infer dimensions based on variable name and shape
     dims = None
     if variable_name == "images":
         if zarr_array.ndim == 4:
@@ -62,14 +68,35 @@ def compute_statistics(zarr_path: str, variable_name: str, output_path: str = No
 
     logger.info(f"Assuming dimensions: {dims}")
 
-    # Wrap the Zarr array in a dask array to make it a lazy-loading array
     dask_array = da.from_array(zarr_array, chunks=zarr_array.chunks)
 
     data_var = xr.DataArray(dask_array, dims=dims, name=variable_name)
 
+    if index_path is not None:
+        logger.info(f"Loading index from {index_path} to filter data")
+        try:
+            index_df = pd.read_csv(index_path)
+            index_df["timestamp"] = pd.to_datetime(index_df["timestamp"]).values.astype(
+                "datetime64[ns]"
+            )
+            index_df.set_index("timestamp", inplace=True)
+            index_df.sort_index(inplace=True)
+
+            selected_timestamps = index_df.index
+
+            time_dim = dims[0]
+            logger.info(
+                f"Filtering data by {len(selected_timestamps)} timestamps using dimension '{time_dim}'"
+            )
+            data_var = data_var.sel({time_dim: selected_timestamps})
+
+            logger.info(f"After filtering, data shape: {data_var.shape}")
+        except Exception as e:
+            logger.error(f"Failed to load or apply index filter: {e}")
+            return
+
     logger.info(f"Computing statistics for variable '{variable_name}'")
 
-    # Ensure dask is used for computations
     with dask.config.set(scheduler="threads"):
         mean_val = data_var.mean().compute()
         std_val = data_var.std().compute()
@@ -91,7 +118,6 @@ def compute_statistics(zarr_path: str, variable_name: str, output_path: str = No
     if output_path:
         logger.info(f"Saving statistics to {output_path}")
         try:
-            # Ensure the output directory exists
             output_dir = os.path.dirname(output_path)
             if output_dir:
                 os.makedirs(output_dir, exist_ok=True)
@@ -119,6 +145,12 @@ if __name__ == "__main__":
         help="Name of the variable to compute statistics on. Common alternatives could be 'xrsb_flux' or similar.",
     )
     parser.add_argument(
+        "--index_path",
+        type=str,
+        default=None,
+        help="Path to the index CSV file (containing timestamps) to filter data for statistics computation.",
+    )
+    parser.add_argument(
         "--output_path",
         type=str,
         default="./halpha_stats.yaml",
@@ -126,4 +158,6 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    compute_statistics(args.zarr_path, args.variable_name, args.output_path)
+    compute_statistics(
+        args.zarr_path, args.variable_name, args.index_path, args.output_path
+    )

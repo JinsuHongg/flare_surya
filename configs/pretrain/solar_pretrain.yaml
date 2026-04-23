@@ -43,7 +43,7 @@ data:
   test_index_path: ./data/surya-bench-flare-forecasting/M24w/test_M24w.csv
   channels:  # List of channels to load
     - soft
-    - hard
+    # - hard
   batch_size: 32
   num_workers: 4
   data_type: "1d"  # Must match model.data_type

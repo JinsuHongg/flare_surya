@@ -11,7 +11,7 @@ model:
   num_heads: 8
   data_type: "1d"  # Options: "1d" or "2d"
   image_size: 512  # Only used if data_type is "2d"
-  patch_size: 16  # Only used if data_type is "2d"
+  patch_size: 8   # Only used if data_type is "2d"
   mask_ratio: 0.15
 
 # Optimizer Configuration
@@ -37,17 +37,17 @@ loss:
 
 # DataModule Configuration
 data:
-  zarr_path: /media/jhong90/storage/surya/xrs_24hour_slices_g15_g16_merged.zarr
-  train_index_path: /media/jhong90/storage/surya/index_data/M24w/train.csv
-  val_index_path: /media/jhong90/storage/surya/index_data/M24w/val_M24w.csv
-  test_index_path: /media/jhong90/storage/surya/index_data/M24w/test_M24w.csv
+  zarr_path: ./data/xrs_24hour_slices_g15_g16_merged.zarr
+  train_index_path: ./data/surya-bench-flare-forecasting/M24w/train.csv
+  val_index_path: ./data/surya-bench-flare-forecasting/M24w/val_M24w.csv
+  test_index_path: ./data/surya-bench-flare-forecasting/M24w/test_M24w.csv
   channels:  # List of channels to load
     - soft
     - hard
   batch_size: 32
   num_workers: 4
   data_type: "1d"  # Must match model.data_type
-  scalers: ../data/xrs_stats.yaml # Normalization statistics
+  scalers: ./data/xrs_stat.yaml # Normalization statistics
 
 # Trainer Configuration
 trainer:
@@ -65,24 +65,24 @@ logger:
 
 # Wandb Configuration
 wandb:
-  name: solar_pretrain
-  id: solar_pretrain
+  name: xrs_pretrain_test1
+  id: xrs_pretrain_test1
   resume: allow
-  save_dir: ../results
+  save_dir: ./results
   entity: gsu-dmlab
-  project: helio-fm
-  group: null
+  project: modality-adapter
+  group: xrs
   log_model: false
   notes: "pretraining run"
   offline: false
   save_code: false
-  tag: ["pretrain", "mae"]
+  tag: ["pretrain", "mae", "xrs"]
 
 etc:
   resume: false
-  ckpt_dir: ../results/check_point/pretrain/xrs/
+  ckpt_dir: ./results/check_point/pretrain/xrs/
   ckpt_name_tag: xrs_1e-4
-  ckpt_file: last.ckpt
+  ckpt_file: xrs_1e-4_epoch=38-val_loss=0.0000.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ../results/
-  
+  save_test_results_path: ./results/
+  enable_version_counter: False

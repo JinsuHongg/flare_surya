@@ -4,7 +4,9 @@ from pathlib import Path
 
 def main(new_data_path, tag):
     # read new data
-    df_new = pd.read_csv(new_data_path.parents[1] / f"data_thres_{tag[0].lower()}_24hour_window.csv")
+    df_new = pd.read_csv(
+        new_data_path.parents[1] / f"data_thres_{tag[0].lower()}_24hour_window.csv"
+    )
 
     # read existing datasplit
     df_train = pd.read_csv((new_data_path.parent / "train.csv").resolve())

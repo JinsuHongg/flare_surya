@@ -150,7 +150,9 @@ def rolling_window(
         df = df[cols]
 
     print(f"Total {len(df)} instances!")
-    df.to_csv(save_path + f"data_thres_{thres_max[0].lower()}_24hour_window.csv", index=False)
+    df.to_csv(
+        save_path + f"data_thres_{thres_max[0].lower()}_24hour_window.csv", index=False
+    )
     split_dataset(df, savepath=save_path)
 
     return df
@@ -161,7 +163,7 @@ def assign_split(t):
     Assign a split label (train/val/test/leaky_val) based on timestamp.
 
     Data Split Strategy:
-        Training Set: 
+        Training Set:
             - All days in 2010
             - All days from 2011 to 2019, excluding the dates used in the validation and leaky validation sets
         Validation Set: January 15–31 for each year from 2011 to 2019
@@ -185,7 +187,7 @@ def assign_split(t):
         m, d = t.month, t.day
         if (m == 1 and 1 <= d <= 14) or (m == 2 and 1 <= d <= 14):
             return "leaky_validation"
-        if (m == 1 and 15 <= d <= 31):
+        if m == 1 and 15 <= d <= 31:
             return "validation"
         return "training"
     return "training"
@@ -200,9 +202,9 @@ def split_dataset(df: pd.DataFrame, savepath: str = "/"):
     2. Assigns split labels based on date rules
     3. Saves split files to OUTPUT_DIR
     """
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Splitting dataset into train/val/test/leaky_val...")
-    print("="*60)
+    print("=" * 60)
 
     # Ensure timestamp column is datetime type
     df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
@@ -218,7 +220,7 @@ def split_dataset(df: pd.DataFrame, savepath: str = "/"):
     # Count splits
     split_counts = df["split"].value_counts()
     print("\nSplit distribution:")
-    for split_name in ['training', 'validation', 'test', 'leaky_validation']:
+    for split_name in ["training", "validation", "test", "leaky_validation"]:
         count = split_counts.get(split_name, 0)
         percentage = (count / len(df)) * 100 if len(df) > 0 else 0
         print(f"  {split_name:20s}: {count:6d} samples ({percentage:5.2f}%)")

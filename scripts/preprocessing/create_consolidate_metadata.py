@@ -12,13 +12,15 @@ store = zarr.DirectoryStore(zarr_path)
 # --- FIX IS HERE ---
 # Use open_group (not group) and mode='r+' (read/write)
 # If you fear the group doesn't exist at all, use mode='a' (append/create)
-root = zarr.open_group(store=store, mode='r+') 
+root = zarr.open_group(store=store, mode="r+")
 
 # 3. Verify 'timestep' is actually visible
-if 'timestep' in root:
+if "timestep" in root:
     print("Found 'timestep' array in raw storage.")
 else:
-    print("WARNING: 'timestep' array NOT found. If the folder exists, the .zarray file inside it might be missing.")
+    print(
+        "WARNING: 'timestep' array NOT found. If the folder exists, the .zarray file inside it might be missing."
+    )
 
 # 4. Force Re-Consolidation
 print("Consolidating metadata...")

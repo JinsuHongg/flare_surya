@@ -45,7 +45,9 @@ def load_csv(file_path: Path) -> pd.DataFrame:
         raise IOError(f"Failed to read CSV file {file_path}: {e}") from e
 
 
-def balance_dataset(df: pd.DataFrame, label_column: str = "label_max") -> pd.DataFrame | None:
+def balance_dataset(
+    df: pd.DataFrame, label_column: str = "label_max"
+) -> pd.DataFrame | None:
     """Balance a dataset by undersampling the majority class.
 
     Args:

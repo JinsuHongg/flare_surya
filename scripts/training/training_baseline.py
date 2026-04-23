@@ -23,7 +23,6 @@ from flare_surya.datamodule import FlareDataModule
 from flare_surya.models import BaseLineModel
 from flare_surya.utils.callbacks import PerformanceMonitor, TimeLogger
 
-
 torch.set_float32_matmul_precision("medium")
 # This changes the sharing strategy from RAM (shm) to Disk (file_system)
 # torch.multiprocessing.set_sharing_strategy("file_system")

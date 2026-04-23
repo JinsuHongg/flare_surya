@@ -13,7 +13,6 @@ class BaseModule(L.LightningModule):
         self.weight_decay = self.optimizer_dict.get("weight_decay", 0.01)
         self.eps = self.optimizer_dict.get("eps", 1e-8)
 
-
     def configure_optimizers(self):
         opt_type = self.optimizer_dict.get("type", "adamw")
         params = filter(lambda p: p.requires_grad, self.parameters())

@@ -6,7 +6,7 @@ import torchvision.models as models
 class ResNet18(nn.Module):
     def __init__(self, in_channels=3, time_steps=1, num_classes=1, dropout=0.1):
         super(ResNet18, self).__init__()
-        
+
         # 1. Load the pretrained ResNet18
         self.resnet = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
 
@@ -25,11 +25,13 @@ class ResNet18(nn.Module):
         with torch.no_grad():
             # Average across the 3 RGB channels to get a generic "edge detector" [64, 1, 7, 7]
             avg_weight = pretrained_weights.mean(dim=1, keepdim=True)
-            
+
             # Repeat this generic filter across your new number of channels
             # We scale it by (3 / merged_channels) so the overall output magnitude remains stable
-            repeated_weights = avg_weight.repeat(1, merged_channels, 1, 1) * (3.0 / merged_channels)
-            
+            repeated_weights = avg_weight.repeat(1, merged_channels, 1, 1) * (
+                3.0 / merged_channels
+            )
+
             # Inject it into your new layer
             self.resnet.conv1.weight.copy_(repeated_weights)
 

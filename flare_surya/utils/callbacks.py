@@ -68,7 +68,7 @@ class TimeLogger(pl.Callback):
                 f"  [Epoch {trainer.current_epoch+1} | "
                 f"Step {batch_idx+1}/{self._total_batches} ({100*progress:.0f}%)] "
                 f"elapsed={elapsed:.1f}s | ETA_epoch={eta_epoch:.0f}s",
-                flush=True
+                flush=True,
             )
 
     def on_train_epoch_end(self, trainer, pl_module):
@@ -80,19 +80,21 @@ class TimeLogger(pl.Callback):
             f"[Epoch {trainer.current_epoch+1}/{trainer.max_epochs}] "
             f"time={elapsed:.1f}s | "
             f"train_loss={train_loss:.4f} | val_loss={val_loss:.4f}",
-            flush=True
+            flush=True,
         )
 
     def on_test_epoch_start(self, trainer, pl_module):
         self._test_epoch_start = time.time()
         self._total_test_batches = trainer.num_test_batches[0]  # list per dataloader
 
-    def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
+    def on_test_batch_end(
+        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0
+    ):
         if batch_idx % 50 == 0:
             elapsed = time.time() - self._test_epoch_start
             batches_from_prev_loaders = sum(trainer.num_test_batches[:dataloader_idx])
             global_batch_idx = batches_from_prev_loaders + batch_idx
- 
+
             if self._total_test_batches == 0:
                 return
 
@@ -102,7 +104,7 @@ class TimeLogger(pl.Callback):
                 f"  [Test | "
                 f"Step {batch_idx+1}/{self._total_test_batches} ({100*progress:.0f}%)] "
                 f"elapsed={elapsed:.1f}s | ETA={eta:.0f}s",
-                flush=True
+                flush=True,
             )
 
     def on_test_epoch_end(self, trainer, pl_module):
@@ -110,24 +112,21 @@ class TimeLogger(pl.Callback):
         metrics = trainer.callback_metrics
         test_loss = metrics.get("test/loss", float("nan"))
         print(
-            f"[Test Complete] "
-            f"time={elapsed:.1f}s | "
-            f"test_loss={test_loss:.4f}",
-            flush=True
+            f"[Test Complete] " f"time={elapsed:.1f}s | " f"test_loss={test_loss:.4f}",
+            flush=True,
         )
+
 
 def build_callbacks(cfg):
 
     checkpoint_callback = ModelCheckpoint(
-        monitor=cfg.optimizer.scheduler.monitor, # e.g., "val_loss"
+        monitor=cfg.optimizer.scheduler.monitor,  # e.g., "val_loss"
         dirpath=cfg.etc.ckpt_dir,
         filename=(
-            f"{cfg.etc.ckpt_name_tag}_"
-            f"{cfg.head.type}_"
-            "{epoch}-{val_hss:.4f}"
+            f"{cfg.etc.ckpt_name_tag}_" f"{cfg.head.type}_" "{epoch}-{val_hss:.4f}"
         ),
         save_top_k=3,
-        mode="max", 
+        mode="max",
         verbose=True,
         save_last=True,
         enable_version_counter=cfg.etc.enable_version_counter,

@@ -43,10 +43,10 @@ pprint(ts)
 # try:
 #     zarr.consolidate_metadata(store)
 #     print("SUCCESS: .zmetadata created! You can now use open_consolidated().")
-#     
+#
 #     # Verify what Zarr sees now
 #     root = zarr.open_group(store, mode='r')
 #     print(f"Visible Keys: {list(root.keys())}")
-#     
+#
 # except Exception as e:
 #     print(f"FAILED to consolidate: {e}")

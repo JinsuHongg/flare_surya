@@ -65,7 +65,7 @@ def create_zarr_optimized(data_local, data_aws, data_ref, zarr_path):
     num_channels = len(channels)
 
     # check total
-    surya_bench_index = data_aws[data_aws["present"]==1].index
+    surya_bench_index = data_aws[data_aws["present"] == 1].index
 
     # define reference timestamps
     flare_index = data_ref.index
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     df_aws = pd.read_csv("../data/surya_aws_s3_full_index.csv")
     # df_ref_1 = pd.read_csv("../data/surya-bench-flare-forecasting/train_hour_8.csv")
     # df_ref_2 = pd.read_csv("../data/surya-bench-flare-forecasting/train_hour_12.csv")
-    # 
+    #
     # df_ref_1["timestamp"] = pd.to_datetime(df_ref_1["timestamp"])
     # df_ref_2["timestamp"] = pd.to_datetime(df_ref_2["timestamp"])
     # df_ref = (

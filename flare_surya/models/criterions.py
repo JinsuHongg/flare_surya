@@ -143,7 +143,9 @@ class FlareSSMLoss(nn.Module):
         # Binary CE = -[y*log(p) + (1-y)*log(1-p)]
         bce = F.binary_cross_entropy_with_logits(
             logits, targets, reduction="none"
-        ).squeeze(1)  # (N,)
+        ).squeeze(
+            1
+        )  # (N,)
         l_ce_weighted = (gamma * bce).mean()
 
         # ── Shared norms ──────────────────────────────────────────────────────

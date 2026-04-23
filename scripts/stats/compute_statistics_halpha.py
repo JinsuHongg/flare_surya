@@ -1,19 +1,22 @@
 import argparse
+import os
 
 import dask
 import dask.array as da
 import xarray as xr
+import yaml
 import zarr
 from loguru import logger
 
 
-def compute_statistics(zarr_path: str, variable_name: str):
+def compute_statistics(zarr_path: str, variable_name: str, output_path: str = None):
     """
     Compute statistics for a given variable in a Zarr dataset.
 
     Args:
         zarr_path (str): Path to the Zarr dataset.
         variable_name (str): Name of the variable to compute statistics on.
+        output_path (str, optional): Path to save the statistics as a YAML file. Defaults to None.
     """
     logger.info(f"Opening Zarr store at {zarr_path}")
 
@@ -73,11 +76,30 @@ def compute_statistics(zarr_path: str, variable_name: str):
         min_val = data_var.min().compute()
         max_val = data_var.max().compute()
 
+    stats = {
+        "variable": variable_name,
+        "mean": float(mean_val),
+        "std_dev": float(std_val),
+        "min": float(min_val),
+        "max": float(max_val),
+    }
+
     logger.info(f"Statistics for '{variable_name}':")
-    logger.info(f"  Mean: {mean_val}")
-    logger.info(f"  Std Dev: {std_val}")
-    logger.info(f"  Min: {min_val}")
-    logger.info(f"  Max: {max_val}")
+    for key, value in stats.items():
+        logger.info(f"  {key.capitalize()}: {value}")
+
+    if output_path:
+        logger.info(f"Saving statistics to {output_path}")
+        try:
+            # Ensure the output directory exists
+            output_dir = os.path.dirname(output_path)
+            if output_dir:
+                os.makedirs(output_dir, exist_ok=True)
+            with open(output_path, "w") as f:
+                yaml.dump(stats, f, default_flow_style=False)
+            logger.success(f"Successfully saved statistics to {output_path}")
+        except Exception as e:
+            logger.error(f"Failed to save statistics to {output_path}: {e}")
 
 
 if __name__ == "__main__":
@@ -96,6 +118,12 @@ if __name__ == "__main__":
         default="flux",
         help="Name of the variable to compute statistics on. Common alternatives could be 'xrsb_flux' or similar.",
     )
+    parser.add_argument(
+        "--output_path",
+        type=str,
+        default="./halpha_stats.yaml",
+        help="Path to save the computed statistics in YAML format.",
+    )
     args = parser.parse_args()
 
-    compute_statistics(args.zarr_path, args.variable_name)
+    compute_statistics(args.zarr_path, args.variable_name, args.output_path)

@@ -24,7 +24,7 @@ optimizer:
   # Scheduler Configuration
   scheduler:
     use: cosine_warmup  # Options: "cosine_warmup" or null for constant LR
-    monitor: val_loss
+    monitor: val/loss
     # Cosine warmup parameters
     cosine_warmup:
       total_steps: 10000  # Total training steps (set to max_epochs * steps_per_epoch approx)

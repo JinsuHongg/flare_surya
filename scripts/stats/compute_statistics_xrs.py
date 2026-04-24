@@ -65,7 +65,14 @@ def compute_statistics(
                 ds = ds.isel(timestep=index)
 
             # Convert dataset timesteps to pandas datetime64 for intersection
-            ds_timesteps = pd.to_datetime(ds.timestep.values)
+            # cftime objects need to be converted to POSIX timestamps first
+            ds_timesteps_raw = ds.timestep.values
+            if hasattr(ds_timesteps_raw[0], "strftime"):
+                ds_timesteps = pd.to_datetime(
+                    [t.strftime("%Y-%m-%d %H:%M:%S") for t in ds_timesteps_raw]
+                )
+            else:
+                ds_timesteps = pd.to_datetime(ds_timesteps_raw)
             index_timesteps = pd.to_datetime(selected_timestamps)
 
             # Find intersection

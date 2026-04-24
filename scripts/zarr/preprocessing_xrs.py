@@ -4,6 +4,7 @@ import pandas as pd
 import xarray as xr
 import numcodecs
 import zarr
+from xarray.coding import times
 from loguru import logger
 from numpy.lib.stride_tricks import sliding_window_view
 
@@ -160,21 +161,49 @@ def main(
 
             ds_out = ds_out.isel(timestep=mask_new)
 
+        # NEW: Ensure no internal duplicates in the data to be written
+        timestep_index = ds_out.timestep.to_index()
+        if timestep_index.has_duplicates:
+            num_internal_dups = timestep_index.duplicated().sum()
+            logger.warning(
+                f"Removing {num_internal_dups} internal duplicate timesteps in current chunk"
+            )
+            _, unique_idx = np.unique(ds_out.timestep.values, return_index=True)
+            ds_out = ds_out.isel(timestep=unique_idx)
+
+# Get reference time from existing zarr to maintain consistent units
+        if not is_first_write:
+            existing_units = existing_ds.timestep.attrs.get(
+                "units", "hours since 2010-04-08 00:00:00"
+            )
+            existing_calendar = existing_ds.timestep.attrs.get(
+                "calendar", "proleptic_gregorian"
+            )
+        else:
+            existing_units = "hours since 2010-04-08 00:00:00"
+            existing_calendar = "proleptic_gregorian"
+
         # Write or Append to Zarr
+        encoding = {
+            "timestep": {
+                "dtype": "float64",  # Use float64 to avoid precision issues with large timestamps
+                "units": existing_units,
+                "calendar": existing_calendar,
+            },
+        }
+
         if is_first_write:
-            encoding = {
-                # Notice we added '2' to the chunk shape for the two channels
-                "xray": {
-                    "compressor": compressor,
-                    "chunks": (500, window_size_mins, 2),
-                },
-                "timestep": {"dtype": "int64"},
+            # Add compressor and chunks for the first write
+            encoding["xray"] = {
+                "compressor": compressor,
+                "chunks": (500, window_size_mins, 2),
             }
             ds_out.to_zarr(zarr_path, mode="w", encoding=encoding)
             is_first_write = False
             logger.info("Created new Zarr store and saved first year.")
         else:
             if len(ds_out["timestep"]) > 0:
+                # Do not provide encoding for existing variables on append
                 ds_out.to_zarr(zarr_path, append_dim="timestep")
                 logger.info(
                     f"Appended {len(ds_out['timestep'])} timesteps to Zarr store."

@@ -1,7 +1,6 @@
 import argparse
 import os
 
-import cftime
 import dask.array as da
 import numpy as np
 import pandas as pd
@@ -25,8 +24,9 @@ def compute_statistics(
     """
     logger.info(f"Opening Zarr dataset at {zarr_path}")
 
-    # Use decode_times=False to avoid time decoding issues
-    ds = xr.open_dataset(zarr_path, engine="zarr", chunks="auto", decode_times=False)
+    # Open with automatic cftime decoding
+    time_coder = xr.coding.CFDatetimeCoder(use_cftime=True)
+    ds = xr.open_dataset(zarr_path, engine="zarr", chunks="auto", decode_times=time_coder)
 
     if "xray" not in ds.data_vars:
         logger.error("Variable 'xray' not found in the Zarr dataset.")
@@ -39,9 +39,9 @@ def compute_statistics(
         logger.info(f"Loading index from {index_path} to filter data")
         try:
             index_df = pd.read_csv(index_path)
-            index_df["timestamp"] = pd.to_datetime(index_df["timestamp"]).values.astype(
-                "datetime64[ns]"
-            )
+            index_df["timestamp"] = pd.to_datetime(
+                index_df["timestamp"]
+            ).values.astype("datetime64[ns]")
             index_df.set_index("timestamp", inplace=True)
             index_df.sort_index(inplace=True)
 
@@ -54,59 +54,50 @@ def compute_statistics(
                 index_df = index_df[~index_df.index.duplicated(keep="first")]
             selected_timestamps = index_df.index
 
-            # Handle duplicates in the dataset by keeping first occurrence
-            timestep_index = ds.timestep.to_index()
-            if timestep_index.has_duplicates:
-                num_dups = pd.Series(timestep_index.values).duplicated().sum()
+            # Handle duplicates in the dataset by keeping the first occurrence
+            if ds.indexes["timestep"].has_duplicates:
+                num_dups = ds.indexes["timestep"].duplicated().sum()
                 logger.warning(
                     f"Dataset 'timestep' has {num_dups} duplicate values, keeping first occurrence"
                 )
-                _, index = np.unique(timestep_index.values, return_index=True)
-                ds = ds.isel(timestep=index)
+                ds = ds.sel(timestep=~ds.indexes["timestep"].duplicated())
 
-            # Convert dataset timesteps (raw int64) to pandas datetime64 using stored units
-            # Get time units and calendar from dataset attributes
-            time_units = ds.timestep.attrs.get(
-                "units", "hours since 2010-04-08 00:00:00"
-            )
-            time_calendar = ds.timestep.attrs.get("calendar", "proleptic_gregorian")
+            # Convert pandas datetime64 index to cftime objects to match dataset
+            calendar = ds.timestep.encoding.get("calendar", "proleptic_gregorian")
+            selected_cftimes = [
+                xr.coding.times.cftime.datetime(
+                    t.year,
+                    t.month,
+                    t.day,
+                    t.hour,
+                    t.minute,
+                    t.second,
+                    calendar=calendar,
+                )
+                for t in selected_timestamps
+            ]
 
-            # Decode using cftime
-            ds_timesteps_raw = ds.timestep.values
-            cf_times = cftime.num2date(
-                ds_timesteps_raw, units=time_units, calendar=time_calendar
-            )
-            ds_timesteps = pd.to_datetime(
-                [t.strftime("%Y-%m-%d %H:%M:%S") for t in cf_times]
-            )
-            index_timesteps = pd.to_datetime(selected_timestamps)
-
-            # Debug: print sample timestamps
-            logger.info(f"Index sample: {index_timesteps[:3].tolist()}")
-            logger.info(f"Dataset sample: {ds_timesteps[:3].tolist()}")
             logger.info(
-                f"Index range: {index_timesteps.min()} to {index_timesteps.max()}"
+                f"Reindexing to find {len(selected_cftimes)} common timestamps..."
             )
-            logger.info(f"Dataset range: {ds_timesteps.min()} to {ds_timesteps.max()}")
+            # Use reindex with a tolerance to find nearest timestamps
+            ds_filtered = ds.reindex(
+                {"timestep": selected_cftimes},
+                method="nearest",
+                tolerance=pd.Timedelta("1 minute"),
+            )
 
-            # Find intersection
-            ds_set = set(ds_timesteps)
-            index_set = set(index_timesteps)
-            common_timesteps = ds_set.intersection(index_set)
+            # Drop any NaNs that resulted from timestamps with no close match
+            ds_filtered = ds_filtered.dropna(dim="timestep")
 
-            if len(common_timesteps) == 0:
-                logger.error("No common timestamps found between index and dataset")
+            if len(ds_filtered.timestep) == 0:
+                logger.error("No common timestamps found after reindexing.")
                 return
 
             logger.info(
-                f"Found {len(common_timesteps)} common timestamps out of "
-                f"{len(index_timesteps)} index and {len(ds_timesteps)} dataset"
+                f"Found {len(ds_filtered.timestep)} common timestamps after reindexing."
             )
-
-            # Filter dataset to common timesteps
-            common_mask = np.array([t in common_timesteps for t in ds_timesteps])
-            ds = ds.isel(timestep=common_mask)
-            xray = ds["xray"]
+            xray = ds_filtered["xray"]
 
             logger.info(f"After filtering, data shape: {xray.shape}")
         except Exception as e:

@@ -110,10 +110,14 @@ def main(
         buffer_hard = hard_interp[-window_size_mins:]
         buffer_time = time[-window_size_mins:]
 
+        # target_t_times stores END of each window - add 1 minute to get the correct hour marker
+        # Window ending at 23:59 becomes 00:00 of the NEXT day
         target_t_times = time_windows[:, -1]
 
         target_pd = pd.to_datetime(target_t_times)
-        valid_indices = np.where(target_pd.minute == 0)[0]
+        # Add 1 minute to get the correct hour (23:59 + 1min = 00:00 of next day)
+        target_pd_corrected = target_pd + pd.Timedelta(minutes=1)
+        valid_indices = np.where(target_pd_corrected.minute == 0)[0]
 
         if len(valid_indices) == 0:
             logger.warning("No valid on-the-hour targets found in this file.")
@@ -124,7 +128,10 @@ def main(
         # Step by 60 minutes
         soft_windows = soft_windows[first_valid::step_size_mins]
         hard_windows = hard_windows[first_valid::step_size_mins]
-        aligned_t_times = target_t_times[first_valid::step_size_mins]
+        
+        # Get raw timestamps, then add 1 minute to get correct hour (window ending at 23:59 -> 00:00 next hour)
+        aligned_t_times_raw = target_t_times[first_valid::step_size_mins]
+        aligned_t_times = pd.to_datetime(aligned_t_times_raw) + pd.Timedelta(minutes=1)
 
         # --- THE MERGE ---
         # Stack the two (N, 1440) arrays into a single (N, 1440, 2) array

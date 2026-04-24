@@ -67,9 +67,11 @@ class SolarPretrainDataset(Dataset):
         if self._zarr_data is None:
             self._open_zarr()
 
-        # Convert Zarr timesteps to string format for comparison
-        # Zarr timesteps are cftime objects - use strftime to convert safely
-        # Using string format handles precision issues robustly
+        # Convert index timestamps to string format for matching
+        # Use 1-minute tolerance to handle precision issues
+        index_str = self.index.index.strftime("%Y-%m-%d %H:%M")
+
+        # Build Zarr timestamp strings with same precision (hour:minute) for matching
         available_timestamps_str = set()
         for var_name in self._zarr_data.data_vars:
             var_data = self._zarr_data[var_name]
@@ -78,7 +80,7 @@ class SolarPretrainDataset(Dataset):
                 for t in zarr_times:
                     # cftime objects have strftime method
                     if hasattr(t, "strftime"):
-                        available_timestamps_str.add(t.strftime("%Y-%m-%d %H:%M:%S"))
+                        available_timestamps_str.add(t.strftime("%Y-%m-%d %H:%M"))
                     else:
                         # Handle float timestamps if not decoded
                         import cftime as cf
@@ -93,11 +95,8 @@ class SolarPretrainDataset(Dataset):
                             ),
                         )
                         available_timestamps_str.add(
-                            decoded.strftime("%Y-%m-%d %H:%M:%S")
+                            decoded.strftime("%Y-%m-%d %H:%M")
                         )
-
-        # Convert index timestamps to string format for matching
-        index_str = self.index.index.strftime("%Y-%m-%d %H:%M:%S")
 
         original_length = len(self.index)
         self.index = self.index[index_str.isin(available_timestamps_str)]
@@ -156,7 +155,7 @@ class SolarPretrainDataset(Dataset):
 
         # Convert string back to cftime for selection (to match decoded Zarr data)
         timestamp_dt = pd.to_datetime(timestamp_str)
-        # Use cftime for exact matching
+        # Use cftime for exact matching (same precision as Zarr storage)
         import cftime
 
         calendar = self._zarr_data.timestep.encoding.get("calendar", "proleptic_gregorian")
@@ -166,7 +165,7 @@ class SolarPretrainDataset(Dataset):
             timestamp_dt.day,
             timestamp_dt.hour,
             timestamp_dt.minute,
-            timestamp_dt.second,
+            0,  # always 0 seconds for hour-aligned data
             calendar=calendar,
         )
 

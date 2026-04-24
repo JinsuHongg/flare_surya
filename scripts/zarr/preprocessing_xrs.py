@@ -14,7 +14,9 @@ def linear_interpolation(data):
     mask = ~np.isnan(data)
     if mask.sum() == 0:
         return data
-    return np.interp(x, x[mask], data[mask])
+    interp_data = np.interp(x, x[mask], data[mask])
+    # Clip values to be slightly above the 1e-9 threshold
+    return np.maximum(interp_data, 1.0001e-9)
 
 
 def main(

@@ -281,6 +281,8 @@ def create_zarr_store(
         dtype=np.float64,
         overwrite=True,
     )
+    root["timestamps"].attrs["units"] = "seconds since 1970-01-01 00:00:00"
+    root["timestamps"].attrs["calendar"] = "proleptic_gregorian"
 
     root.attrs["description"] = "GONG H-alpha solar images from Helioviewer"
     root.attrs["source_id"] = cfg_source_id

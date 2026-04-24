@@ -139,7 +139,20 @@ class SolarPretrainDataset(Dataset):
         """
         x = np.clip(data_arr, eps, None)  # avoid log(0)
         x_log = np.log10(x)
-        return (x_log - stats.mean) / stats.std  # → ~N(0, 1)
+        
+        # Add epsilon to std dev to prevent division by zero
+        std_dev = stats.std + eps
+        result = (x_log - stats.mean) / std_dev
+
+        if np.any(np.isnan(result)):
+            lgr_logger.warning("NaNs detected in normalization output.")
+            lgr_logger.warning(f"Input data min/max: {np.min(data_arr)}, {np.max(data_arr)}")
+            lgr_logger.warning(f"Stats: mean={stats.mean}, std={stats.std}")
+            nan_mask = np.isnan(result)
+            lgr_logger.warning(f"Original data values at NaN locations: {data_arr[nan_mask]}")
+            lgr_logger.warning(f"log10 values at NaN locations: {x_log[nan_mask]}")
+            
+        return result
 
     def __getitem__(self, idx):
         """

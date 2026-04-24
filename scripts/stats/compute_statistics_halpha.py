@@ -3,11 +3,13 @@ import os
 
 import dask
 import dask.array as da
+import numpy as np
 import pandas as pd
 import xarray as xr
-import yaml
 import zarr
 from loguru import logger
+from omegaconf import OmegaConf
+from xarray.coding.times import CFDatetimeCoder
 
 
 def compute_statistics(
@@ -27,11 +29,7 @@ def compute_statistics(
     """
     logger.info(f"Opening Zarr store at {zarr_path}")
 
-    try:
-        store = zarr.open(zarr_path, mode="r")
-    except Exception as e:
-        logger.error(f"Failed to open Zarr store using zarr library: {e}")
-        return
+    store = zarr.open(zarr_path, mode="r")
 
     if not isinstance(store, zarr.hierarchy.Group):
         logger.error(
@@ -68,8 +66,24 @@ def compute_statistics(
 
     logger.info(f"Assuming dimensions: {dims}")
 
-    dask_array = da.from_array(zarr_array, chunks=zarr_array.chunks)
+    use_xarray = False
+    ts_coords = None
 
+    if "timestamps" in available_arrays:
+        try:
+            time_coder = CFDatetimeCoder(use_cftime=True)
+            ds = xr.open_dataset(
+                zarr_path, engine="zarr", chunks="auto", decode_times=time_coder
+            )
+            ts_coords = ds["time"].values
+            use_xarray = True
+            logger.info("Loaded timestamps with xarray (time metadata detected)")
+        except Exception:
+            logger.info("Time metadata not found, using raw zarr timestamps")
+            ts_array = store["timestamps"]
+            ts_coords = pd.to_datetime(ts_array[:], unit="s")
+
+    dask_array = da.from_array(zarr_array, chunks=zarr_array.chunks)
     data_var = xr.DataArray(dask_array, dims=dims, name=variable_name)
 
     if index_path is not None:
@@ -82,13 +96,48 @@ def compute_statistics(
             index_df.set_index("timestamp", inplace=True)
             index_df.sort_index(inplace=True)
 
+            index_df = index_df[~index_df.index.duplicated(keep="first")]
             selected_timestamps = index_df.index
 
             time_dim = dims[0]
             logger.info(
                 f"Filtering data by {len(selected_timestamps)} timestamps using dimension '{time_dim}'"
             )
-            data_var = data_var.sel({time_dim: selected_timestamps})
+
+            if use_xarray:
+                ts_index = pd.DatetimeIndex(ts_coords)
+
+                matched_indices = []
+                tolerance = pd.Timedelta("1 minute")
+                for ts in selected_timestamps:
+                    diffs = (ts_index - ts).to_numpy()
+                    matches = np.where(np.abs(diffs) <= tolerance)[0]
+                    if len(matches) > 0:
+                        matched_indices.append(matches[0])
+            else:
+                if ts_coords is not None:
+                    ts_index = pd.DatetimeIndex(ts_coords)
+
+                    matched_indices = []
+                    tolerance = pd.Timedelta("1 minute")
+                    for ts in selected_timestamps:
+                        diffs = (ts_index - ts).to_numpy()
+                        matches = np.where(np.abs(diffs) <= tolerance)[0]
+                        if len(matches) > 0:
+                            matched_indices.append(matches[0])
+                else:
+                    matched_indices = list(range(zarr_array.shape[0]))
+
+            if not matched_indices:
+                logger.error("No common timestamps found after matching.")
+                return
+
+            matched_indices = np.array(matched_indices)
+            logger.info(
+                f"Found {len(matched_indices)} common timestamps after matching."
+            )
+
+            data_var = data_var.isel({time_dim: list(matched_indices)})
 
             logger.info(f"After filtering, data shape: {data_var.shape}")
         except Exception as e:
@@ -97,11 +146,15 @@ def compute_statistics(
 
     logger.info(f"Computing statistics for variable '{variable_name}'")
 
+    dask_array = data_var.data
+    if not isinstance(dask_array, da.Array):
+        dask_array = da.from_array(dask_array, chunks="auto")
+
     with dask.config.set(scheduler="threads"):
-        mean_val = data_var.mean().compute()
-        std_val = data_var.std().compute()
-        min_val = data_var.min().compute()
-        max_val = data_var.max().compute()
+        mean_val = dask_array.mean().compute()
+        std_val = dask_array.std().compute()
+        min_val = dask_array.min().compute()
+        max_val = dask_array.max().compute()
 
     stats = {
         "variable": variable_name,
@@ -121,8 +174,7 @@ def compute_statistics(
             output_dir = os.path.dirname(output_path)
             if output_dir:
                 os.makedirs(output_dir, exist_ok=True)
-            with open(output_path, "w") as f:
-                yaml.dump(stats, f, default_flow_style=False)
+            OmegaConf.save(OmegaConf.create(stats), output_path)
             logger.success(f"Successfully saved statistics to {output_path}")
         except Exception as e:
             logger.error(f"Failed to save statistics to {output_path}: {e}")
@@ -135,25 +187,25 @@ if __name__ == "__main__":
     parser.add_argument(
         "--zarr_path",
         type=str,
-        default="/media/jhong90/storage/surya/gong_halpha_2016-2024.zarr",
+        default="/media/jhong90/storage/surya/gong_halpha_2015_2025.zarr",
         help="Path to the Zarr dataset.",
     )
     parser.add_argument(
         "--variable_name",
         type=str,
-        default="flux",
-        help="Name of the variable to compute statistics on. Common alternatives could be 'xrsb_flux' or similar.",
+        default="images",
+        help="Name of the variable to compute statistics on.",
     )
     parser.add_argument(
         "--index_path",
         type=str,
-        default=None,
+        default="./data/pretrain/train.csv",
         help="Path to the index CSV file (containing timestamps) to filter data for statistics computation.",
     )
     parser.add_argument(
         "--output_path",
         type=str,
-        default="./halpha_stats.yaml",
+        default="./data/halpha_stat_train.yaml",
         help="Path to save the computed statistics in YAML format.",
     )
     args = parser.parse_args()

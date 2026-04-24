@@ -4,6 +4,7 @@ import pandas as pd
 import xarray as xr
 import numcodecs
 import zarr
+from loguru import logger
 from numpy.lib.stride_tricks import sliding_window_view
 
 
@@ -30,9 +31,7 @@ def main(file_paths: list, zarr_path: Path, window_hours: int, step_hours: int):
     buffer_time = None
 
     for file_idx, input_xrs_path in enumerate(file_paths):
-        print(
-            f"\nProcessing file {file_idx + 1}/{len(file_paths)}: {input_xrs_path.name}"
-        )
+        logger.info(f"Processing file {file_idx + 1}/{len(file_paths)}: {input_xrs_path.name}")
 
         with xr.open_dataset(input_xrs_path) as ds:
             time = ds["time"].values
@@ -52,7 +51,7 @@ def main(file_paths: list, zarr_path: Path, window_hours: int, step_hours: int):
             soft_interp = np.concatenate([buffer_soft, soft_interp])
             hard_interp = np.concatenate([buffer_hard, hard_interp])
             time = np.concatenate([buffer_time, time])
-            print("Successfully bridged data from previous year.")
+            logger.info("Successfully bridged data from previous year.")
 
         soft_windows = sliding_window_view(soft_interp, window_shape=window_size_mins)
         hard_windows = sliding_window_view(hard_interp, window_shape=window_size_mins)
@@ -68,7 +67,7 @@ def main(file_paths: list, zarr_path: Path, window_hours: int, step_hours: int):
         valid_indices = np.where(target_pd.minute == 0)[0]
 
         if len(valid_indices) == 0:
-            print("Warning: No valid on-the-hour targets found in this file.")
+            logger.warning("No valid on-the-hour targets found in this file.")
             continue
 
         first_valid = valid_indices[0]
@@ -91,9 +90,27 @@ def main(file_paths: list, zarr_path: Path, window_hours: int, step_hours: int):
             coords={
                 "timestep": aligned_t_times,
                 "minute_offset": minute_offsets,
-                "channel": ["soft", "hard"],  # We explicitly name the channels here!
+                "channel": ["soft", "hard"],
             },
         )
+
+        # Deduplicate against existing Zarr data before appending
+        if not is_first_write:
+            existing_ds = xr.open_zarr(zarr_path, decode_times=False)
+            existing_times = existing_ds["timestep"].values
+            new_times = ds_out["timestep"].values
+
+            # Find new unique times not already in the Zarr store
+            existing_set = set(existing_times)
+            mask_new = np.array([t not in existing_set for t in new_times])
+
+            num_duplicates = (~mask_new).sum()
+            if num_duplicates > 0:
+                logger.warning(
+                    f"Skipping {num_duplicates} duplicate timesteps already in Zarr store"
+                )
+
+            ds_out = ds_out.isel(timestep=mask_new)
 
         # Write or Append to Zarr
         if is_first_write:
@@ -107,17 +124,20 @@ def main(file_paths: list, zarr_path: Path, window_hours: int, step_hours: int):
             }
             ds_out.to_zarr(zarr_path, mode="w", encoding=encoding)
             is_first_write = False
-            print("Created new Zarr store and saved first year.")
+            logger.info("Created new Zarr store and saved first year.")
         else:
-            ds_out.to_zarr(zarr_path, append_dim="timestep")
-            print("Appended year to Zarr store.")
+            if len(ds_out["timestep"]) > 0:
+                ds_out.to_zarr(zarr_path, append_dim="timestep")
+                logger.info(f"Appended {len(ds_out['timestep'])} timesteps to Zarr store.")
+            else:
+                logger.info("No new timesteps to append.")
 
     xr.open_zarr(zarr_path, decode_times=False)
     zarr.consolidate_metadata(zarr_path)
 
-    print("\nConsolidated zarr store successfully!")
+    logger.success("Consolidated zarr store successfully!")
 
-    print("\nFinished successfully! All 3 files processed and seamlessly merged.")
+    logger.success("Finished successfully! All files processed and seamlessly merged.")
 
 
 if __name__ == "__main__":

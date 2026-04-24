@@ -3,10 +3,12 @@ import os
 
 import cftime
 import dask.array as da
+import numpy as np
 import pandas as pd
 import xarray as xr
 from loguru import logger
 from omegaconf import OmegaConf
+from xarray.coders import CFDatetimeCoder
 
 
 def compute_statistics(
@@ -24,10 +26,11 @@ def compute_statistics(
     """
     logger.info(f"Opening Zarr dataset at {zarr_path}")
 
-    ds = xr.open_dataset(zarr_path, engine="zarr", chunks="auto", use_cftime=True)
+    time_coder = CFDatetimeCoder(use_cftime=True)
+    ds = xr.open_dataset(zarr_path, engine="zarr", chunks="auto", decode_times=time_coder)
 
     if "xray" not in ds.data_vars:
-        logger.error(f"Variable 'xray' not found in the Zarr dataset.")
+        logger.error("Variable 'xray' not found in the Zarr dataset.")
         return
 
     xray = ds["xray"]
@@ -52,10 +55,14 @@ def compute_statistics(
                 index_df = index_df[~index_df.index.duplicated(keep="first")]
             selected_timestamps = index_df.index
 
-            # Check dataset timestep uniqueness
+            # Handle duplicates in the dataset by keeping first occurrence
             if ds.timestep.to_index().has_duplicates:
-                logger.error("Dataset 'timestep' coordinate has duplicate values")
-                return
+                num_dups = ds.timestep.duplicated().sum()
+                logger.warning(
+                    f"Dataset 'timestep' has {num_dups} duplicate values, keeping first occurrence"
+                )
+                _, index = np.unique(ds.timestep.values, return_index=True)
+                ds = ds.isel(timestep=index)
 
             # Convert pandas timestamps to cftime to match dataset's time type
             calendar = ds.timestep.attrs.get("calendar", "proleptic_gregorian")

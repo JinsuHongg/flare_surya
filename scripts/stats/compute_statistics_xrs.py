@@ -1,13 +1,13 @@
 import argparse
 import os
 
+import cftime
 import dask.array as da
 import numpy as np
 import pandas as pd
 import xarray as xr
 from loguru import logger
 from omegaconf import OmegaConf
-from xarray.coders import CFDatetimeCoder
 
 
 def compute_statistics(
@@ -25,8 +25,8 @@ def compute_statistics(
     """
     logger.info(f"Opening Zarr dataset at {zarr_path}")
 
-    time_coder = CFDatetimeCoder(use_cftime=True)
-    ds = xr.open_dataset(zarr_path, engine="zarr", chunks="auto", decode_times=time_coder)
+    # Use decode_times=False to avoid time decoding issues
+    ds = xr.open_dataset(zarr_path, engine="zarr", chunks="auto", decode_times=False)
 
     if "xray" not in ds.data_vars:
         logger.error("Variable 'xray' not found in the Zarr dataset.")
@@ -64,21 +64,29 @@ def compute_statistics(
                 _, index = np.unique(timestep_index.values, return_index=True)
                 ds = ds.isel(timestep=index)
 
-            # Convert dataset timesteps to pandas datetime64 for intersection
-            # cftime objects need to be converted to POSIX timestamps first
+            # Convert dataset timesteps (raw int64) to pandas datetime64 using stored units
+            # Get time units and calendar from dataset attributes
+            time_units = ds.timestep.attrs.get(
+                "units", "hours since 2010-04-08 00:00:00"
+            )
+            time_calendar = ds.timestep.attrs.get("calendar", "proleptic_gregorian")
+
+            # Decode using cftime
             ds_timesteps_raw = ds.timestep.values
-            if hasattr(ds_timesteps_raw[0], "strftime"):
-                ds_timesteps = pd.to_datetime(
-                    [t.strftime("%Y-%m-%d %H:%M:%S") for t in ds_timesteps_raw]
-                )
-            else:
-                ds_timesteps = pd.to_datetime(ds_timesteps_raw)
+            cf_times = cftime.num2date(
+                ds_timesteps_raw, units=time_units, calendar=time_calendar
+            )
+            ds_timesteps = pd.to_datetime(
+                [t.strftime("%Y-%m-%d %H:%M:%S") for t in cf_times]
+            )
             index_timesteps = pd.to_datetime(selected_timestamps)
 
             # Debug: print sample timestamps
             logger.info(f"Index sample: {index_timesteps[:3].tolist()}")
             logger.info(f"Dataset sample: {ds_timesteps[:3].tolist()}")
-            logger.info(f"Index range: {index_timesteps.min()} to {index_timesteps.max()}")
+            logger.info(
+                f"Index range: {index_timesteps.min()} to {index_timesteps.max()}"
+            )
             logger.info(f"Dataset range: {ds_timesteps.min()} to {ds_timesteps.max()}")
 
             # Find intersection
@@ -166,4 +174,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     compute_statistics(args.zarr_path, args.index_path, args.output_path)
-

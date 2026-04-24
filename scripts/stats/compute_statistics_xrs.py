@@ -7,6 +7,7 @@ import pandas as pd
 import xarray as xr
 from loguru import logger
 from omegaconf import OmegaConf
+from xarray.coding.times import CFDatetimeCoder
 
 
 def compute_statistics(
@@ -25,7 +26,7 @@ def compute_statistics(
     logger.info(f"Opening Zarr dataset at {zarr_path}")
 
     # Open with automatic cftime decoding
-    time_coder = xr.coding.CFDatetimeCoder(use_cftime=True)
+    time_coder = CFDatetimeCoder(use_cftime=True)
     ds = xr.open_dataset(zarr_path, engine="zarr", chunks="auto", decode_times=time_coder)
 
     if "xray" not in ds.data_vars:

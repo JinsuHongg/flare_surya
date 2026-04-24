@@ -3,7 +3,7 @@ defaults:
 
 # Model Configuration
 model:
-  in_channels: 2  # Number of channels (soft, hard)
+  in_channels: 1  # Number of channels (soft, hard)
   seq_len: 1440
   embed_dim: 256  # Reduced embed_dim for lightweight model
   encoder_depth: 4
@@ -37,10 +37,10 @@ loss:
 
 # DataModule Configuration
 data:
-  zarr_path: ./data/xrs_24hour_slices_g15_g16_merged.zarr
-  train_index_path: ./data/surya-bench-flare-forecasting/M24w/train.csv
-  val_index_path: ./data/surya-bench-flare-forecasting/M24w/val_M24w.csv
-  test_index_path: ./data/surya-bench-flare-forecasting/M24w/test_M24w.csv
+  zarr_path: ./data/xrs_24hour_slices_v2.zarr
+  train_index_path: ./data/pretrain/train.csv
+  val_index_path: ./data/pretrain/val.csv
+  test_index_path: ./data/pretrain/test.csv
   channels:  # List of channels to load
     - soft
     # - hard
@@ -65,8 +65,8 @@ logger:
 
 # Wandb Configuration
 wandb:
-  name: xrs_pretrain_test1
-  id: xrs_pretrain_test1
+  name: xrs_pretrain_soft_test2
+  id: xrs_pretrain_soft_test2
   resume: allow
   save_dir: ./results
   entity: gsu-dmlab
@@ -81,7 +81,7 @@ wandb:
 etc:
   resume: false
   ckpt_dir: ./results/check_point/pretrain/xrs/
-  ckpt_name_tag: xrs_1e-4
+  ckpt_name_tag: xrs_1e-4_soft
   ckpt_file: xrs_1e-4_epoch=38-val_loss=0.0000.ckpt
   ckpt_weights_only: false
   save_test_results_path: ./results/

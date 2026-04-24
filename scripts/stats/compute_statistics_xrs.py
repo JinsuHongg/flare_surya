@@ -46,7 +46,9 @@ def compute_statistics(
             # Drop duplicate timestamps from CSV
             if index_df.index.has_duplicates:
                 num_dups = index_df.index.duplicated().sum()
-                logger.warning(f"Index CSV has {num_dups} duplicate timestamps, keeping first occurrence")
+                logger.warning(
+                    f"Index CSV has {num_dups} duplicate timestamps, keeping first occurrence"
+                )
                 index_df = index_df[~index_df.index.duplicated(keep="first")]
             selected_timestamps = index_df.index
 
@@ -58,11 +60,21 @@ def compute_statistics(
             # Convert pandas timestamps to cftime to match dataset's time type
             calendar = ds.timestep.attrs.get("calendar", "proleptic_gregorian")
             selected_cftime = [
-                cftime.datetime(t.year, t.month, t.day, t.hour, t.minute, t.second, calendar=calendar)
+                cftime.datetime(
+                    t.year,
+                    t.month,
+                    t.day,
+                    t.hour,
+                    t.minute,
+                    t.second,
+                    calendar=calendar,
+                )
                 for t in selected_timestamps
             ]
 
-            logger.info(f"Filtering data by {len(selected_cftime)} timestamps using dimension 'timestep'")
+            logger.info(
+                f"Filtering data by {len(selected_cftime)} timestamps using dimension 'timestep'"
+            )
             ds = ds.sel(timestep=selected_cftime)
             xray = ds["xray"]
 
@@ -91,7 +103,9 @@ def compute_statistics(
             "min": mn,
             "max": mx,
         }
-        logger.info(f"  {channel}: mean={mean:.4f}, std={std:.4f}, min={mn:.4f}, max={mx:.4f}")
+        logger.info(
+            f"  {channel}: mean={mean:.4f}, std={std:.4f}, min={mn:.4f}, max={mx:.4f}"
+        )
 
     output_path = output_path or "xrs_stat.yaml"
     logger.info(f"Saving statistics to {output_path}")
@@ -112,21 +126,22 @@ if __name__ == "__main__":
     parser.add_argument(
         "--zarr_path",
         type=str,
-        default="./xrs_24hour_slices.zarr",
+        default="./data/xrs_24hour_slices_v2.zarr",
         help="Path to the Zarr dataset.",
     )
     parser.add_argument(
         "--index_path",
         type=str,
-        default=None,
+        default="./data/pretrain/train.csv",
         help="Path to the index CSV file (containing timestamps) to filter data for statistics computation.",
     )
     parser.add_argument(
         "--output_path",
         type=str,
-        default="./xrs_stat.yaml",
+        default="./data/xrs_stat_train.yaml",
         help="Path to save the computed statistics in YAML format.",
     )
     args = parser.parse_args()
 
     compute_statistics(args.zarr_path, args.index_path, args.output_path)
+

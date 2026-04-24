@@ -1,6 +1,7 @@
 import argparse
 import os
 
+import cftime
 import dask.array as da
 import pandas as pd
 import xarray as xr
@@ -23,7 +24,7 @@ def compute_statistics(
     """
     logger.info(f"Opening Zarr dataset at {zarr_path}")
 
-    ds = xr.open_dataset(zarr_path, engine="zarr", chunks="auto")
+    ds = xr.open_dataset(zarr_path, engine="zarr", chunks="auto", use_cftime=True)
 
     if "xray" not in ds.data_vars:
         logger.error(f"Variable 'xray' not found in the Zarr dataset.")
@@ -42,12 +43,27 @@ def compute_statistics(
             index_df.set_index("timestamp", inplace=True)
             index_df.sort_index(inplace=True)
 
+            # Drop duplicate timestamps from CSV
+            if index_df.index.has_duplicates:
+                num_dups = index_df.index.duplicated().sum()
+                logger.warning(f"Index CSV has {num_dups} duplicate timestamps, keeping first occurrence")
+                index_df = index_df[~index_df.index.duplicated(keep="first")]
             selected_timestamps = index_df.index
 
-            logger.info(
-                f"Filtering data by {len(selected_timestamps)} timestamps using dimension 'timestep'"
-            )
-            ds = ds.sel(timestep=selected_timestamps)
+            # Check dataset timestep uniqueness
+            if ds.timestep.to_index().has_duplicates:
+                logger.error("Dataset 'timestep' coordinate has duplicate values")
+                return
+
+            # Convert pandas timestamps to cftime to match dataset's time type
+            calendar = ds.timestep.attrs.get("calendar", "proleptic_gregorian")
+            selected_cftime = [
+                cftime.datetime(t.year, t.month, t.day, t.hour, t.minute, t.second, calendar=calendar)
+                for t in selected_timestamps
+            ]
+
+            logger.info(f"Filtering data by {len(selected_cftime)} timestamps using dimension 'timestep'")
+            ds = ds.sel(timestep=selected_cftime)
             xray = ds["xray"]
 
             logger.info(f"After filtering, data shape: {xray.shape}")

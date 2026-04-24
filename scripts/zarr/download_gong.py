@@ -378,6 +378,9 @@ def main(cfg: OmegaConf) -> None:
 
     if total_saved == 0:
         lgr_logger.warning("No images were downloaded.")
+    else:
+        zarr.consolidate_metadata(output_dir)
+        lgr_logger.info(f"Consolidated zarr store at {output_dir}")
 
 
 if __name__ == "__main__":

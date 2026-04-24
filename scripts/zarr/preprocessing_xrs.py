@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import numcodecs
+import zarr
 from numpy.lib.stride_tricks import sliding_window_view
 
 
@@ -37,6 +38,12 @@ def main(file_paths: list, zarr_path: Path, window_hours: int, step_hours: int):
             time = ds["time"].values
             hard = ds["xrsa_flux"].values
             soft = ds["xrsb_flux"].values
+
+        soft_outlier_mask = soft <= 1e-9
+        soft[soft_outlier_mask] = np.nan
+
+        hard_outlier_mask = hard <= 1e-9
+        hard[hard_outlier_mask] = np.nan
 
         soft_interp = linear_interpolation(soft)
         hard_interp = linear_interpolation(hard)
@@ -105,16 +112,26 @@ def main(file_paths: list, zarr_path: Path, window_hours: int, step_hours: int):
             ds_out.to_zarr(zarr_path, append_dim="timestep")
             print("Appended year to Zarr store.")
 
-    print("\nFinished successfully! All 9 files processed and seamlessly merged.")
+    xr.open_zarr(zarr_path, decode_times=False)
+    zarr.consolidate_metadata(zarr_path)
+
+    print("\nConsolidated zarr store successfully!")
+
+    print("\nFinished successfully! All 3 files processed and seamlessly merged.")
 
 
 if __name__ == "__main__":
     window_size = 24
     step_size = 1
 
-    data_dir = Path("/media/jhong90/storage/uq_mocp/")
-    file_list = sorted(list(data_dir.glob("sci_xrsf-l2-avg1m_g16_*.nc")))
+    data_dir = Path("/media/jhong90/storage/surya/xrs")
 
-    zarr_target = Path("./xrs_24hour_slices.zarr")
+    file_g15 = sorted(list(data_dir.glob("sci_xrsf-l2-avg1m_g15_*.nc")))
+    file_g16 = sorted(list(data_dir.glob("sci_xrsf-l2-avg1m_g16_*.nc")))
+    file_g18 = sorted(list(data_dir.glob("sci_xrsf-l2-avg1m_g18_*.nc")))
+
+    file_list = file_g15 + file_g16 + file_g18
+
+    zarr_target = Path("./xrs_24hour_slices_v2.zarr")
 
     main(file_list, zarr_target, window_size, step_size)

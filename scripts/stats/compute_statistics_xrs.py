@@ -56,12 +56,13 @@ def compute_statistics(
             selected_timestamps = index_df.index
 
             # Handle duplicates in the dataset by keeping first occurrence
-            if ds.timestep.to_index().has_duplicates:
-                num_dups = ds.timestep.duplicated().sum()
+            timestep_index = ds.timestep.to_index()
+            if timestep_index.has_duplicates:
+                num_dups = pd.Series(timestep_index.values).duplicated().sum()
                 logger.warning(
                     f"Dataset 'timestep' has {num_dups} duplicate values, keeping first occurrence"
                 )
-                _, index = np.unique(ds.timestep.values, return_index=True)
+                _, index = np.unique(timestep_index.values, return_index=True)
                 ds = ds.isel(timestep=index)
 
             # Convert pandas timestamps to cftime to match dataset's time type

@@ -64,17 +64,26 @@ class SolarPretrainDataset(Dataset):
         # Handle timestamp misalignment: filter timestamps from index that don't exist in Zarr
         # We only check this if we're in the main process (len(index) is reasonable)
         # In worker processes, we'll skip this check to avoid opening Zarr for each worker
-        available_timestamps = set()
         if self._zarr_data is None:
             self._open_zarr()
 
+        # Convert Zarr timesteps to string format for comparison
+        # Zarr timesteps are cftime objects, pandas is datetime64
+        # Using string format handles precision issues robustly
+        available_timestamps_str = set()
         for var_name in self._zarr_data.data_vars:
             var_data = self._zarr_data[var_name]
             if "timestep" in var_data.dims:
-                available_timestamps.update(var_data.timestep.values)
+                zarr_times = var_data.timestep.values
+                available_timestamps_str.update(
+                    pd.to_datetime(t).strftime("%Y-%m-%d %H:%M:%S") for t in zarr_times
+                )
+
+        # Convert index timestamps to string format for matching
+        index_str = self.index.index.strftime("%Y-%m-%d %H:%M:%S")
 
         original_length = len(self.index)
-        self.index = self.index[self.index.index.isin(available_timestamps)]
+        self.index = self.index[index_str.isin(available_timestamps_str)]
         filtered_length = len(self.index)
 
         if original_length != filtered_length:
@@ -90,7 +99,13 @@ class SolarPretrainDataset(Dataset):
         """Open Zarr store lazily. Each worker opens its own handle."""
         if self._zarr_data is None:
             lgr_logger.info(f"Opening Zarr store at {self.zarr_path}")
-            self._zarr_data = xr.open_zarr(self.zarr_path, consolidated=False)
+            # Use CFDatetimeCoder for proper time decoding
+            from xarray.coding.times import CFDatetimeCoder
+
+            time_coder = CFDatetimeCoder(use_cftime=True)
+            self._zarr_data = xr.open_zarr(
+                self.zarr_path, consolidated=False, decode_times=time_coder
+            )
 
     def __len__(self):
         return self.length
@@ -119,7 +134,27 @@ class SolarPretrainDataset(Dataset):
         if self._zarr_data is None:
             self._open_zarr()
 
-        timestamp = self.index.index[idx]
+        # Get timestamp (stored as string) and convert back for Zarr selection
+        timestamp_str = self.index.index[idx]
+
+        # Convert string back to cftime for selection (to match decoded Zarr data)
+        timestamp_dt = pd.to_datetime(timestamp_str)
+        # Use cftime for exact matching
+        import cftime
+
+        calendar = self._zarr_data.timestep.encoding.get("calendar", "proleptic_gregorian")
+        timestamp_cftime = cftime.datetime(
+            timestamp_dt.year,
+            timestamp_dt.month,
+            timestamp_dt.day,
+            timestamp_dt.hour,
+            timestamp_dt.minute,
+            timestamp_dt.second,
+            calendar=calendar,
+        )
+
+        # Timestamp string for easy return
+        timestamp = timestamp_str
 
         # Detect data format:
         # Format A: Single variable with channel dimension (e.g., 'xray' with dims: timestep, minute_offset, channel)
@@ -132,12 +167,12 @@ class SolarPretrainDataset(Dataset):
         if "channel" in first_var_dims:
             # Format A: Single variable with channel dimension
             try:
-                da = self._zarr_data[first_var].sel(timestep=timestamp)
+                da = self._zarr_data[first_var].sel(timestep=timestamp_cftime)
             except KeyError:
                 lgr_logger.error(
-                    f"Timestamp {timestamp} not found in Zarr data variable {first_var}."
+                    f"Timestamp {timestamp_cftime} not found in Zarr data variable {first_var}."
                 )
-                raise IndexError(f"Timestamp {timestamp} not found in Zarr.")
+                raise IndexError(f"Timestamp {timestamp_cftime} not found in Zarr.")
 
             # da now has shape (minute_offset, channel)
             # Extract each channel and stack them
@@ -158,13 +193,13 @@ class SolarPretrainDataset(Dataset):
             # Format B: Separate variables per channel
             for ch in self.channels:
                 try:
-                    da = self._zarr_data[ch].sel(timestep=timestamp)
+                    da = self._zarr_data[ch].sel(timestep=timestamp_cftime)
                 except KeyError:
                     lgr_logger.error(
-                        f"Channel {ch} at timestamp {timestamp} not found in Zarr."
+                        f"Channel {ch} at timestamp {timestamp_cftime} not found in Zarr."
                     )
                     raise IndexError(
-                        f"Channel {ch} at timestamp {timestamp} not found in Zarr."
+                        f"Channel {ch} at timestamp {timestamp_cftime} not found in Zarr."
                     )
 
                 # Get numpy array from DataArray

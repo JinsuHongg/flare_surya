@@ -16,7 +16,24 @@ def linear_interpolation(data):
     return np.interp(x, x[mask], data[mask])
 
 
-def main(file_paths: list, zarr_path: Path, window_hours: int, step_hours: int):
+def main(
+    file_paths: list,
+    zarr_path: Path,
+    window_hours: int,
+    step_hours: int,
+    time_filters: dict | None = None,
+):
+    """
+    Preprocess XRS data into Zarr format.
+
+    Args:
+        file_paths: List of paths to XRS NC files.
+        zarr_path: Output Zarr path.
+        window_hours: Window size in hours.
+        step_hours: Step size in hours.
+        time_filters: Dict mapping satellite suffix (e.g., "g15") to
+            (start_date, end_date) tuple. None means full range.
+    """
     window_size_mins = window_hours * 60
     step_size_mins = step_hours * 60
     minute_offsets = np.arange(window_size_mins)
@@ -31,12 +48,43 @@ def main(file_paths: list, zarr_path: Path, window_hours: int, step_hours: int):
     buffer_time = None
 
     for file_idx, input_xrs_path in enumerate(file_paths):
-        logger.info(f"Processing file {file_idx + 1}/{len(file_paths)}: {input_xrs_path.name}")
+        logger.info(
+            f"Processing file {file_idx + 1}/{len(file_paths)}: {input_xrs_path.name}"
+        )
 
         with xr.open_dataset(input_xrs_path) as ds:
             time = ds["time"].values
             hard = ds["xrsa_flux"].values
             soft = ds["xrsb_flux"].values
+
+        # Extract satellite suffix (e.g., g15, g16, g18) from filename
+        sat_suffix = None
+        for suffix in ["g15", "g16", "g18"]:
+            if suffix in input_xrs_path.name:
+                sat_suffix = suffix
+                break
+
+        # Apply time filter if specified
+        if time_filters is not None and sat_suffix is not None and sat_suffix in time_filters:
+            start_date, end_date = time_filters[sat_suffix]
+            time_pd = pd.to_datetime(time)
+
+            if start_date is not None:
+                start_dt = pd.to_datetime(start_date)
+                mask_start = time_pd >= start_dt
+                time = time[mask_start]
+                hard = hard[mask_start]
+                soft = soft[mask_start]
+                time_pd = pd.to_datetime(time)
+                logger.info(f"Filtered to start >= {start_date}")
+
+            if end_date is not None:
+                end_dt = pd.to_datetime(end_date)
+                mask_end = time_pd <= end_dt
+                time = time[mask_end]
+                hard = hard[mask_end]
+                soft = soft[mask_end]
+                logger.info(f"Filtered to end <= {end_date}")
 
         soft_outlier_mask = soft <= 1e-9
         soft[soft_outlier_mask] = np.nan
@@ -128,7 +176,9 @@ def main(file_paths: list, zarr_path: Path, window_hours: int, step_hours: int):
         else:
             if len(ds_out["timestep"]) > 0:
                 ds_out.to_zarr(zarr_path, append_dim="timestep")
-                logger.info(f"Appended {len(ds_out['timestep'])} timesteps to Zarr store.")
+                logger.info(
+                    f"Appended {len(ds_out['timestep'])} timesteps to Zarr store."
+                )
             else:
                 logger.info("No new timesteps to append.")
 
@@ -152,6 +202,12 @@ if __name__ == "__main__":
 
     file_list = file_g15 + file_g16 + file_g18
 
-    zarr_target = Path("./xrs_24hour_slices_v2.zarr")
+    time_filters = {
+        "g15": ("2010-04-07", "2017-02-06"),
+        "g16": (None, None),
+        "g18": ("2025-04-07", "2025-12-31"),
+    }
 
-    main(file_list, zarr_target, window_size, step_size)
+    zarr_target = Path("./data/xrs_24hour_slices_v2.zarr")
+
+    main(file_list, zarr_target, window_size, step_size, time_filters)

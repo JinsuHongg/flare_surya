@@ -1,7 +1,6 @@
 import argparse
 import os
 
-import cftime
 import dask.array as da
 import numpy as np
 import pandas as pd
@@ -65,25 +64,27 @@ def compute_statistics(
                 _, index = np.unique(timestep_index.values, return_index=True)
                 ds = ds.isel(timestep=index)
 
-            # Convert pandas timestamps to cftime to match dataset's time type
-            calendar = ds.timestep.attrs.get("calendar", "proleptic_gregorian")
-            selected_cftime = [
-                cftime.datetime(
-                    t.year,
-                    t.month,
-                    t.day,
-                    t.hour,
-                    t.minute,
-                    t.second,
-                    calendar=calendar,
-                )
-                for t in selected_timestamps
-            ]
+            # Convert dataset timesteps to pandas datetime64 for intersection
+            ds_timesteps = pd.to_datetime(ds.timestep.values)
+            index_timesteps = pd.to_datetime(selected_timestamps)
+
+            # Find intersection
+            ds_set = set(ds_timesteps)
+            index_set = set(index_timesteps)
+            common_timesteps = ds_set.intersection(index_set)
+
+            if len(common_timesteps) == 0:
+                logger.error("No common timestamps found between index and dataset")
+                return
 
             logger.info(
-                f"Filtering data by {len(selected_cftime)} timestamps using dimension 'timestep'"
+                f"Found {len(common_timesteps)} common timestamps out of "
+                f"{len(index_timesteps)} index and {len(ds_timesteps)} dataset"
             )
-            ds = ds.sel(timestep=selected_cftime)
+
+            # Filter dataset to common timesteps
+            common_mask = np.array([t in common_timesteps for t in ds_timesteps])
+            ds = ds.isel(timestep=common_mask)
             xray = ds["xray"]
 
             logger.info(f"After filtering, data shape: {xray.shape}")

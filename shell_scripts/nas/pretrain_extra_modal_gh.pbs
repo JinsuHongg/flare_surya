@@ -22,8 +22,8 @@ if [[ ${#NODES[@]} -ne 1 ]]; then
 fi
 
 echo "Changing directory to: $PBS_O_WORKDIR"
-cd "$PBS_O_WORKDIR/scripts"
+cd "$PBS_O_WORKDIR"
 
 source /nobackupp17/jhong15/miniforge3_gh/etc/profile.d/conda.sh
 conda activate flare_surya
-python pretraining/pretraining.py
+python scripts/pretraining/pretraining.py

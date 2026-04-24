@@ -47,7 +47,7 @@ data:
   batch_size: 32
   num_workers: 4
   data_type: "1d"  # Must match model.data_type
-  scalers: ./data/xrs_stat.yaml # Normalization statistics
+  scalers: ./data/xrs_stat_train.yaml # Normalization statistics
 
 # Trainer Configuration
 trainer:

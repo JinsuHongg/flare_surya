@@ -68,16 +68,33 @@ class SolarPretrainDataset(Dataset):
             self._open_zarr()
 
         # Convert Zarr timesteps to string format for comparison
-        # Zarr timesteps are cftime objects, pandas is datetime64
+        # Zarr timesteps are cftime objects - use strftime to convert safely
         # Using string format handles precision issues robustly
         available_timestamps_str = set()
         for var_name in self._zarr_data.data_vars:
             var_data = self._zarr_data[var_name]
             if "timestep" in var_data.dims:
                 zarr_times = var_data.timestep.values
-                available_timestamps_str.update(
-                    pd.to_datetime(t).strftime("%Y-%m-%d %H:%M:%S") for t in zarr_times
-                )
+                for t in zarr_times:
+                    # cftime objects have strftime method
+                    if hasattr(t, "strftime"):
+                        available_timestamps_str.add(t.strftime("%Y-%m-%d %H:%M:%S"))
+                    else:
+                        # Handle float timestamps if not decoded
+                        import cftime as cf
+
+                        decoded = cf.num2date(
+                            t,
+                            units=var_data.timestep.attrs.get(
+                                "units", "hours since 2010-04-08 00:00:00"
+                            ),
+                            calendar=var_data.timestep.attrs.get(
+                                "calendar", "proleptic_gregorian"
+                            ),
+                        )
+                        available_timestamps_str.add(
+                            decoded.strftime("%Y-%m-%d %H:%M:%S")
+                        )
 
         # Convert index timestamps to string format for matching
         index_str = self.index.index.strftime("%Y-%m-%d %H:%M:%S")

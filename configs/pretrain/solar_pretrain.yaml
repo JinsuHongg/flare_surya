@@ -12,12 +12,12 @@ model:
   data_type: "1d"  # Options: "1d" or "2d"
   image_size: 512  # Only used if data_type is "2d"
   patch_size: 8   # Only used if data_type is "2d"
-  mask_ratio: 0.15
+  mask_ratio: 0.0
 
 # Optimizer Configuration
 optimizer:
   type: adamw  # Options: "adam" or "adamw"
-  lr: 1e-4
+  lr: 1e-5
   weight_decay: 0.01
   eps: 1e-8
   betas: [0.9, 0.999]
@@ -29,7 +29,7 @@ optimizer:
     cosine_warmup:
       total_steps: 10000  # Total training steps (set to max_epochs * steps_per_epoch approx)
       warmup_ratio: 0.1  # Warmup ratio (10% of total steps)
-      min_lr: 1e-6  # Minimum learning rate after decay
+      min_lr: 1e-8  # Minimum learning rate after decay
 
 # Loss Configuration
 loss:
@@ -61,12 +61,12 @@ trainer:
 # Logging
 logger:
   tensorboard: true
-  log_every_n_steps: 50
+  log_every_n_steps: 4
 
 # Wandb Configuration
 wandb:
-  name: xrs_pretrain_soft_test2
-  id: xrs_pretrain_soft_test2
+  name: xrs_pretrain_soft_test5
+  id: xrs_pretrain_soft_test5
   resume: allow
   save_dir: ./results
   entity: gsu-dmlab

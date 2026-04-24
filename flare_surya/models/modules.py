@@ -1493,7 +1493,7 @@ class PretrainSolarModel(pl.LightningModule):
             loss = self._compute_loss(pred, y)
             self.train_metrics.update(pred, y)
 
-        self.log("train/loss", loss, prog_bar=True, batch_size=x.shape[0])
+        self.log("train/loss", loss, prog_bar=True, batch_size=x.shape[0], on_step=True)
         return loss
 
     def validation_step(self, batch, batch_idx):

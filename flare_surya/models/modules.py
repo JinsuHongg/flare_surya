@@ -1408,7 +1408,7 @@ class PretrainSolarModel(pl.LightningModule):
     def forward(self, x, use_mask: bool = True):
         tokens = self.encoder.tokenizer(x)
 
-        if use_mask and self.training:
+        if use_mask and self.training and self.mask_ratio > 0:
             tokens, ids_restore, ids_mask = self.random_mask(tokens)
             self._last_mask_indices = ids_mask
             self._last_seq_mask_indices = ids_mask

@@ -75,6 +75,12 @@ def compute_statistics(
                 ds_timesteps = pd.to_datetime(ds_timesteps_raw)
             index_timesteps = pd.to_datetime(selected_timestamps)
 
+            # Debug: print sample timestamps
+            logger.info(f"Index sample: {index_timesteps[:3].tolist()}")
+            logger.info(f"Dataset sample: {ds_timesteps[:3].tolist()}")
+            logger.info(f"Index range: {index_timesteps.min()} to {index_timesteps.max()}")
+            logger.info(f"Dataset range: {ds_timesteps.min()} to {ds_timesteps.max()}")
+
             # Find intersection
             ds_set = set(ds_timesteps)
             index_set = set(index_timesteps)

@@ -317,7 +317,10 @@ def main(cfg: OmegaConf) -> None:
                             "calendar": "proleptic_gregorian",
                         },
                     }
-                    if batch_idx == 0:
+                    zarr_exists = os.path.exists(output_dir) and any(
+                        f != ".zmetadata" for f in os.listdir(output_dir)
+                    )
+                    if batch_idx == 0 or not zarr_exists:
                         ds_batch.to_zarr(output_dir, mode="w", encoding=encoding)
                     else:
                         ds_batch.to_zarr(output_dir, append_dim="timestep")

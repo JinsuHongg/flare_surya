@@ -5,10 +5,13 @@ warnings.filterwarnings(
     "ignore", "Importing from timm.models.layers is deprecated.*", FutureWarning
 )
 
+import os
+
 import hydra
 import torch
 import torch.multiprocessing as mp
 import pytorch_lightning as pl
+from lightning.pytorch.loggers import CSVLogger
 from loguru import logger as lgr_logger
 from omegaconf import OmegaConf
 
@@ -65,6 +68,13 @@ def train(cfg: OmegaConf):
     # Create wandb logger
     wandb_logger = build_wandb(cfg=cfg)
 
+    # Create CSV logger
+    csv_logger = CSVLogger(
+        save_dir=os.path.join(cfg.etc.get("log_dir", "logs"), "csv"),
+        name=cfg.etc.get("ckpt_name_tag", "pretrain"),
+        version=cfg.etc.get("csv_version", None),
+    )
+
     # Trainer
     trainer = pl.Trainer(
         enable_progress_bar=False,
@@ -73,7 +83,7 @@ def train(cfg: OmegaConf):
         num_nodes=cfg.trainer.get("num_nodes", 1),
         max_epochs=cfg.trainer.max_epochs,
         precision=cfg.trainer.precision,
-        logger=wandb_logger,
+        logger=[wandb_logger, csv_logger],
         log_every_n_steps=cfg.logger.get("log_every_n_steps", 50),
         limit_train_batches=cfg.trainer.get("limit_train_batches", 1.0),
         limit_val_batches=cfg.trainer.get("limit_val_batches", 1.0),

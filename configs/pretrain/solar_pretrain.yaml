@@ -5,21 +5,21 @@ defaults:
 model:
   in_channels: 1  # Number of channels (soft, hard)
   seq_len: 1440
-  embed_dim: 256  # Reduced embed_dim for lightweight model
+  embed_dim: 1280  # Reduced embed_dim for lightweight model
   encoder_depth: 4
   decoder_depth: 2
   num_heads: 8
   data_type: "1d"  # Options: "1d" or "2d"
   image_size: 512  # Only used if data_type is "2d"
   patch_size: 8   # Only used if data_type is "2d"
-  mask_ratio: 0.0
+  mask_ratio: null
 
 # Optimizer Configuration
 optimizer:
   type: adamw  # Options: "adam" or "adamw"
-  lr: 1e-5
+  lr: 1e-4
   weight_decay: 0.01
-  eps: 1e-8
+  eps: 1e-7
   betas: [0.9, 0.999]
   # Scheduler Configuration
   scheduler:
@@ -54,7 +54,7 @@ trainer:
   max_epochs: 100
   accelerator: auto
   devices: 1
-  precision: bf16-mixed
+  precision: 32
   accumulate_grad_batches: 8
   gradient_clip_val: 1.0
 
@@ -65,8 +65,8 @@ logger:
 
 # Wandb Configuration
 wandb:
-  name: xrs_pretrain_soft_test5
-  id: xrs_pretrain_soft_test5
+  name: xrs_pretrain_soft_test10
+  id: xrs_pretrain_soft_test10
   resume: allow
   save_dir: ./results
   entity: gsu-dmlab
@@ -81,7 +81,7 @@ wandb:
 etc:
   resume: false
   ckpt_dir: ./results/check_point/pretrain/xrs/
-  ckpt_name_tag: xrs_1e-4_soft
+  ckpt_name_tag: xrs_1e-4_soft_large
   ckpt_file: xrs_1e-4_epoch=38-val_loss=0.0000.ckpt
   ckpt_weights_only: false
   save_test_results_path: ./results/

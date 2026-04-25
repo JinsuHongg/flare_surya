@@ -23,7 +23,7 @@ download:
   image_size: 512
 
   # Date range to download
-  start_date: "2015-10-01T00:00:00Z"
+  start_date: "2015-12-20T00:00:00Z"
   end_date: "2025-12-31T23:59:59Z"
 
   # Cadence in minutes
@@ -42,9 +42,9 @@ download:
 # Output Configuration
 output:
   # Directory to save the zarr file
-  output_dir: /media/jhong90/storage/surya #"./data/gong"
+  output_dir: "./data"
   # Name of the zarr file
-  zarr_name: "gong_halpha_2015_2025.zarr"
+  zarr_name: "gong_halpha_2015_2025_v2.zarr"
 
   # Compression settings for zarr
   # "blosc" is fast and compression ratio is good

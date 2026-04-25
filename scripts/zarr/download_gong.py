@@ -265,6 +265,7 @@ def main(cfg: OmegaConf) -> None:
 
     async def run_download() -> None:
         nonlocal total_saved
+        is_first_write = True
         semaphore = asyncio.Semaphore(cfg.download.max_concurrent)
         batch_size = 100
         num_batches = (len(dates) + batch_size - 1) // batch_size
@@ -310,14 +311,24 @@ def main(cfg: OmegaConf) -> None:
                         "images": {
                             "compressor": Blosc(
                                 cname="lz4", clevel=5, shuffle=Blosc.SHUFFLE
-                            )
+                            ),
+                            "chunks": (100, image_size, image_size, 1),
+                        },
+                        "timestep": {
+                            "dtype": "float64",
+                            "units": "hours since 2010-04-08 00:00:00",
+                            "calendar": "proleptic_gregorian",
                         },
                     }
-                    zarr_exists = os.path.exists(output_dir) and any(
-                        f != ".zmetadata" for f in os.listdir(output_dir)
-                    )
-                    if batch_idx == 0 or not zarr_exists:
+
+                    if is_first_write:
+                        if os.path.exists(output_dir):
+                            import shutil
+                            shutil.rmtree(output_dir)
+                        os.makedirs(output_dir, exist_ok=True)
+
                         ds_batch.to_zarr(output_dir, mode="w", encoding=encoding)
+                        is_first_write = False
                     else:
                         ds_batch.to_zarr(output_dir, append_dim="timestep")
 

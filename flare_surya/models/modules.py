@@ -1407,6 +1407,9 @@ class PretrainSolarModel(pl.LightningModule):
 
     def forward(self, x, use_mask: bool = True):
         tokens = self.encoder.tokenizer(x)
+        nan_check = torch.isnan(tokens)
+        if nan_check.any():
+            raise ValueError(f"NaN detected in tokenizer output: {nan_check.sum()} / {tokens.numel()}")
 
         if use_mask and self.training and self.mask_ratio:
             tokens, ids_restore, ids_mask = self.random_mask(tokens)
@@ -1417,9 +1420,18 @@ class PretrainSolarModel(pl.LightningModule):
             self._last_seq_mask_indices = None
 
         embedding = self.encoder.encoder(tokens)
+        nan_check = torch.isnan(embedding)
+        if nan_check.any():
+            raise ValueError(f"NaN detected in encoder output: {nan_check.sum()} / {embedding.numel()}")
+
         decoded = self.decoder.sequence_decoder(embedding)
 
         reconstruction = self.decoder.detokenizer(decoded)
+        
+        nan_check = torch.isnan(reconstruction)
+        if nan_check.any():
+            raise ValueError(f"NaN detected in detokenizer output: {nan_check.sum()} / {reconstruction.numel()}")
+        
         return reconstruction
 
     def encode(self, x):
@@ -1440,6 +1452,11 @@ class PretrainSolarModel(pl.LightningModule):
             x, y, _ = batch
         else:
             x, y = batch
+
+        if torch.isnan(x).any():
+            raise ValueError(f"NaN detected in input x: {torch.isnan(x).sum()} / {x.numel()}")
+        if torch.isnan(y).any():
+            raise ValueError(f"NaN detected in input y: {torch.isnan(y).sum()} / {y.numel()}")
 
         pred = self.forward(x, use_mask=True)
         mask_indices = self._last_seq_mask_indices
@@ -1492,6 +1509,9 @@ class PretrainSolarModel(pl.LightningModule):
         else:
             loss = self._compute_loss(pred, y)
             self.train_metrics.update(pred, y)
+
+        if torch.isnan(loss):
+            raise ValueError(f"NaN detected in loss. pred stats: min={pred.min()}, max={pred.max()}, mean={pred.mean()}")
 
         self.log("train/loss", loss, prog_bar=True, batch_size=x.shape[0], on_step=True)
         return loss

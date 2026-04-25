@@ -289,7 +289,7 @@ def main(cfg: OmegaConf) -> None:
 
                 batch_imgs = [img for _, img in results if img is not None]
                 batch_ts = [
-                    pd.to_datetime(date) for date, img in results if img is not None
+                    pd.to_datetime(date).tz_localize(None) for date, img in results if img is not None
                 ]
 
                 if batch_imgs:

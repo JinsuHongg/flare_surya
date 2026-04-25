@@ -312,10 +312,6 @@ def main(cfg: OmegaConf) -> None:
                                 cname="lz4", clevel=5, shuffle=Blosc.SHUFFLE
                             )
                         },
-                        "timestep": {
-                            "units": "seconds since 1970-01-01 00:00:00",
-                            "calendar": "proleptic_gregorian",
-                        },
                     }
                     zarr_exists = os.path.exists(output_dir) and any(
                         f != ".zmetadata" for f in os.listdir(output_dir)

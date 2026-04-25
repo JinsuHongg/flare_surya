@@ -1,0 +1,53 @@
+# @package _global_
+# Default configuration for GONG H-alpha data download.
+
+defaults:
+  - _self_
+
+# API Configuration
+api:
+  # Helioviewer API endpoint
+  base_url: "https://api.helioviewer.org/v2/"
+  # Image query endpoint
+  query_endpoint: "query_image_order"
+
+# Data Source Configuration
+# GONG H-alpha data source ID (from Helioviewer API docs)
+# 94 = GONG H-alpha
+data_source_id: 94
+
+# Download Configuration
+download:
+  # Target image size (will resize to this if larger)
+  # 512 implies 512x512
+  image_size: 512
+
+  # Date range to download
+  start_date: "2015-10-01T00:00:00Z"
+  end_date: "2025-12-31T23:59:59Z"
+
+  # Cadence in minutes
+  # GONG Typically available every 3 minutes
+  cadence_minutes: 60
+  tolerance_seconds: 600  # 10 minutes
+
+  # Number of concurrent downloads
+  # Be careful not to exceed API rate limits
+  max_concurrent: 5
+
+  # Retry settings
+  max_retries: 5
+  retry_backoff_factor: 2
+
+# Output Configuration
+output:
+  # Directory to save the zarr file
+  output_dir: /media/jhong90/storage/surya #"./data/gong"
+  # Name of the zarr file
+  zarr_name: "gong_halpha_2015_2025.zarr"
+
+  # Compression settings for zarr
+  # "blosc" is fast and compression ratio is good
+  compression: "blosc"
+  # compression level 1-9, higher is more compression but slower
+  compression_level: 5

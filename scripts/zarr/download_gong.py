@@ -19,6 +19,8 @@ import backoff
 import hydra
 import imageio.v3 as iio
 import numpy as np
+import pandas as pd
+import xarray as xr
 import zarr
 from numcodecs import Blosc
 from omegaconf import OmegaConf
@@ -233,66 +235,6 @@ async def process_batch(
     ]
 
 
-def create_zarr_store(
-    output_path: str,
-    image_size: int = 512,
-    cfg_source_id: int = 94,
-) -> zarr.hierarchy.Group:
-    """
-    Create an empty, appendable Zarr v2 store for images and timestamps.
-
-    Both arrays start with size 0 along the first axis and grow via
-    zarr.append() as batches complete, so no upfront count is needed
-    and nothing is buffered in RAM.
-
-    Layout:
-        images      : (N, H, W, 1)  uint8,   chunked (100, H, W, 1)
-        timestamps  : (N,)           float64, chunked (1000,)
-
-    Args:
-        output_path: Directory path for the Zarr store.
-        image_size: Spatial dimension (H == W).
-        cfg_source_id: Helioviewer sourceId written into attrs.
-
-    Returns:
-        Opened Zarr root Group.
-    """
-    os.makedirs(output_path, exist_ok=True)
-
-    compressor = Blosc(cname="lz4", clevel=5, shuffle=Blosc.SHUFFLE)
-
-    root = zarr.open_group(output_path, mode="w")
-
-    # Shape starts at 0; we grow with append() after each batch.
-    root.create_dataset(
-        "images",
-        shape=(0, image_size, image_size, 1),
-        chunks=(100, image_size, image_size, 1),
-        compressor=compressor,
-        dtype=np.uint8,
-        overwrite=True,
-    )
-
-    root.create_dataset(
-        "timestamps",
-        shape=(0,),
-        chunks=(1000,),
-        compressor=compressor,
-        dtype=np.float64,
-        overwrite=True,
-    )
-    root["timestamps"].attrs["units"] = "seconds since 1970-01-01 00:00:00"
-    root["timestamps"].attrs["calendar"] = "proleptic_gregorian"
-
-    root.attrs["description"] = "GONG H-alpha solar images from Helioviewer"
-    root.attrs["source_id"] = cfg_source_id
-    root.attrs["image_size"] = image_size
-    root.attrs["channels"] = 1
-    root.attrs["created_at"] = datetime.utcnow().isoformat()
-
-    return root
-
-
 @hydra.main(
     version_base=None,
     config_path="../../configs/data/",
@@ -302,7 +244,6 @@ def main(cfg: OmegaConf) -> None:
     """Main entry point."""
     lgr_logger.info("Starting GONG H-alpha data download...")
 
-    # ---------- 1. Build date list ----------
     start_date = datetime.fromisoformat(cfg.download.start_date.replace("Z", "+00:00"))
     end_date = datetime.fromisoformat(cfg.download.end_date.replace("Z", "+00:00"))
     cadence = timedelta(minutes=cfg.download.cadence_minutes)
@@ -317,12 +258,9 @@ def main(cfg: OmegaConf) -> None:
 
     lgr_logger.info(f"Total dates to process: {len(dates)}")
 
-    # ---------- 2. Create Zarr store upfront ----------
     output_dir = os.path.join(cfg.output.output_dir, cfg.output.zarr_name)
-    root = create_zarr_store(output_dir, image_size, cfg.data_source_id)
-    lgr_logger.info(f"Zarr store initialised at {output_dir}")
+    os.makedirs(output_dir, exist_ok=True)
 
-    # ---------- 3. Async download — write each batch directly to Zarr ----------
     total_saved = 0
 
     async def run_download() -> None:
@@ -348,18 +286,35 @@ def main(cfg: OmegaConf) -> None:
                     tolerance_seconds,
                 )
 
-                # Collect successful results from this batch
                 batch_imgs = [img for _, img in results if img is not None]
                 batch_ts = [
-                    date.timestamp() for date, img in results if img is not None
+                    pd.to_datetime(date) for date, img in results if img is not None
                 ]
 
                 if batch_imgs:
-                    # Append directly to Zarr — no RAM accumulation
                     imgs_array = np.stack(batch_imgs, axis=0)  # (B, H, W, 1)
-                    ts_array = np.array(batch_ts, dtype=np.float64)  # (B,)
-                    root["images"].append(imgs_array)
-                    root["timestamps"].append(ts_array)
+
+                    ds_batch = xr.Dataset(
+                        {
+                            "images": (["timestep", "y", "x", "channel"], imgs_array),
+                        },
+                        coords={
+                            "timestep": pd.to_datetime(batch_ts),
+                            "y": np.arange(image_size),
+                            "x": np.arange(image_size),
+                            "channel": ["halpha"],
+                        },
+                    )
+
+                    encoding = {
+                        "images": {"compressor": Blosc(cname="lz4", clevel=5, shuffle=Blosc.SHUFFLE)},
+                        "timestep": {"units": "seconds since 1970-01-01 00:00:00", "calendar": "proleptic_gregorian"},
+                    }
+                    if batch_idx == 0:
+                        ds_batch.to_zarr(output_dir, mode="w", encoding=encoding)
+                    else:
+                        ds_batch.to_zarr(output_dir, append_dim="timestep")
+
                     total_saved += len(batch_imgs)
                     lgr_logger.info(
                         f"Batch {batch_idx + 1}: saved {len(batch_imgs)} images "

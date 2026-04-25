@@ -94,9 +94,7 @@ class SolarPretrainDataset(Dataset):
                                 "calendar", "proleptic_gregorian"
                             ),
                         )
-                        available_timestamps_str.add(
-                            decoded.strftime("%Y-%m-%d %H:%M")
-                        )
+                        available_timestamps_str.add(decoded.strftime("%Y-%m-%d %H:%M"))
 
         original_length = len(self.index)
         self.index = self.index[index_str.isin(available_timestamps_str)]
@@ -120,7 +118,9 @@ class SolarPretrainDataset(Dataset):
 
             time_coder = CFDatetimeCoder(use_cftime=True)
             self._zarr_data = xr.open_zarr(
-                self.zarr_path, consolidated=False, decode_times=time_coder
+                self.zarr_path,
+                consolidated=True,
+                decode_times=time_coder,
             )
 
     def __len__(self):
@@ -139,19 +139,23 @@ class SolarPretrainDataset(Dataset):
         """
         x = np.clip(data_arr, eps, None)  # avoid log(0)
         x_log = np.log10(x)
-        
+
         # Add epsilon to std dev to prevent division by zero
         std_dev = stats.std + eps
         result = (x_log - stats.mean) / std_dev
 
         if np.any(np.isnan(result)):
             lgr_logger.warning("NaNs detected in normalization output.")
-            lgr_logger.warning(f"Input data min/max: {np.min(data_arr)}, {np.max(data_arr)}")
+            lgr_logger.warning(
+                f"Input data min/max: {np.min(data_arr)}, {np.max(data_arr)}"
+            )
             lgr_logger.warning(f"Stats: mean={stats.mean}, std={stats.std}")
             nan_mask = np.isnan(result)
-            lgr_logger.warning(f"Original data values at NaN locations: {data_arr[nan_mask]}")
+            lgr_logger.warning(
+                f"Original data values at NaN locations: {data_arr[nan_mask]}"
+            )
             lgr_logger.warning(f"log10 values at NaN locations: {x_log[nan_mask]}")
-            
+
         return result
 
     def __getitem__(self, idx):
@@ -171,7 +175,9 @@ class SolarPretrainDataset(Dataset):
         # Use cftime for exact matching (same precision as Zarr storage)
         import cftime
 
-        calendar = self._zarr_data.timestep.encoding.get("calendar", "proleptic_gregorian")
+        calendar = self._zarr_data.timestep.encoding.get(
+            "calendar", "proleptic_gregorian"
+        )
         timestamp_cftime = cftime.datetime(
             timestamp_dt.year,
             timestamp_dt.month,

@@ -37,7 +37,7 @@ API_BASE_URL = "https://api.helioviewer.org/v2/"
 
 def get_session() -> aiohttp.ClientSession:
     """Create an aiohttp session."""
-    return aiohttp.ClientSession(timeout=TIMEOUT)
+    return aiohttp.ClientSession(timeout=TIMEOUT, connector=aiohttp.TCPConnector(ssl=False))
 
 
 @backoff.on_exception(backoff.expo, aiohttp.ClientError, max_tries=5)
@@ -307,8 +307,15 @@ def main(cfg: OmegaConf) -> None:
                     )
 
                     encoding = {
-                        "images": {"compressor": Blosc(cname="lz4", clevel=5, shuffle=Blosc.SHUFFLE)},
-                        "timestep": {"units": "seconds since 1970-01-01 00:00:00", "calendar": "proleptic_gregorian"},
+                        "images": {
+                            "compressor": Blosc(
+                                cname="lz4", clevel=5, shuffle=Blosc.SHUFFLE
+                            )
+                        },
+                        "timestep": {
+                            "units": "seconds since 1970-01-01 00:00:00",
+                            "calendar": "proleptic_gregorian",
+                        },
                     }
                     if batch_idx == 0:
                         ds_batch.to_zarr(output_dir, mode="w", encoding=encoding)

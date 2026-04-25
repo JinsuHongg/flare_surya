@@ -1,0 +1,30 @@
+## use below command
+## task_name="download_halpha"; qsub -N "$task_name" -v TASK_NAME="$task_name" ./shell_scripts/nas/download_halpha_gh.pbs
+
+#!/usr/bin/bash
+#PBS -S /usr/bin/bash
+#PBS -l select=1:ncpus=32:ngpus=1:mem=256GB:model=gh200
+#PBS -q gpu_normal
+#PBS -l walltime=24:00:00
+#PBS -M jhong36@gsu.edu
+#PBS -m abe
+#PBS -W umask=002
+
+task_name=${TASK_NAME:-default}
+JOBID=$(echo "$PBS_JOBID" | cut -d. -f1)
+exec >logs/halpha/${task_name}.${JOBID}.out
+exec 2>logs/halpha/${task_name}.${JOBID}.err
+
+mapfile -t NODES < <(sort -u "$PBS_NODEFILE")
+if [[ ${#NODES[@]} -ne 1 ]]; then
+  echo "ERROR: expected 1 node, got ${#NODES[@]}"
+  exit 1
+fi
+
+echo "Changing directory to: $PBS_O_WORKDIR"
+cd "$PBS_O_WORKDIR"
+
+source /nobackupp17/jhong15/miniforge3_gh/etc/profile.d/conda.sh
+conda activate flare_surya
+python scripts/zarr/download_gong.py
+

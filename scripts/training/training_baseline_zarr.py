@@ -14,7 +14,7 @@ from lightning.pytorch.callbacks import (
 
 from flare_surya.datamodule import FlareDataModuleZarr
 from flare_surya.models import BaseLineModel
-from flare_surya.utils.callbacks import PerformanceMonitor, TimeLogger
+from flare_surya.utils.callbacks import build_baseline_callbacks
 
 torch.set_float32_matmul_precision("medium")
 
@@ -76,30 +76,7 @@ def train(cfg: OmegaConf):
         resume=cfg.wandb.resume,
     )
 
-    checkpoint_callback = ModelCheckpoint(
-        monitor=cfg.optimizer.scheduler.monitor,  # e.g., "val_loss"
-        dirpath=cfg.etc.ckpt_dir,
-        filename=(
-            f"{wandb_logger.experiment.id}_"
-            f"{cfg.etc.ckpt_name_tag}_"
-            f"{cfg.backbone.model_name}_"
-            "{epoch}-{val_hss:.4f}"
-        ),
-        save_top_k=3,
-        mode="max",
-        verbose=True,
-        save_last=True,
-        enable_version_counter=cfg.etc.enable_version_counter,
-    )
-
-    pf_monitor = PerformanceMonitor()
-    time_monitor = TimeLogger()
-    callbacks = [
-        LearningRateMonitor(logging_interval="step"),
-        pf_monitor,
-        time_monitor,
-        checkpoint_callback,
-    ]
+    callbacks = build_baseline_callbacks(cfg, wandb_id=wandb_logger.experiment.id)
 
     trainer = Trainer(
         enable_progress_bar=False,

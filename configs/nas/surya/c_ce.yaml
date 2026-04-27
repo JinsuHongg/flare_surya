@@ -18,8 +18,8 @@ loss:
 
 optimizer:
   type: adamw
-  lr: 1e-5
-  weight_decay: 0.5
+  lr: 5e-5
+  weight_decay: 0.05
 
 etc:
   phase: train # test

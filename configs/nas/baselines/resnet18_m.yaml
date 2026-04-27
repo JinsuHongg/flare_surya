@@ -1,16 +1,18 @@
 # @package _global_
 
 data:
-  train_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/train_M24w_freq24.csv
+  train_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/train_M24w_freq4.csv
   valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/val_M24w.csv
   leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
   test_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/test_M24w.csv
+  undersample_factor: 1
+  seed: 1004
 
 backbone:
   model_name: resnet18 # resnet18, resnet34, resnet50, alexnet,
 
 loss:
-  type: focal 
+  type: cross_entropy
   cross_entropy:
     class_weights: [1.0, 1.0]
   focal:
@@ -27,16 +29,16 @@ optimizer:
 etc:
   phase: train # test
   resume: false
-  ckpt_dir: ../results/check_point/baselines/resnet18/daily_m/
-  ckpt_name_tag: resnet18_daily_m
+  ckpt_dir: ../results/checkpoints/baselines/resnet18/daily_m/
+  ckpt_name_tag: resnet18_daily_m_ce_undersample
   ckpt_file: last.ckpt  
   ckpt_weights_only: false
   max_epochs: 50
 
 wandb:
-  name: resnet18_daily_m_focal_nasgh_3
-  id: resnet18_daily_m_focal_nasgh_3
+  name: resnet18_daily_m_ce_undersample_nasgh
+  id: resnet18_daily_m_ce_undersample_nasgh
   resume: allow
   notes: resnet18
   offline: false
-  tag: ["resnet18", "M", "nasgh", "daily", "focal"] # backbone model, head type, task
+  tag: ["resnet18", "M", "nasgh", "daily", "cross_entropy", "undersample"] # backbone model, head type, task

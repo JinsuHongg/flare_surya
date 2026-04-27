@@ -8,72 +8,33 @@ import torch
 import xarray as xr
 from loguru import logger as lgr_logger
 from matplotlib import pyplot as plt
+import matplotlib as mpl
 from omegaconf import DictConfig, OmegaConf
 
-from flare_surya.datamodule import SuryaFluxDataModule
-from flare_surya.models import SuryaMultiModal
+from flare_surya.datamodule import SolarPretrainDataModule
+from flare_surya.models import PretrainSolarModel
 
 
-def build_model(cfg: DictConfig) -> SuryaMultiModal:
-    """Build the SuryaMultiModal model."""
-    model_hyperparameter = {
-        "img_size": cfg.backbone.img_size,
-        "patch_size": cfg.backbone.patch_size,
-        "in_chans": len(cfg.data.channels),
-        "embed_dim": cfg.backbone.embed_dim,
-        "time_embedding": cfg.backbone.time_embedding,
-        "depth": cfg.backbone.depth,
-        "num_heads": cfg.backbone.num_heads,
-        "mlp_ratio": cfg.backbone.mlp_ratio,
-        "drop_rate": cfg.backbone.drop_rate,
-        "dtype": torch.bfloat16,
-        "window_size": cfg.backbone.window_size,
-        "dp_rank": cfg.backbone.dp_rank,
-        "learned_flow": cfg.backbone.learned_flow,
-        "use_latitude_in_learned_flow": cfg.use_latitude_in_learned_flow,
-        "init_weights": cfg.backbone.init_weights,
-        "checkpoint_layers": cfg.backbone.checkpoint_layers,
-        "n_spectral_blocks": cfg.backbone.n_spectral_blocks,
-        "rpe": cfg.backbone.rpe,
-        "ensemble": cfg.backbone.ensemble,
-        "finetune": cfg.backbone.finetune,
-        "nglo": cfg.backbone.nglo,
-        "path_weights": cfg.backbone.path_weights,
-        "pooling_type": cfg.backbone.pooling_type,
-        "head_type": cfg.head.type,
-        "head_layer_dict": cfg.head.hyper_parameters,
-        "freeze_backbone": cfg.backbone.freeze_backbone,
-        "lora_dict": cfg.lora,
-        "optimizer_dict": cfg.optimizer,
-        "loss_dict": cfg.loss,
-        "threshold": cfg.head.threshold,
-        "save_test_results_path": cfg.etc.save_test_results_path,
-        "in_channels": cfg.secondary.in_channels,
-        "seq_len": cfg.secondary.seq_len,
-        "secondary_embed_dim": cfg.secondary.embed_dim,
-        "secondary_depth": cfg.secondary.depth,
-        "secondary_num_heads": cfg.secondary.num_heads,
-        "fusion_type": cfg.fusion.type,
-        "fuse_embed_dim": cfg.fusion.fuse_embed_dim,
-        "secondary_pooling_type": cfg.secondary.pooling_type,
-    }
-    model = SuryaMultiModal(**model_hyperparameter)
-    return model
+def setup_plot_style():
+    """Set professional plot style for research papers."""
+    plt.style.use("seaborn-v0_8-paper")
+    mpl.rcParams.update(
+        {
+            "font.family": "serif",
+            "font.serif": ["Computer Modern Roman"],
+            "text.usetex": False,
+            "axes.labelsize": 12,
+            "axes.titlesize": 14,
+            "legend.fontsize": 10,
+            "xtick.labelsize": 10,
+            "ytick.labelsize": 10,
+            "figure.dpi": 300,
+            "savefig.dpi": 300,
+        }
+    )
 
 
-def load_checkpoint(cfg: DictConfig, model: SuryaMultiModal) -> SuryaMultiModal:
-    """Load model from checkpoint."""
-    ckpt_dir = cfg.etc.ckpt_dir
-    ckpt_file = cfg.etc.ckpt_file
-    ckpt_path = os.path.join(ckpt_dir, ckpt_file)
-
-    if ckpt_file and os.path.exists(ckpt_path):
-        lgr_logger.info(f"Loading checkpoint from {ckpt_path}")
-        ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
-        model.load_state_dict(ckpt["state_dict"], strict=False)
-    else:
-        lgr_logger.warning(f"Checkpoint not found: {ckpt_path}")
-    return model
+setup_plot_style()
 
 
 def visualize_xrs_predictions(
@@ -104,7 +65,9 @@ def visualize_xrs_predictions(
 
         ax_target.plot(time_axis, target, label="Target", color="blue", alpha=0.8)
         ax_pred.plot(time_axis, pred, label="Prediction", color="green", alpha=0.8)
-        ax_delta.plot(time_axis, delta, label="Delta (Target - Pred)", color="red", alpha=0.8)
+        ax_delta.plot(
+            time_axis, delta, label="Delta (Target - Pred)", color="red", alpha=0.8
+        )
         ax_delta.axhline(y=0, color="black", linestyle="--", linewidth=0.8)
 
         ax_target.set_title(f"Sample {i} - Target")
@@ -123,72 +86,29 @@ def visualize_xrs_predictions(
         ax_pred.grid(True, alpha=0.3)
         ax_delta.grid(True, alpha=0.3)
 
-    plt.tight_layout()
+    plt.tight_layout(pad=1.5)
     output_path = os.path.join(output_dir, "xrs_visualization.png")
-    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
     lgr_logger.info(f"Saved visualization to {output_path}")
     plt.close()
 
 
-def visualize_xrs_heatmap(
-    targets: np.ndarray,
-    predictions: np.ndarray,
-    output_dir: str,
-    num_samples: int = 8,
-) -> None:
-    """Visualize XRS data as heatmaps: target, prediction, delta side by side."""
-    batch_size, seq_len = targets.shape
-    num_samples = min(num_samples, batch_size)
+def inverse_norm_log_zscore(data_arr, stats, eps=1e-10):
+    """
+    Inverse normalize data using z-score and log10.
 
-    fig, axes = plt.subplots(3, num_samples, figsize=(4 * num_samples, 10))
+    Args:
+        data_arr: Numpy array.
+        stats: DictConfig with 'mean' and 'std'.
 
-    vmin_target = np.nanmin(targets[:num_samples])
-    vmax_target = np.nanmax(targets[:num_samples])
+    Returns:
+        Denormalized data.
+    """
+    # Denormalize z-score
+    x_log = (data_arr * (stats.std + eps)) + stats.mean
 
-    for i in range(num_samples):
-        target = targets[i]
-        pred = predictions[i]
-        delta = target - pred
-
-        im0 = axes[0, i].imshow(
-            target.reshape(1, -1),
-            aspect="auto",
-            cmap="viridis",
-            vmin=vmin_target,
-            vmax=vmax_target,
-        )
-        axes[0, i].set_title(f"Sample {i} - Target")
-        axes[0, i].set_xlabel("Time step")
-        plt.colorbar(im0, ax=axes[0, i], orientation="horizontal", pad=0.2)
-
-        im1 = axes[1, i].imshow(
-            pred.reshape(1, -1),
-            aspect="auto",
-            cmap="viridis",
-            vmin=vmin_target,
-            vmax=vmax_target,
-        )
-        axes[1, i].set_title(f"Sample {i} - Prediction")
-        axes[1, i].set_xlabel("Time step")
-        plt.colorbar(im1, ax=axes[1, i], orientation="horizontal", pad=0.2)
-
-        vmax_delta = np.nanmax(np.abs(delta))
-        im2 = axes[2, i].imshow(
-            delta.reshape(1, -1),
-            aspect="auto",
-            cmap="RdBu_r",
-            vmin=-vmax_delta,
-            vmax=vmax_delta,
-        )
-        axes[2, i].set_title(f"Sample {i} - Delta")
-        axes[2, i].set_xlabel("Time step")
-        plt.colorbar(im2, ax=axes[2, i], orientation="horizontal", pad=0.2)
-
-    plt.tight_layout()
-    output_path = os.path.join(output_dir, "xrs_heatmap.png")
-    plt.savefig(output_path, dpi=150, bbox_inches="tight")
-    lgr_logger.info(f"Saved heatmap visualization to {output_path}")
-    plt.close()
+    # Denormalize log10
+    return 10**x_log
 
 
 def compute_metrics(targets: np.ndarray, predictions: np.ndarray) -> dict:
@@ -203,32 +123,53 @@ def compute_metrics(targets: np.ndarray, predictions: np.ndarray) -> dict:
     else:
         nrmse = np.nan
 
+    # Compute R2 score
+    ss_res = np.sum((targets - predictions) ** 2)
+    ss_tot = np.sum((targets - np.mean(targets)) ** 2)
+    r2 = 1 - (ss_res / ss_tot) if ss_tot > 0 else np.nan
+
     return {
         "MSE": mse,
         "MAE": mae,
         "RMSE": rmse,
         "NRMSE": nrmse,
+        "R2": r2,
     }
 
 
 @hydra.main(
     version_base=None,
-    config_path="../configs/nas/",
-    config_name="exp_surya",
+    config_path="../../configs/pretrain/",
+    config_name="xrs",
 )
 def visualize(cfg: OmegaConf) -> None:
     """Main visualization function."""
-    output_dir = cfg.etc.get("output_dir", "visualization_output")
+    output_dir = cfg.etc.get("out_dir", "visualization_output")
     os.makedirs(output_dir, exist_ok=True)
 
     lgr_logger.info("Setting up datamodule...")
-    datamodule = SuryaFluxDataModule(cfg=cfg)
+    datamodule = SolarPretrainDataModule(
+        zarr_path=cfg.data.zarr_path,
+        train_index_path=cfg.data.train_index_path,
+        val_index_path=cfg.data.val_index_path,
+        test_index_path=cfg.data.test_index_path,
+        channels=list(cfg.data.channels),
+        batch_size=cfg.data.batch_size,
+        num_workers=cfg.data.num_workers,
+        data_type=cfg.data.data_type,
+        scalers=cfg.data.get("scalers", None),
+    )
     datamodule.setup("test")
     test_loader = datamodule.test_dataloader()
 
-    lgr_logger.info("Building model...")
-    model = build_model(cfg=cfg)
-    model = load_checkpoint(cfg, model)
+    lgr_logger.info("Building model from checkpoint...")
+    checkpoint_dir = cfg.etc.get("ckpt_dir", None)
+    checkpoint_file = cfg.etc.get("ckpt_file", None)
+    checkpoint_path = os.path.join(checkpoint_dir, checkpoint_file)
+
+    model = PretrainSolarModel.load_from_checkpoint(
+        checkpoint_path, map_location="cpu", weights_only=False
+    )
     model.eval()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -239,23 +180,30 @@ def visualize(cfg: OmegaConf) -> None:
     all_targets = []
     all_predictions = []
 
+    # Load scalers for denormalization
+    scalers_path = cfg.data.get("scalers", None)
+    scalers = OmegaConf.load(scalers_path) if scalers_path else None
+
+    # Assuming first channel for denormalization
+    channel = cfg.data.channels[0]
+    stats = scalers[channel] if scalers and channel in scalers else None
+
     with torch.no_grad():
         for batch_idx, batch in enumerate(test_loader):
             if batch_idx >= cfg.etc.get("max_batches", 5):
                 break
 
-            if len(batch) >= 5:
-                _, _, img, xrs_seq, target = batch
+            if len(batch) == 3:
+                xrs_seq, target, _ = batch
+            elif len(batch) == 2:
+                xrs_seq, target = batch
             else:
                 raise ValueError(f"Unexpected batch format: {len(batch)} elements")
 
             xrs_seq = xrs_seq.to(device)
             target = target.to(device)
 
-            if hasattr(model, "forward"):
-                output = model.forward(img.to(device), xrs_seq)
-            else:
-                output = model(img.to(device), xrs_seq)
+            output = model(xrs_seq, use_mask=False)
 
             if isinstance(output, torch.Tensor):
                 predictions = output
@@ -266,17 +214,26 @@ def visualize(cfg: OmegaConf) -> None:
             else:
                 predictions = output[0] if isinstance(output, (list, tuple)) else output
 
-            if predictions.dim() == 2 and predictions.shape[1] > 1:
-                predictions = predictions[:, 1]
-
-            if target.dim() > 1:
-                target = target.squeeze(-1) if target.shape[-1] == 1 else target.squeeze()
+            # Squeeze to (B, seq_len)
+            if predictions.dim() == 3:
+                predictions = predictions.squeeze(1)
+            if target.dim() == 3:
+                target = target.squeeze(1)
 
             all_targets.append(target.cpu().numpy())
             all_predictions.append(predictions.cpu().numpy())
 
     targets_np = np.concatenate(all_targets, axis=0)
     predictions_np = np.concatenate(all_predictions, axis=0)
+
+    # Denormalize if scalers are available
+    if stats:
+        lgr_logger.info("Denormalizing data for visualization...")
+        targets_viz = inverse_norm_log_zscore(targets_np, stats)
+        predictions_viz = inverse_norm_log_zscore(predictions_np, stats)
+    else:
+        targets_viz = targets_np
+        predictions_viz = predictions_np
 
     lgr_logger.info(f"Targets shape: {targets_np.shape}")
     lgr_logger.info(f"Predictions shape: {predictions_np.shape}")
@@ -293,17 +250,10 @@ def visualize(cfg: OmegaConf) -> None:
     lgr_logger.info(f"Saved metrics to {metrics_file}")
 
     visualize_xrs_predictions(
-        targets=targets_np,
-        predictions=predictions_np,
+        targets=targets_viz,
+        predictions=predictions_viz,
         output_dir=output_dir,
         num_samples=cfg.etc.get("num_viz_samples", 4),
-    )
-
-    visualize_xrs_heatmap(
-        targets=targets_np,
-        predictions=predictions_np,
-        output_dir=output_dir,
-        num_samples=cfg.etc.get("num_viz_samples", 8),
     )
 
     lgr_logger.info(f"Visualization complete! Output saved to {output_dir}")

@@ -44,8 +44,8 @@ data:
   channels:  # List of channels to load
     - soft
     # - hard
-  batch_size: 32
-  num_workers: 4
+  batch_size: 4
+  num_workers: 1
   data_type: "1d"  # Must match model.data_type
   scalers: ./data/xrs_stat_train.yaml # Normalization statistics
 
@@ -80,9 +80,14 @@ wandb:
 
 etc:
   resume: false
-  ckpt_dir: ./results/check_point/pretrain/xrs/
+  ckpt_dir: ./results/checkpoints/pretrain/xrs/
   ckpt_name_tag: xrs_1e-4_soft_large
-  ckpt_file: xrs_1e-4_epoch=38-val_loss=0.0000.ckpt
+  ckpt_file: xrs_1e-6_soft_small_epoch=92-val_loss=0.0000.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ./results/
+  save_test_results_path: ./results/test/
   enable_version_counter: False
+
+  # visualization
+  out_dir: ./results/vis/
+  max_batches: 5
+  num_viz_samples: 4

@@ -123,7 +123,8 @@ def build_callbacks(cfg):
         monitor=cfg.optimizer.scheduler.monitor,  # e.g., "val_loss"
         dirpath=cfg.etc.ckpt_dir,
         filename=(
-            f"{cfg.etc.ckpt_name_tag}_" f"{cfg.head.type}_" "{epoch}-{val_hss:.4f}"
+            f"{cfg.etc.ckpt_name_tag}_lr{cfg.optimizer.lr}_wd{cfg.optimizer.weight_decay}_"
+            f"{cfg.head.type}_" "{epoch}-{val_hss:.4f}"
         ),
         save_top_k=3,
         mode="max",
@@ -148,7 +149,10 @@ def build_pretrain_callbacks(cfg):
     checkpoint_callback = ModelCheckpoint(
         monitor="val/loss",
         dirpath=cfg.etc.ckpt_dir,
-        filename=f"{cfg.etc.ckpt_name_tag}_" "{epoch}-{val_loss:.4f}",
+        filename=(
+            f"{cfg.etc.ckpt_name_tag}_lr{cfg.optimizer.lr}_wd{cfg.optimizer.weight_decay}_"
+            "{epoch}-{val_loss:.4f}"
+        ),
         save_top_k=3,
         mode="min",
         verbose=True,
@@ -164,4 +168,35 @@ def build_pretrain_callbacks(cfg):
         checkpoint_callback,
         performance_monitor,
         time_monitor,
+    ]
+
+
+def build_baseline_callbacks(cfg, wandb_id=None):
+    filename = (
+        f"{cfg.etc.ckpt_name_tag}_lr{cfg.optimizer.lr}_wd{cfg.optimizer.weight_decay}_"
+        f"{cfg.backbone.model_name}_"
+        "{epoch}-{val_hss:.4f}"
+    )
+    if wandb_id:
+        filename = f"{wandb_id}_" + filename
+
+    checkpoint_callback = ModelCheckpoint(
+        monitor=cfg.optimizer.scheduler.monitor,  # e.g., "val_loss"
+        dirpath=cfg.etc.ckpt_dir,
+        filename=filename,
+        save_top_k=3,
+        mode="max",
+        verbose=True,
+        save_last=True,
+        enable_version_counter=cfg.etc.enable_version_counter,
+    )
+
+    performance_monitor = PerformanceMonitor()
+    time_monitor = TimeLogger()
+
+    return [
+        LearningRateMonitor(logging_interval="step"),
+        performance_monitor,
+        time_monitor,
+        checkpoint_callback,
     ]

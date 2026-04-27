@@ -11,13 +11,13 @@ hydra:
 
 data:
   sdo_data_root_path: /nobackupnfs1/sroy14/processed_data/Helio/nc 
-  train_data_path: ../data/surya-bench_sdo.csv
-  valid_data_path: ../data/surya-bench_sdo.csv
-  test_data_path: ../data/surya-bench_sdo.csv
-  train_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/train_M24w_freq8.csv
-  valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/val_M24w.csv
-  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
-  test_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/test_M24w.csv
+  train_data_path: ./data/surya-bench_sdo.csv
+  valid_data_path: ./data/surya-bench_sdo.csv
+  test_data_path: ./data/surya-bench_sdo.csv
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/train_M24w_freq8.csv
+  valid_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/val_M24w.csv
+  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
+  test_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/test_M24w.csv
   channels: ['aia94', 'aia131', 'aia171', 'aia193', 'aia211', 'aia304', 'aia335', 'aia1600', 'hmi_m', 'hmi_bx', 'hmi_by', 'hmi_bz', 'hmi_v']
   time_delta_input_minutes: [-60,0]
   time_delta_target_minutes: 0
@@ -30,7 +30,7 @@ data:
   persistent_workers: true
   pooling: 1
   random_vert_flip: false
-  scalers_path: ../data/scalers.yaml
+  scalers_path: ./data/scalers.yaml
   scalers: null
   class_names: ["FL", "NFL"]
   use_leaky_validation: false
@@ -61,7 +61,7 @@ backbone:
   nglo: 0
   dtype: float32
   freeze_backbone: True
-  path_weights: ../data/Surya-1.0/surya.366m.v1.pt
+  path_weights: ./data/Surya-1.0/surya.366m.v1.pt
   pooling_type: attention_pooling
 
 head:
@@ -126,11 +126,11 @@ optimizer:
 etc:
   phase: test # test
   resume: true
-  ckpt_dir: ../results/check_point/best/
+  ckpt_dir: ./results/check_point/best/
   ckpt_name_tag: mlp_daily_m_test
   ckpt_file: mlp_daily_zarr_best.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ../results/surya_test_result.csv
+  save_test_results_path: ./results/surya_test_result.csv
   precision: bf16-mixed #16-mixed
   accelerator: gpu
   devices: 1 #[0, 1, 2, 3]
@@ -146,7 +146,7 @@ wandb:
   name: mlp_daily_M_nasgh_test
   id: mlp_daily_M_nasgh_test
   resume: allow
-  save_dir: ../results
+  save_dir: ./results
   entity: gsu-dmlab
   project: helio-fm
   log_model: false

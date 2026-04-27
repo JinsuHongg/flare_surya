@@ -11,13 +11,13 @@ hydra:
 
 data:
   sdo_data_root_path: /nobackupnfs1/sroy14/processed_data/Helio/nc 
-  train_data_path: ../data/surya-bench_sdo.csv
-  valid_data_path: ../data/surya-bench_sdo.csv
-  test_data_path: ../data/surya-bench_sdo.csv
-  train_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/train_C24w_freq8.csv
-  valid_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/val_C24w.csv
-  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/leaky_val_C24w.csv
-  test_flare_data_path: ../data/surya-bench-flare-forecasting/C24w/test_C24w.csv
+  train_data_path: ./data/surya-bench_sdo.csv
+  valid_data_path: ./data/surya-bench_sdo.csv
+  test_data_path: ./data/surya-bench_sdo.csv
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/C24w/train_C24w_freq8.csv
+  valid_flare_data_path: ./data/surya-bench-flare-forecasting/C24w/val_C24w.csv
+  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/C24w/leaky_val_C24w.csv
+  test_flare_data_path: ./data/surya-bench-flare-forecasting/C24w/test_C24w.csv
   channels: ['aia94', 'aia131', 'aia171', 'aia193', 'aia211', 'aia304', 'aia335', 'aia1600', 'hmi_m', 'hmi_bx', 'hmi_by', 'hmi_bz', 'hmi_v']
   time_delta_input_minutes: [-60,0]
   time_delta_target_minutes: 0
@@ -30,7 +30,7 @@ data:
   persistent_workers: true
   pooling: 1
   random_vert_flip: false
-  scalers_path: ../data/scalers.yaml
+  scalers_path: ./data/scalers.yaml
   scalers: null
   class_names: ["FL", "NFL"]
   use_leaky_validation: false
@@ -41,8 +41,8 @@ data:
   seed: 1004
   apply_undersampling: true
   #xray data path
-  xrs_zarr_path: ../data/xrs_24hour_slices_g15_g16_merged.zarr
-  xrs_stat_path: ../data/xrs_stat.yaml
+  xrs_zarr_path: ./data/xrs_24hour_slices_g15_g16_merged.zarr
+  xrs_stat_path: ./data/xrs_stat.yaml
 
 backbone:
   img_size: 4096
@@ -68,7 +68,7 @@ backbone:
   nglo: 0
   # dtype: float32
   freeze_backbone: True
-  path_weights: ../data/Surya-1.0/surya.366m.v1.pt
+  path_weights: ./data/Surya-1.0/surya.366m.v1.pt
   pooling_type: avg_pooling
 
 secondary:
@@ -148,11 +148,11 @@ optimizer:
 etc:
   phase: train # test
   resume: true
-  ckpt_dir: ../results/check_point/surya_flare/8hour_c/
+  ckpt_dir: ./results/check_point/surya_flare/8hour_c/
   ckpt_name_tag: mlp_8hour_c
   ckpt_file: last.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ../results/
+  save_test_results_path: ./results/
   precision: bf16-mixed #16-mixed
   accelerator: gpu
   devices: 1 #[0, 1, 2, 3]
@@ -170,7 +170,7 @@ wandb:
   name: mlp_8hour_c_nasgh
   id: mlp_8hour_c_nasgh
   resume: allow
-  save_dir: ../results
+  save_dir: ./results
   entity: gsu-dmlab
   project: helio-fm
   group: null

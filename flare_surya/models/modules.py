@@ -97,9 +97,12 @@ class FlareSurya(BaseModule):
         save_test_results_path=None,
     ):
         super().__init__(optimizer_dict=optimizer_dict)
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=["optimizer_dict", "loss_dict", "lora_dict"])
         self.pooling_type = pooling_type
         self.save_test_results_path = save_test_results_path
+        self.freeze_backbone = freeze_backbone
+        self.lora_dict = lora_dict
+        self.test_results = {"timestamps": [], "predictions": [], "targets": []}
 
         self.backbone = HelioSpectFormer(
             img_size=img_size,

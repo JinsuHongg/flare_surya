@@ -194,7 +194,11 @@ def get_criterion(loss_dict, module_name=None):
         case "cross_entropy":
             ce_dict = loss_dict.get("cross_entropy", {})
             class_weights = ce_dict.get("class_weights", None)
-            return ("bce_with_logits", class_weights)
+            if class_weights is not None:
+                # Binary case: pos_weight = weight_pos / weight_neg
+                pos_weight = torch.tensor([class_weights[1] / class_weights[0]])
+                return nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+            return nn.BCEWithLogitsLoss()
         case "focal":
             return BinaryFocalLoss(
                 alpha=loss_dict["focal"].get("alpha", 0.25),

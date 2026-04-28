@@ -591,7 +591,7 @@ class BaseLineModel(BaseModule):
         # training_step defines the train loop.
         data, metadata = batch
         stats = data["debug"]
-        target = data["label"].float()
+        target = data["label"].float().unsqueeze(1)
         x_hat = self.backbone(data)
         probs = torch.sigmoid(x_hat)
 
@@ -640,7 +640,7 @@ class BaseLineModel(BaseModule):
 
     def validation_step(self, batch, batch_idx):
         data, metadata = batch
-        target = data["label"].float()
+        target = data["label"].float().unsqueeze(1)
         x_hat = self.backbone(data)
         probs = torch.sigmoid(x_hat)
 
@@ -675,7 +675,7 @@ class BaseLineModel(BaseModule):
 
     def test_step(self, batch, batch_idx):
         data, metadata = batch
-        target = data["label"].float()
+        target = data["label"].float().unsqueeze(1)
         x_hat = self.backbone(data)
         probs = torch.sigmoid(x_hat)
 
@@ -1050,19 +1050,6 @@ class SuryaMultiModal(BaseModule):
             loss = self.criterion(
                 x_hat, target, output["hidden"], current_epoch=self.current_epoch
             )
-        elif (
-            isinstance(self.criterion, tuple) and self.criterion[0] == "bce_with_logits"
-        ):
-            class_weights = self.criterion[1]
-            if class_weights is not None:
-                pos_weight = torch.tensor(
-                    [class_weights[1] / class_weights[0]], device=x_hat.device
-                )
-                loss = F.binary_cross_entropy_with_logits(
-                    x_hat, target, pos_weight=pos_weight
-                )
-            else:
-                loss = F.binary_cross_entropy_with_logits(x_hat, target)
         else:
             loss = self.criterion(x_hat, target)
         return x_hat, loss

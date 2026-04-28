@@ -14,10 +14,10 @@ from loguru import logger as lgr_logger
 import torch
 import torch.multiprocessing as mp
 from lightning.pytorch import Trainer
-from lightning.pytorch.loggers import WandbLogger
 from flare_surya.datamodule import FlareDataModule
 from flare_surya.models import BaseLineModel
 from flare_surya.utils.callbacks import build_baseline_callbacks
+from flare_surya.utils.logger_utils import build_wandb
 
 torch.set_float32_matmul_precision("medium")
 # This changes the sharing strategy from RAM (shm) to Disk (file_system)
@@ -65,23 +65,7 @@ def train(cfg: OmegaConf):
         )
 
     # Create wandb obejct
-    name = f"{cfg.backbone.model_name}_lr{cfg.optimizer.lr}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    cfg_dict = OmegaConf.to_container(cfg, resolve=True, throw_on_missing=False)
-    wandb_logger = WandbLogger(
-        entity=cfg.wandb.entity,
-        project=cfg.wandb.project,
-        save_dir=cfg.wandb.save_dir,
-        offline=cfg.wandb.offline,
-        log_model=cfg.wandb.log_model,
-        save_code=cfg.wandb.save_code,
-        notes=cfg.wandb.notes,
-        tags=cfg.wandb.tag,
-        name=cfg.wandb.name,
-        group=cfg.wandb.group,
-        config=cfg_dict,
-        id=cfg.wandb.id,
-        resume=cfg.wandb.resume,
-    )
+    wandb_logger = build_wandb(cfg=cfg)
 
     callbacks = build_baseline_callbacks(cfg, wandb_id=wandb_logger.experiment.id)
 

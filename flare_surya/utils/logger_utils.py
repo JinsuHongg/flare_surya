@@ -4,6 +4,13 @@ from lightning.pytorch.loggers import WandbLogger
 
 def build_wandb(cfg):
     cfg_dict = OmegaConf.to_container(cfg, resolve=True, throw_on_missing=False)
+
+    # Automatically append lr and weight decay to name and id for unique tracking
+    lr = cfg.optimizer.get("lr", "unknown")
+    wd = cfg.optimizer.get("weight_decay", "unknown")
+    wandb_name = f"{cfg.wandb.name}_lr{lr}_wd{wd}"
+    wandb_id = f"{cfg.wandb.id}_lr{lr}_wd{wd}"
+
     wandb_logger = WandbLogger(
         entity=cfg["wandb"]["entity"],
         project=cfg["wandb"]["project"],
@@ -13,10 +20,10 @@ def build_wandb(cfg):
         save_code=cfg["wandb"]["save_code"],
         notes=cfg["wandb"]["notes"],
         tags=cfg["wandb"]["tag"],
-        name=cfg.wandb.name,
+        name=wandb_name,
         group=cfg.wandb.group,
         config=cfg_dict,
-        id=cfg.wandb.id,
+        id=wandb_id,
         resume=cfg.wandb.resume,
     )
 
@@ -24,6 +31,7 @@ def build_wandb(cfg):
         wandb_logger.log_hyperparams(
             {
                 "lr": cfg["optimizer"]["lr"],
+                "weight_decay": cfg["optimizer"]["weight_decay"],
                 "batch_size": cfg["data"]["batch_size"],
                 "embed_dim": cfg["backbone"]["embed_dim"],
                 "depth": cfg["backbone"]["depth"],
@@ -44,6 +52,7 @@ def build_wandb(cfg):
         wandb_logger.log_hyperparams(
             {
                 "lr": cfg["optimizer"]["lr"],
+                "weight_decay": cfg["optimizer"]["weight_decay"],
                 "batch_size": cfg["data"]["batch_size"],
                 "embed_dim": cfg["model"]["embed_dim"],
                 "encoder_depth": cfg["model"]["encoder_depth"],

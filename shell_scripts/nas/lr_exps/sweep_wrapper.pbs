@@ -18,10 +18,6 @@ lr=${LEARNING_RATE:-1e-5}
 wd=${WEIGHT_DECAY:-0.05}
 JOBID=$(echo "$PBS_JOBID" | cut -d. -f1)
 
-# Construct unique WandB identity
-wandb_id="${task_name}_lr${lr}_wd${wd}"
-wandb_name="${task_name}_lr${lr}_wd${wd}"
-
 # Ensure logs dir exists relative to root
 mkdir -p logs/surya
 
@@ -29,17 +25,11 @@ mkdir -p logs/surya
 exec >logs/surya/${task_name}_lr${lr}_wd${wd}.${JOBID}.out
 exec 2>logs/surya/${task_name}_lr${lr}_wd${wd}.${JOBID}.err
 
-echo "Current directory: $(pwd)"
-echo "Task Name: $task_name"
-echo "Learning Rate: $lr"
-echo "Weight Decay: $wd"
-echo "WandB ID: $wandb_id"
-
 source /nobackupp17/jhong15/miniforge3_gh/etc/profile.d/conda.sh
 conda activate flare_surya
 
 # Run training with Hydra overrides
 python scripts/finetuning/finetuning.py \
-    +surya=${task_name} \
-    optimizer.lr=${lr} \
-    optimizer.weight_decay=${wd}
+  +surya=${task_name} \
+  optimizer.lr=${lr} \
+  optimizer.weight_decay=${wd}

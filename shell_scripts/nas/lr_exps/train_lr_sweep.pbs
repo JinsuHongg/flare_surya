@@ -1,0 +1,27 @@
+#!/usr/bin/bash
+#PBS -S /usr/bin/bash
+#PBS -l select=1:ncpus=72:ngpus=1:mem=256GB:model=gh200
+#PBS -q gpu_normal
+#PBS -l walltime=24:00:00
+#PBS -M jhong36@gsu.edu
+#PBS -m abe
+#PBS -W umask=002
+
+task_name=${TASK_NAME:-alexnet_c}
+lr=${LEARNING_RATE:-1e-5}
+wd=${WEIGHT_DECAY:-0.05}
+JOBID=$(echo "$PBS_JOBID" | cut -d. -f1)
+
+mkdir -p "$PBS_O_WORKDIR/logs/baselines"
+exec >"$PBS_O_WORKDIR/logs/baselines/${task_name}_lr${lr}_wd${wd}.${JOBID}.out"
+exec 2>"$PBS_O_WORKDIR/logs/baselines/${task_name}_lr${lr}_wd${wd}.${JOBID}.err"
+
+cd "$PBS_O_WORKDIR"
+
+source /nobackupp17/jhong15/miniforge3_gh/etc/profile.d/conda.sh
+conda activate flare_surya
+
+python scripts/training/training_baseline.py \
+  +baselines=${task_name} \
+  optimizer.lr=${lr} \
+  optimizer.weight_decay=${wd}

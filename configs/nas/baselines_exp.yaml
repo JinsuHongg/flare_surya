@@ -83,7 +83,7 @@ optimizer:
   eps: 1e-6
   scheduler:
       use: cosine_warmup # The switch
-      monitor: val_hss 
+      monitor: val/hss 
     
       # Define available strategies
       cosine_warmup:

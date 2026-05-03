@@ -212,9 +212,10 @@ class FlareSurya(BaseModule):
 
         if isinstance(self.criterion, FlareSSMLoss):
             x_hat, h = self.head.forward_with_hidden(tokens)
+            x_hat = x_hat.view(target.shape)
             loss = self.criterion(x_hat, target, h, current_epoch=self.current_epoch)
         else:
-            x_hat = self.head(tokens)
+            x_hat = self.head(tokens).view(target.shape)
             loss = self.criterion(x_hat, target)
 
         probs = torch.sigmoid(x_hat)
@@ -268,9 +269,10 @@ class FlareSurya(BaseModule):
 
         if isinstance(self.criterion, FlareSSMLoss):
             x_hat, h = self.head.forward_with_hidden(tokens)
+            x_hat = x_hat.view(target.shape)
             loss = self.criterion(x_hat, target, h, current_epoch=self.current_epoch)
         else:
-            x_hat = self.head(tokens)
+            x_hat = self.head(tokens).view(target.shape)
             loss = self.criterion(x_hat, target)
 
         probs = torch.sigmoid(x_hat)
@@ -306,9 +308,10 @@ class FlareSurya(BaseModule):
 
         if isinstance(self.criterion, FlareSSMLoss):
             x_hat, h = self.head.forward_with_hidden(tokens)
+            x_hat = x_hat.view(target.shape)
             loss = self.criterion(x_hat, target, h, current_epoch=self.current_epoch)
         else:
-            x_hat = self.head(tokens)
+            x_hat = self.head(tokens).view(target.shape)
             loss = self.criterion(x_hat, target)
 
         probs = torch.sigmoid(x_hat)
@@ -406,10 +409,10 @@ class FlareSurya(BaseModule):
 
     def on_test_epoch_end(self):
         metrics = self.test_metrics.compute()
-        print("\n=== Test Metrics ===")
+        lgr_logger.info("=== Test Metrics ===")
         for k, v in metrics.items():
-            print(f"  {k}: {v.float():.4f}")
-        print("===================\n")
+            lgr_logger.info(f"  {k}: {v.float():.4f}")
+        lgr_logger.info("===================")
         self.log_dict(
             {f"test/{k}": v.float() for k, v in metrics.items()}, sync_dist=False
         )
@@ -592,7 +595,7 @@ class BaseLineModel(BaseModule):
         data, metadata = batch
         stats = data["debug"]
         target = data["label"].float().unsqueeze(1)
-        x_hat = self.backbone(data)
+        x_hat = self.backbone(data).view(target.shape)
         probs = torch.sigmoid(x_hat)
 
         loss = self.criterion(x_hat, target)
@@ -641,7 +644,7 @@ class BaseLineModel(BaseModule):
     def validation_step(self, batch, batch_idx):
         data, metadata = batch
         target = data["label"].float().unsqueeze(1)
-        x_hat = self.backbone(data)
+        x_hat = self.backbone(data).view(target.shape)
         probs = torch.sigmoid(x_hat)
 
         loss = self.criterion(x_hat, target)
@@ -676,7 +679,7 @@ class BaseLineModel(BaseModule):
     def test_step(self, batch, batch_idx):
         data, metadata = batch
         target = data["label"].float().unsqueeze(1)
-        x_hat = self.backbone(data)
+        x_hat = self.backbone(data).view(target.shape)
         probs = torch.sigmoid(x_hat)
 
         # Store predictions and targets for later analysis
@@ -710,10 +713,10 @@ class BaseLineModel(BaseModule):
 
     def on_test_epoch_end(self):
         metrics = self.test_metrics.compute()
-        print("\n=== Test Metrics ===")
+        lgr_logger.info("=== Test Metrics ===")
         for k, v in metrics.items():
-            print(f"  {k}: {v.float():.4f}")
-        print("===================\n")
+            lgr_logger.info(f"  {k}: {v.float():.4f}")
+        lgr_logger.info("===================")
         self.log_dict(
             {f"test/{k}": v.float() for k, v in metrics.items()}, sync_dist=False
         )
@@ -1044,7 +1047,7 @@ class SuryaMultiModal(BaseModule):
             return {"logits": x_hat}
 
     def _compute_loss(self, output, target):
-        x_hat = output["logits"]
+        x_hat = output["logits"].view(target.shape)
         target = target.to(x_hat.device)
         if isinstance(self.criterion, FlareSSMLoss):
             loss = self.criterion(
@@ -1180,10 +1183,10 @@ class SuryaMultiModal(BaseModule):
 
     def on_test_epoch_end(self):
         metrics = self.test_metrics.compute()
-        print("\n=== Test Metrics ===")
+        lgr_logger.info("=== Test Metrics ===")
         for k, v in metrics.items():
-            print(f"  {k}: {v.float():.4f}")
-        print("===================\n")
+            lgr_logger.info(f"  {k}: {v.float():.4f}")
+        lgr_logger.info("===================")
         self.log_dict(
             {f"test/{k}": v.float() for k, v in metrics.items()}, sync_dist=False
         )

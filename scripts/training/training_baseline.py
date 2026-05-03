@@ -40,7 +40,7 @@ def build_model(config):
 
 @hydra.main(
     version_base=None,
-    config_path="../configs/nas/",
+    config_path="../../configs/nas/",
     config_name="baselines_exp",
 )
 def train(cfg: OmegaConf):

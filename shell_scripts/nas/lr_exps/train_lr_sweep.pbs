@@ -9,7 +9,7 @@
 
 task_name=${TASK_NAME:-alexnet_c}
 lr=${LEARNING_RATE:-1e-5}
-wd=${WEIGHT_DECAY:-0.05}
+wd=${WEIGHT_DECAY:-1e-3}
 JOBID=$(echo "$PBS_JOBID" | cut -d. -f1)
 
 mkdir -p "$PBS_O_WORKDIR/logs/baselines"

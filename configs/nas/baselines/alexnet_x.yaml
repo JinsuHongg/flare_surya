@@ -1,10 +1,10 @@
 # @package _global_
 
 data:
-  train_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/train_X24w_freq4.csv
-  valid_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/val_X24w.csv
-  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/leaky_val_X24w.csv
-  test_flare_data_path: ../data/surya-bench-flare-forecasting/X24w/test_X24w.csv
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/train_X24w_freq4.csv
+  valid_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/val_X24w.csv
+  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/leaky_val_X24w.csv
+  test_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/test_X24w.csv
   undersample_factor: 4
   seed: 1004
 
@@ -29,7 +29,7 @@ optimizer:
 etc:
   phase: train # test
   resume: false
-  ckpt_dir: ../results/checkpoints/baselines/alexnet/daily_x/
+  ckpt_dir: ./results/checkpoints/baselines/alexnet/daily_x/
   ckpt_name_tag: alexnet_daily_x_ce_undersample
   ckpt_file: last.ckpt
   ckpt_weights_only: false

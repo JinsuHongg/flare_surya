@@ -432,6 +432,7 @@ class FlareSurya(BaseModule):
             thresholds = np.linspace(0.01, 0.99, 99)
             tss_scores = []
             hss_scores = []
+            css_scores = []
             f1_macro_scores = []
 
             for thresh in thresholds:
@@ -456,6 +457,10 @@ class FlareSurya(BaseModule):
                 hss = numerator / (denominator + eps)
                 hss_scores.append(hss)
 
+                # CSS
+                css = np.sqrt(np.maximum(0, hss) * np.maximum(0, tss))
+                css_scores.append(css)
+
                 # F1-macro (average of F1 for each class)
                 precision = tp / (tp + fp + eps)
                 recall = tp / (tp + fn + eps)
@@ -479,6 +484,7 @@ class FlareSurya(BaseModule):
                     "threshold": thresholds,
                     "TSS": tss_scores,
                     "HSS": hss_scores,
+                    "CSS": css_scores,
                     "F1_macro": f1_macro_scores,
                 }
             )
@@ -487,8 +493,8 @@ class FlareSurya(BaseModule):
                 {
                     "test/threshold_vs_scores": wandb.plot.line_series(
                         xs=thresholds,
-                        ys=[tss_scores, hss_scores, f1_macro_scores],
-                        keys=["TSS", "HSS", "F1_macro"],
+                        ys=[tss_scores, hss_scores, css_scores, f1_macro_scores],
+                        keys=["TSS", "HSS", "CSS", "F1_macro"],
                         title="Threshold vs Skill Scores",
                         xname="Threshold",
                     )
@@ -736,6 +742,7 @@ class BaseLineModel(BaseModule):
             thresholds = np.linspace(0.01, 0.99, 99)
             tss_scores = []
             hss_scores = []
+            css_scores = []
             f1_macro_scores = []
 
             for thresh in thresholds:
@@ -760,6 +767,10 @@ class BaseLineModel(BaseModule):
                 hss = numerator / (denominator + eps)
                 hss_scores.append(hss)
 
+                # CSS
+                css = np.sqrt(np.maximum(0, hss) * np.maximum(0, tss))
+                css_scores.append(css)
+
                 # F1-macro (average of F1 for each class)
                 precision = tp / (tp + fp + eps)
                 recall = tp / (tp + fn + eps)
@@ -783,6 +794,7 @@ class BaseLineModel(BaseModule):
                     "threshold": thresholds,
                     "TSS": tss_scores,
                     "HSS": hss_scores,
+                    "CSS": css_scores,
                     "F1_macro": f1_macro_scores,
                 }
             )
@@ -791,8 +803,8 @@ class BaseLineModel(BaseModule):
                 {
                     "test/threshold_vs_scores": wandb.plot.line_series(
                         xs=thresholds,
-                        ys=[tss_scores, hss_scores, f1_macro_scores],
-                        keys=["TSS", "HSS", "F1_macro"],
+                        ys=[tss_scores, hss_scores, css_scores, f1_macro_scores],
+                        keys=["TSS", "HSS", "CSS", "F1_macro"],
                         title="Threshold vs Skill Scores",
                         xname="Threshold",
                     )
@@ -1206,6 +1218,7 @@ class SuryaMultiModal(BaseModule):
             thresholds = np.linspace(0.01, 0.99, 99)
             tss_scores = []
             hss_scores = []
+            css_scores = []
             f1_macro_scores = []
 
             for thresh in thresholds:
@@ -1230,6 +1243,10 @@ class SuryaMultiModal(BaseModule):
                 hss = numerator / (denominator + eps)
                 hss_scores.append(hss)
 
+                # CSS
+                css = np.sqrt(np.maximum(0, hss) * np.maximum(0, tss))
+                css_scores.append(css)
+
                 # F1-macro (average of F1 for each class)
                 precision = tp / (tp + fp + eps)
                 recall = tp / (tp + fn + eps)
@@ -1253,6 +1270,7 @@ class SuryaMultiModal(BaseModule):
                     "threshold": thresholds,
                     "TSS": tss_scores,
                     "HSS": hss_scores,
+                    "CSS": css_scores,
                     "F1_macro": f1_macro_scores,
                 }
             )
@@ -1261,8 +1279,8 @@ class SuryaMultiModal(BaseModule):
                 {
                     "test/threshold_vs_scores": wandb.plot.line_series(
                         xs=thresholds,
-                        ys=[tss_scores, hss_scores, f1_macro_scores],
-                        keys=["TSS", "HSS", "F1_macro"],
+                        ys=[tss_scores, hss_scores, css_scores, f1_macro_scores],
+                        keys=["TSS", "HSS", "CSS", "F1_macro"],
                         title="Threshold vs Skill Scores",
                         xname="Threshold",
                     )

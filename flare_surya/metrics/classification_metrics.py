@@ -75,6 +75,9 @@ class DistributedClassificationMetrics(Metric):
         ) * (self.tn + self.fp)
         hss = numerator / (denominator + eps)
 
+        # 5. CSS (Combined Skill Score) = sqrt(max(0, HSS) * max(0, TSS))
+        css = torch.sqrt(torch.clamp(hss, min=0) * torch.clamp(tss, min=0))
+
         return {
             "accuracy": accuracy,
             "precision": precision,
@@ -82,6 +85,7 @@ class DistributedClassificationMetrics(Metric):
             "f1": f1,
             "tss": tss,
             "hss": hss,
+            "css": css,
             # Raw counts can be useful for debugging
             "tp": self.tp,
             "tn": self.tn,

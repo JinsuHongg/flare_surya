@@ -1,10 +1,10 @@
 # @package _global_
 
 data:
-  train_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/train_M24w_freq8.csv
-  valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/val_M24w.csv
-  leaky_valid_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
-  test_flare_data_path: ../data/surya-bench-flare-forecasting/M24w/test_M24w.csv
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/train_M24w_freq8.csv
+  valid_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/val_M24w.csv
+  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
+  test_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/test_M24w.csv
 
 backbone:
   model_name: resnet18 # resnet18, resnet34, resnet50, alexnet,
@@ -26,11 +26,11 @@ optimizer:
 etc:
   phase: test # test
   resume: true
-  ckpt_dir: ../results/check_point/best/
+  ckpt_dir: ./results/check_point/best/
   ckpt_name_tag: resnet18_daily_m_test
   ckpt_file: resnet18_best_daily.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ../results/resnet18_test_result.csv
+  save_test_results_path: ./results/resnet18_test_result.csv
 
 wandb:
   name: resnet18_daily_m_test

@@ -147,16 +147,19 @@ def compute_statistics(
     if not isinstance(dask_array, da.Array):
         dask_array = da.from_array(dask_array, chunks="auto")
 
-    # Apply log10 transformation with epsilon to avoid log(0)
-    # This matches the transformation in SolarPretrainDataset.norm_log_zscore
-    eps = 1e-10
-    dask_array_log = da.log10(da.clip(dask_array, eps, None))
+    # Apply log10 transformation only to positive pixels (solar disk)
+    # This avoids the background (0) pulling down the mean and inflating the std.
+    mask = dask_array > 0
+    dask_array_log = da.log10(dask_array[mask])
 
     with dask.config.set(scheduler="threads"):
+        # Mean and Std of the log-transformed disk pixels
         mean_val = dask_array_log.mean().compute()
         std_val = dask_array_log.std().compute()
-        min_val = dask_array_log.min().compute()
-        max_val = dask_array_log.max().compute()
+        
+        # Min/Max of the raw data for reference
+        min_val = dask_array.min().compute()
+        max_val = dask_array.max().compute()
 
     stats = {
         "variable": variable_name,

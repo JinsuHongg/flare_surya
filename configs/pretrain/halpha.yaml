@@ -47,8 +47,8 @@ data:
     # - hard
   batch_size: 32
   num_workers: 6
-  data_type: "1d"  # Must match model.data_type
-  scalers: ./data/xrs_stat_train.yaml # Normalization statistics
+  data_type: "2d"  # Must match model.data_type
+  scalers: ./data/halpha_stat_train.yaml # Normalization statistics
 
 # Trainer Configuration
 trainer:

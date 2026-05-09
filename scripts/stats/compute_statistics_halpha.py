@@ -51,12 +51,12 @@ def compute_statistics(
     dims = None
     if variable_name == "images":
         if zarr_array.ndim == 4:
-            dims = ["time", "y", "x", "channel"]
+            dims = ["timestep", "y", "x", "channel"]
         elif zarr_array.ndim == 3:
-            dims = ["time", "y", "x"]
-    elif variable_name == "timestamps":
+            dims = ["timestep", "y", "x"]
+    elif variable_name == "timestep":
         if zarr_array.ndim == 1:
-            dims = ["time"]
+            dims = ["timestep"]
 
     if dims is None:
         logger.error(
@@ -69,18 +69,18 @@ def compute_statistics(
     use_xarray = False
     ts_coords = None
 
-    if "timestamps" in available_arrays:
+    if "timestep" in available_arrays:
         try:
             time_coder = CFDatetimeCoder(use_cftime=True)
             ds = xr.open_dataset(
                 zarr_path, engine="zarr", chunks="auto", decode_times=time_coder
             )
-            ts_coords = ds["time"].values
+            ts_coords = ds["timestep"].values
             use_xarray = True
-            logger.info("Loaded timestamps with xarray (time metadata detected)")
+            logger.info("Loaded timestep with xarray (time metadata detected)")
         except Exception:
-            logger.info("Time metadata not found, using raw zarr timestamps")
-            ts_array = store["timestamps"]
+            logger.info("Time metadata not found, using raw zarr timestep")
+            ts_array = store["timestep"]
             ts_coords = pd.to_datetime(ts_array[:], unit="s")
 
     dask_array = da.from_array(zarr_array, chunks=zarr_array.chunks)
@@ -104,29 +104,26 @@ def compute_statistics(
                 f"Filtering data by {len(selected_timestamps)} timestamps using dimension '{time_dim}'"
             )
 
-            if use_xarray:
-                ts_index = pd.DatetimeIndex(ts_coords)
-
-                matched_indices = []
-                tolerance = pd.Timedelta("1 minute")
-                for ts in selected_timestamps:
-                    diffs = (ts_index - ts).to_numpy()
-                    matches = np.where(np.abs(diffs) <= tolerance)[0]
-                    if len(matches) > 0:
-                        matched_indices.append(matches[0])
-            else:
-                if ts_coords is not None:
-                    ts_index = pd.DatetimeIndex(ts_coords)
-
-                    matched_indices = []
-                    tolerance = pd.Timedelta("1 minute")
-                    for ts in selected_timestamps:
-                        diffs = (ts_index - ts).to_numpy()
-                        matches = np.where(np.abs(diffs) <= tolerance)[0]
-                        if len(matches) > 0:
-                            matched_indices.append(matches[0])
+            # Convert both sets of timestamps to strings for robust matching
+            # (handles cftime vs datetime64 and calendar differences)
+            logger.info("Converting Zarr timestamps to strings...")
+            zarr_time_strings = []
+            for t in ts_coords:
+                if hasattr(t, "strftime"):
+                    zarr_time_strings.append(t.strftime("%Y-%m-%d %H:%M"))
                 else:
-                    matched_indices = list(range(zarr_array.shape[0]))
+                    zarr_time_strings.append(pd.to_datetime(t).strftime("%Y-%m-%d %H:%M"))
+
+            logger.info("Converting index timestamps to strings...")
+            index_time_strings = selected_timestamps.strftime("%Y-%m-%d %H:%M")
+
+            # Build a mapping for fast lookup
+            zarr_time_to_idx = {ts: i for i, ts in enumerate(zarr_time_strings)}
+            
+            matched_indices = []
+            for ts in index_time_strings:
+                if ts in zarr_time_to_idx:
+                    matched_indices.append(zarr_time_to_idx[ts])
 
             if not matched_indices:
                 logger.error("No common timestamps found after matching.")
@@ -144,22 +141,27 @@ def compute_statistics(
             logger.error(f"Failed to load or apply index filter: {e}")
             return
 
-    logger.info(f"Computing statistics for variable '{variable_name}'")
+    logger.info(f"Computing log-statistics for variable '{variable_name}'")
 
     dask_array = data_var.data
     if not isinstance(dask_array, da.Array):
         dask_array = da.from_array(dask_array, chunks="auto")
 
+    # Apply log10 transformation with epsilon to avoid log(0)
+    # This matches the transformation in SolarPretrainDataset.norm_log_zscore
+    eps = 1e-10
+    dask_array_log = da.log10(da.clip(dask_array, eps, None))
+
     with dask.config.set(scheduler="threads"):
-        mean_val = dask_array.mean().compute()
-        std_val = dask_array.std().compute()
-        min_val = dask_array.min().compute()
-        max_val = dask_array.max().compute()
+        mean_val = dask_array_log.mean().compute()
+        std_val = dask_array_log.std().compute()
+        min_val = dask_array_log.min().compute()
+        max_val = dask_array_log.max().compute()
 
     stats = {
         "variable": variable_name,
         "mean": float(mean_val),
-        "std_dev": float(std_val),
+        "std": float(std_val),
         "min": float(min_val),
         "max": float(max_val),
     }

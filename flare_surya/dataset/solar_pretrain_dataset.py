@@ -236,9 +236,13 @@ class SolarPretrainDataset(Dataset):
                     raise IndexError(f"Channel {ch} not found in Zarr.")
 
                 # Normalize if scaler is available
-                if self.scalers and ch in self.scalers:
-                    stats = self.scalers[ch]
-                    ch_data = self.norm_log_zscore(ch_data, stats)
+                if self.scalers:
+                    # Try to find channel-specific stats, otherwise fall back to top-level stats (flat YAML)
+                    stats = self.scalers.get(ch, self.scalers)
+                    if "mean" in stats and "std" in stats:
+                        ch_data = self.norm_log_zscore(ch_data, stats)
+                    else:
+                        lgr_logger.warning(f"No valid statistics (mean/std) found for channel {ch} in scalers.")
 
                 channel_data.append(ch_data)
         else:
@@ -258,9 +262,13 @@ class SolarPretrainDataset(Dataset):
                 data_np = np.array(da.values)
 
                 # Normalize if scaler is available
-                if self.scalers and ch in self.scalers:
-                    stats = self.scalers[ch]
-                    data_np = self.norm_log_zscore(data_np, stats)
+                if self.scalers:
+                    # Try to find channel-specific stats, otherwise fall back to top-level stats (flat YAML)
+                    stats = self.scalers.get(ch, self.scalers)
+                    if "mean" in stats and "std" in stats:
+                        data_np = self.norm_log_zscore(data_np, stats)
+                    else:
+                        lgr_logger.warning(f"No valid statistics (mean/std) found for channel {ch} in scalers.")
 
                 channel_data.append(data_np)
 

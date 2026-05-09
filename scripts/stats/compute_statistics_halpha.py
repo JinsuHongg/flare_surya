@@ -147,15 +147,20 @@ def compute_statistics(
     if not isinstance(dask_array, da.Array):
         dask_array = da.from_array(dask_array, chunks="auto")
 
-    # Apply log10 transformation only to positive pixels (solar disk)
-    # This avoids the background (0) pulling down the mean and inflating the std.
-    mask = dask_array > 0
-    dask_array_log = da.log10(dask_array[mask])
+    # Use a more stable Dask-native approach for masked statistics
+    # 1. Cast to float64 to prevent overflow during sum/square operations
+    dask_array = dask_array.astype(np.float64)
 
+    # 2. Map background (0 or less) to NaN and solar disk to log10 values
+    # This preserves the original array shape and chunking, which is more stable in Dask
+    eps = 1e-10
+    dask_array_log = da.log10(da.where(dask_array > 0, dask_array, np.nan))
+
+    logger.info("Computing mean and std (this may take a moment for large datasets)...")
     with dask.config.set(scheduler="threads"):
-        # Mean and Std of the log-transformed disk pixels
-        mean_val = dask_array_log.mean().compute()
-        std_val = dask_array_log.std().compute()
+        # 3. Use nan-aware reductions
+        mean_val = da.nanmean(dask_array_log).compute()
+        std_val = da.nanstd(dask_array_log).compute()
         
         # Min/Max of the raw data for reference
         min_val = dask_array.min().compute()

@@ -141,7 +141,7 @@ def compute_statistics(
             logger.error(f"Failed to load or apply index filter: {e}")
             return
 
-    logger.info(f"Computing log-statistics for variable '{variable_name}'")
+    logger.info(f"Computing statistics (Linear) for variable '{variable_name}' on solar disk (>0)")
 
     dask_array = data_var.data
     if not isinstance(dask_array, da.Array):
@@ -151,16 +151,15 @@ def compute_statistics(
     # 1. Cast to float64 to prevent overflow during sum/square operations
     dask_array = dask_array.astype(np.float64)
 
-    # 2. Map background (0 or less) to NaN and solar disk to log10 values
+    # 2. Map background (0 or less) to NaN to isolate solar disk
     # This preserves the original array shape and chunking, which is more stable in Dask
-    eps = 1e-10
-    dask_array_log = da.log10(da.where(dask_array > 0, dask_array, np.nan))
+    dask_array_disk = da.where(dask_array > 0, dask_array, np.nan)
 
     logger.info("Computing mean and std (this may take a moment for large datasets)...")
     with dask.config.set(scheduler="threads"):
-        # 3. Use nan-aware reductions
-        mean_val = da.nanmean(dask_array_log).compute()
-        std_val = da.nanstd(dask_array_log).compute()
+        # 3. Use nan-aware reductions on raw pixel values
+        mean_val = da.nanmean(dask_array_disk).compute()
+        std_val = da.nanstd(dask_array_disk).compute()
         
         # Min/Max of the raw data for reference
         min_val = dask_array.min().compute()

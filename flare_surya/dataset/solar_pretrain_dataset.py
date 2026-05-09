@@ -28,6 +28,7 @@ class SolarPretrainDataset(Dataset):
         data_type: str = "1d",
         phase: str = "train",
         transform=None,
+        norm_type: str = "log_zscore",
     ):
         """
         Args:
@@ -38,6 +39,7 @@ class SolarPretrainDataset(Dataset):
             data_type (str): Type of data, either '1d' or '2d'.
             phase (str): Phase of the dataset (train, val, test).
             transform (callable, optional): Optional transform to be applied on a sample.
+            norm_type (str): Normalization type, either 'log_zscore' or 'zscore'.
         """
         self.zarr_path = zarr_path
         self.index_path = index_path
@@ -46,6 +48,7 @@ class SolarPretrainDataset(Dataset):
         self.data_type = data_type
         self.phase = phase
         self.transform = transform
+        self.norm_type = norm_type
 
         # Load index
         lgr_logger.info(f"Loading index from {index_path}")
@@ -149,7 +152,7 @@ class SolarPretrainDataset(Dataset):
         result = (x_log - stats.mean) / std_dev
 
         if np.any(np.isnan(result)):
-            lgr_logger.warning("NaNs detected in normalization output.")
+            lgr_logger.warning("NaNs detected in log_zscore normalization output.")
             lgr_logger.warning(
                 f"Input data min/max: {np.min(data_arr)}, {np.max(data_arr)}"
             )
@@ -161,6 +164,40 @@ class SolarPretrainDataset(Dataset):
             lgr_logger.warning(f"log10 values at NaN locations: {x_log[nan_mask]}")
 
         return result
+
+    def norm_zscore(self, data_arr, stats, eps=1e-10):
+        """
+        Normalize data using linear z-score.
+
+        Args:
+            data_arr: Numpy array or Xarray DataArray.
+            stats: DictConfig with 'mean' and 'std'.
+
+        Returns:
+            Normalized data.
+        """
+        # Add epsilon to std dev to prevent division by zero
+        std_dev = stats.std + eps
+        result = (data_arr - stats.mean) / std_dev
+
+        if np.any(np.isnan(result)):
+            lgr_logger.warning("NaNs detected in zscore normalization output.")
+            lgr_logger.warning(
+                f"Input data min/max: {np.min(data_arr)}, {np.max(data_arr)}"
+            )
+            lgr_logger.warning(f"Stats: mean={stats.mean}, std={stats.std}")
+
+        return result
+
+    def normalize(self, data_arr, stats, eps=1e-10):
+        """
+        Apply normalization based on self.norm_type.
+        """
+        if self.norm_type == "zscore":
+            return self.norm_zscore(data_arr, stats, eps)
+        else:
+            # Default to log_zscore for backward compatibility
+            return self.norm_log_zscore(data_arr, stats, eps)
 
     def __getitem__(self, idx):
         """
@@ -240,7 +277,7 @@ class SolarPretrainDataset(Dataset):
                     # Try to find channel-specific stats, otherwise fall back to top-level stats (flat YAML)
                     stats = self.scalers.get(ch, self.scalers)
                     if "mean" in stats and "std" in stats:
-                        ch_data = self.norm_log_zscore(ch_data, stats)
+                        ch_data = self.normalize(ch_data, stats)
                     else:
                         lgr_logger.warning(f"No valid statistics (mean/std) found for channel {ch} in scalers.")
 
@@ -266,7 +303,7 @@ class SolarPretrainDataset(Dataset):
                     # Try to find channel-specific stats, otherwise fall back to top-level stats (flat YAML)
                     stats = self.scalers.get(ch, self.scalers)
                     if "mean" in stats and "std" in stats:
-                        data_np = self.norm_log_zscore(data_np, stats)
+                        data_np = self.normalize(data_np, stats)
                     else:
                         lgr_logger.warning(f"No valid statistics (mean/std) found for channel {ch} in scalers.")
 

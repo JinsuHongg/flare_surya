@@ -193,6 +193,10 @@ class SolarPretrainDataset(Dataset):
         """
         Apply normalization based on self.norm_type.
         """
+        # Handle NaNs: replace with 0.0 (background)
+        if np.any(np.isnan(data_arr)):
+            data_arr = np.nan_to_num(data_arr, nan=0.0)
+
         if self.norm_type == "zscore":
             return self.norm_zscore(data_arr, stats, eps)
         else:
@@ -314,6 +318,11 @@ class SolarPretrainDataset(Dataset):
 
         # Convert to tensor
         data_tensor = torch.tensor(data_np, dtype=torch.float32)
+
+        # Final safety check for NaNs/Infs
+        if not torch.isfinite(data_tensor).all():
+            lgr_logger.warning(f"NaN or Inf detected in final tensor for timestamp {timestamp_str}")
+            data_tensor = torch.nan_to_num(data_tensor, nan=0.0, posinf=0.0, neginf=0.0)
 
         # Handle transform
         if self.transform:

@@ -151,9 +151,9 @@ def compute_statistics(
     # 1. Cast to float64 to prevent overflow during sum/square operations
     dask_array = dask_array.astype(np.float64)
 
-    # 2. Map background (0 or less) to NaN to isolate solar disk
+    # 2. Map background (0 or less) and any pre-existing NaNs/Infs to NaN to isolate solar disk
     # This preserves the original array shape and chunking, which is more stable in Dask
-    dask_array_disk = da.where(dask_array > 0, dask_array, np.nan)
+    dask_array_disk = da.where((dask_array > 0) & da.isfinite(dask_array), dask_array, np.nan)
 
     logger.info("Computing mean and std (this may take a moment for large datasets)...")
     with dask.config.set(scheduler="threads"):

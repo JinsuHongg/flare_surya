@@ -313,6 +313,7 @@ def main(cfg: OmegaConf) -> None:
                                 cname="lz4", clevel=5, shuffle=Blosc.SHUFFLE
                             ),
                             "chunks": (100, image_size, image_size, 1),
+                            "_FillValue": None,
                         },
                         "timestep": {
                             "dtype": "float64",

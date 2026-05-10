@@ -4,7 +4,7 @@ defaults:
 # Model Configuration
 model:
   in_channels: 1  # Number of channels (soft, hard)
-  seq_len: 1440
+  seq_len: 1024
   embed_dim: 768  # Reduced embed_dim for lightweight model
   encoder_depth: 4
   decoder_depth: 2

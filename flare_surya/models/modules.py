@@ -52,10 +52,20 @@ class GlobalR2Score(Metric):
         self.n += target.numel()
 
     def compute(self):
-        mean_y = self.sum_y / self.n
         ss_tot = self.sum_y_sq - (self.sum_y**2) / self.n
+        
+        # Diagnostics
+        if self.n > 0:
+            mean = self.sum_y / self.n
+            variance = ss_tot / self.n
+            lgr_logger.info(
+                f"GlobalR2 Debug: n={self.n.item():.0f}, "
+                f"mean={mean.item():.4f}, var={variance.item():.4f}, "
+                f"ss_res={self.ss_res.item():.4f}, ss_tot={ss_tot.item():.4f}"
+            )
+
         # Handle zero variance case
-        if ss_tot <= 0:
+        if ss_tot <= 1e-10:
             return torch.tensor(0.0)
         return 1 - self.ss_res / ss_tot
 
@@ -1561,19 +1571,6 @@ class PretrainSolarModel(pl.LightningModule):
 
         self.log("train/loss", loss, prog_bar=True, batch_size=x.shape[0], on_step=True)
         return loss
-
-    def validation_step(self, batch, batch_idx):
-        if len(batch) == 3:
-            x, y, _ = batch
-        else:
-            x, y = batch
-
-        pred = self.forward(x, use_mask=False)
-
-        self.val_metrics.update(pred, y)
-
-        loss = nn.functional.mse_loss(pred, y)
-        self.log("val/loss", loss, prog_bar=True, sync_dist=True, batch_size=x.shape[0])
 
     def on_train_epoch_end(self):
         metrics = self.train_metrics.compute()

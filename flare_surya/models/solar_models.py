@@ -281,10 +281,10 @@ class SolarDetokenizer1D(nn.Module):
 
 
 class SolarDetokenizer2D(nn.Module):
-    def __init__(self, in_channels=1, embed_dim=768, image_size=512):
+    def __init__(self, in_channels=1, embed_dim=768, image_size=512, patch_size=16):
         super().__init__()
         self.image_size = image_size
-        patch_size = 16
+        self.patch_size = patch_size
         self.num_patches_per_side = image_size // patch_size
 
         # 1. Bottleneck: Drastically reduce channels at low resolution (32x32)
@@ -337,6 +337,7 @@ class SolarDecoder(nn.Module):
         num_heads=12,
         data_type="1d",
         image_size=224,
+        patch_size=16,
     ):
         super().__init__()
         self.data_type = data_type
@@ -348,7 +349,7 @@ class SolarDecoder(nn.Module):
         if data_type == "1d":
             self.detokenizer = SolarDetokenizer1D(in_channels, embed_dim)
         elif data_type == "2d":
-            self.detokenizer = SolarDetokenizer2D(in_channels, embed_dim, image_size)
+            self.detokenizer = SolarDetokenizer2D(in_channels, embed_dim, image_size, patch_size)
         else:
             raise ValueError(f"Unknown data_type: {data_type}")
 

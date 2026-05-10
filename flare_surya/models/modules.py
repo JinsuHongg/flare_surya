@@ -1415,6 +1415,7 @@ class PretrainSolarModel(pl.LightningModule):
             num_heads=num_heads,
             data_type=data_type,
             image_size=image_size,
+            patch_size=patch_size,
         )
 
         self.data_type = data_type
@@ -1537,7 +1538,6 @@ class PretrainSolarModel(pl.LightningModule):
                         C,
                         patch_size * patch_size,
                     )
-                    patches = patches.mean(-1)
                     return patches
 
                 y_patches = to_patches(y)
@@ -1596,6 +1596,7 @@ class PretrainSolarModel(pl.LightningModule):
         self.log("val/loss", loss, prog_bar=True, sync_dist=True, batch_size=x.shape[0])
 
     def on_validation_epoch_end(self):
+
         metrics = self.val_metrics.compute()
         self.log_dict({k: v for k, v in metrics.items()})
         self.val_metrics.reset()

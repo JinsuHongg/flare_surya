@@ -275,32 +275,48 @@ class SolarDetokenizer1D(nn.Module):
 
 
 class SolarDetokenizer2D(nn.Module):
-    def __init__(self, in_channels=3, embed_dim=768, image_size=224):
+    def __init__(self, in_channels=1, embed_dim=768, image_size=512):
         super().__init__()
         self.image_size = image_size
-        self.embed_dim = embed_dim
         patch_size = 16
-        num_patches_per_side = image_size // patch_size
-        self.num_patches_per_side = num_patches_per_side
+        self.num_patches_per_side = image_size // patch_size
 
-        self.proj = nn.ConvTranspose2d(
-            embed_dim, embed_dim, kernel_size=patch_size, stride=patch_size
+        # 1. Bottleneck: Drastically reduce channels at low resolution (32x32)
+        self.bottleneck = nn.Sequential(
+            nn.Conv2d(embed_dim, 128, kernel_size=1),
+            nn.BatchNorm2d(128),
+            nn.GELU(),
         )
-        self.layer1 = ResidualBlock2D(
-            embed_dim, embed_dim // 2, kernel_size=3, stride=1
+
+        # 2. Progressive Upsampling Stage 1 (32 -> 128)
+        self.upsample1 = nn.Sequential(
+            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=4),
+            nn.BatchNorm2d(64),
+            nn.GELU(),
         )
-        self.layer2 = ResidualBlock2D(
-            embed_dim // 2, in_channels, kernel_size=3, stride=1
+
+        # 3. Progressive Upsampling Stage 2 (128 -> 512)
+        self.upsample2 = nn.Sequential(
+            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=4),
+            nn.BatchNorm2d(32),
+            nn.GELU(),
         )
+
+        # 4. Final Projection to image channels
+        self.final_conv = nn.Conv2d(32, in_channels, kernel_size=3, padding=1)
 
     def forward(self, x):
         B, num_patches, D = x.shape
         H = W = self.num_patches_per_side
 
+        # [B, 1024, 768] -> [B, 768, 32, 32]
         x = x.transpose(1, 2).reshape(B, D, H, W)
-        x = self.proj(x)
-        x = self.layer1(x)
-        x = self.layer2(x)
+
+        # Apply progressive decoding
+        x = self.bottleneck(x)  # -> [B, 128, 32, 32]
+        x = self.upsample1(x)   # -> [B, 64, 128, 128]
+        x = self.upsample2(x)   # -> [B, 32, 512, 512]
+        x = self.final_conv(x)  # -> [B, in_channels, 512, 512]
 
         return x
 

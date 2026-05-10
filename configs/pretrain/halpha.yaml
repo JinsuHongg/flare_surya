@@ -4,7 +4,7 @@ defaults:
 # Model Configuration
 model:
   in_channels: 1  # Number of channels (soft, hard)
-  seq_len: 1024
+  seq_len: 1024   # Updated to match (512/16)^2 patches
   embed_dim: 768  # Reduced embed_dim for lightweight model
   encoder_depth: 4
   decoder_depth: 2
@@ -45,7 +45,7 @@ data:
     - images
     # - soft
     # - hard
-  batch_size: 32
+  batch_size: 16
   num_workers: 6
   data_type: "2d"  # Must match model.data_type
   scalers: ./data/halpha_stat_train.yaml # Normalization statistics

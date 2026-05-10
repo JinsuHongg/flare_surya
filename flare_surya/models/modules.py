@@ -37,37 +37,42 @@ from flare_surya.models.solar_models import (
 class GlobalR2Score(Metric):
     def __init__(self):
         super().__init__()
-        self.add_state("ss_res", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("ss_tot", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("sum_y", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("sum_y_sq", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("n", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        # Use float64 for states to maintain precision with large number of samples
+        self.add_state("ss_res", default=torch.tensor(0.0, dtype=torch.float64), dist_reduce_fx="sum")
+        self.add_state("sum_y", default=torch.tensor(0.0, dtype=torch.float64), dist_reduce_fx="sum")
+        self.add_state("sum_y_sq", default=torch.tensor(0.0, dtype=torch.float64), dist_reduce_fx="sum")
+        self.add_state("n", default=torch.tensor(0, dtype=torch.int64), dist_reduce_fx="sum")
 
     def update(self, preds: torch.Tensor, target: torch.Tensor):
-        preds = preds.reshape(-1)
-        target = target.reshape(-1)
+        # Convert to float64 for accumulation
+        preds = preds.reshape(-1).to(torch.float64)
+        target = target.reshape(-1).to(torch.float64)
         self.ss_res += torch.sum((target - preds) ** 2)
         self.sum_y += torch.sum(target)
         self.sum_y_sq += torch.sum(target**2)
         self.n += target.numel()
 
     def compute(self):
+        if self.n == 0:
+            return torch.tensor(0.0)
+
         ss_tot = self.sum_y_sq - (self.sum_y**2) / self.n
         
         # Diagnostics
-        if self.n > 0:
-            mean = self.sum_y / self.n
-            variance = ss_tot / self.n
-            lgr_logger.info(
-                f"GlobalR2 Debug: n={self.n.item():.0f}, "
-                f"mean={mean.item():.4f}, var={variance.item():.4f}, "
-                f"ss_res={self.ss_res.item():.4f}, ss_tot={ss_tot.item():.4f}"
-            )
+        mean = self.sum_y / self.n
+        variance = ss_tot / self.n
+        lgr_logger.info(
+            f"GlobalR2 Debug: n={self.n.item()}, "
+            f"mean={mean.item():.4f}, var={variance.item():.4f}, "
+            f"ss_res={self.ss_res.item():.4f}, ss_tot={ss_tot.item():.4f}"
+        )
 
         # Handle zero variance case
         if ss_tot <= 1e-10:
             return torch.tensor(0.0)
-        return 1 - self.ss_res / ss_tot
+        
+        r2 = 1 - self.ss_res / ss_tot
+        return r2.to(torch.float32)
 
 
 class SolarPretrainingMetrics(MetricCollection):

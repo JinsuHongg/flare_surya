@@ -9,6 +9,29 @@ import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
 from torchmetrics import Metric, MetricCollection, MeanAbsoluteError, MeanSquaredError
+import wandb
+from loguru import logger as lgr_logger
+from peft import LoraConfig, get_peft_model
+from terratorch_surya.downstream_examples.solar_flare_forecasting.models import (
+    AlexNetClassifier,
+    ResNet18Classifier,
+    ResNet34Classifier,
+    ResNet50Classifier,
+)
+from terratorch_surya.models.helio_spectformer import HelioSpectFormer
+
+from flare_surya.metrics.classification_metrics import DistributedClassificationMetrics
+from .base import BaseModule
+from .heads import SuryaHead
+from .criterions import FlareSSMLoss, get_criterion
+
+# SecondaryEncoder is now SolarEncoder from solar_models.py
+from .solar_models import SolarEncoder as SecondaryEncoder
+from .fusion import FusionModule
+from flare_surya.models.solar_models import (
+    SolarDecoder,
+    SolarEncoder,
+)
 
 class GlobalR2Score(Metric):
     def __init__(self):

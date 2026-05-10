@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 class ResidualBlock2D(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1):
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, final_act=True):
         super().__init__()
 
         padding = kernel_size // 2
@@ -13,6 +13,7 @@ class ResidualBlock2D(nn.Module):
 
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size, 1, padding)
         self.bn2 = nn.BatchNorm2d(out_channels)
+        self.final_act = final_act
 
         # The Shortcut path (identity or projection)
         self.shortcut = nn.Identity()
@@ -30,11 +31,13 @@ class ResidualBlock2D(nn.Module):
 
         # Addition step
         out += residual
-        return self.act(out)
+        if self.final_act:
+            return self.act(out)
+        return out
 
 
 class ResidualBlock1D(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1):
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, final_act=True):
         super().__init__()
 
         padding = kernel_size // 2
@@ -44,6 +47,7 @@ class ResidualBlock1D(nn.Module):
 
         self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size, 1, padding)
         self.bn2 = nn.BatchNorm1d(out_channels)
+        self.final_act = final_act
 
         # The Shortcut path (identity or projection)
         self.shortcut = nn.Identity()
@@ -61,7 +65,9 @@ class ResidualBlock1D(nn.Module):
 
         # Addition step
         out += residual
-        return self.act(out)
+        if self.final_act:
+            return self.act(out)
+        return out
 
 
 class SolarTokenizer1D(nn.Module):
@@ -259,7 +265,7 @@ class SolarDetokenizer1D(nn.Module):
         # Invert the tokenization: embed_dim -> in_channels
         # We use transposed convolutions (ConvTranspose1d) to upsample
         self.layer1 = ResidualBlock1D(embed_dim, embed_dim, kernel_size=5)
-        self.layer2 = ResidualBlock1D(embed_dim, in_channels, kernel_size=7)
+        self.layer2 = ResidualBlock1D(embed_dim, in_channels, kernel_size=7, final_act=False)
 
     def forward(self, x):
         # x: [Batch, seq_len, embed_dim] - Output from SequenceDecoder

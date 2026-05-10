@@ -47,8 +47,8 @@ class SolarPretrainingMetrics(MetricCollection):
         )
 
     def update(self, preds: torch.Tensor, target: torch.Tensor) -> None:
-        preds_flat = preds.reshape(preds.shape[0], -1)
-        target_flat = target.reshape(target.shape[0], -1)
+        preds_flat = preds.reshape(-1)
+        target_flat = target.reshape(-1)
         super().update(preds_flat, target_flat)
 
     def compute(self):

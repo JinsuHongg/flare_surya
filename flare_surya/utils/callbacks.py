@@ -65,8 +65,8 @@ class TimeLogger(pl.Callback):
             eta_epoch = (elapsed / progress) - elapsed  # remaining time in this epoch
 
             print(
-                f"  [Epoch {trainer.current_epoch+1} | "
-                f"Step {batch_idx+1}/{self._total_batches} ({100*progress:.0f}%)] "
+                f"  [Epoch {trainer.current_epoch + 1} | "
+                f"Step {batch_idx + 1}/{self._total_batches} ({100 * progress:.0f}%)] "
                 f"elapsed={elapsed:.1f}s | ETA_epoch={eta_epoch:.0f}s",
                 flush=True,
             )
@@ -77,7 +77,7 @@ class TimeLogger(pl.Callback):
         train_loss = metrics.get("train_loss", metrics.get("train/loss", float("nan")))
         val_loss = metrics.get("val_loss", metrics.get("val/loss", float("nan")))
         print(
-            f"[Epoch {trainer.current_epoch+1}/{trainer.max_epochs}] "
+            f"[Epoch {trainer.current_epoch + 1}/{trainer.max_epochs}] "
             f"time={elapsed:.1f}s | "
             f"train_loss={train_loss:.4f} | val_loss={val_loss:.4f}",
             flush=True,
@@ -102,7 +102,7 @@ class TimeLogger(pl.Callback):
             eta = (elapsed / progress) - elapsed
             print(
                 f"  [Test | "
-                f"Step {batch_idx+1}/{self._total_test_batches} ({100*progress:.0f}%)] "
+                f"Step {batch_idx + 1}/{self._total_test_batches} ({100 * progress:.0f}%)] "
                 f"elapsed={elapsed:.1f}s | ETA={eta:.0f}s",
                 flush=True,
             )
@@ -112,7 +112,7 @@ class TimeLogger(pl.Callback):
         metrics = trainer.callback_metrics
         test_loss = metrics.get("test/loss", float("nan"))
         print(
-            f"[Test Complete] " f"time={elapsed:.1f}s | " f"test_loss={test_loss:.4f}",
+            f"[Test Complete] time={elapsed:.1f}s | test_loss={test_loss:.4f}",
             flush=True,
         )
 
@@ -124,7 +124,7 @@ def build_callbacks(cfg):
         dirpath=cfg.etc.ckpt_dir,
         filename=(
             f"{cfg.etc.ckpt_name_tag}_lr{cfg.optimizer.lr}_wd{cfg.optimizer.weight_decay}_"
-            f"{cfg.head.type}_" "{epoch}-{val_hss:.4f}"
+            "{epoch}-{val/loss:.4f}"
         ),
         save_top_k=3,
         mode="max",
@@ -151,7 +151,7 @@ def build_pretrain_callbacks(cfg):
         dirpath=cfg.etc.ckpt_dir,
         filename=(
             f"{cfg.etc.ckpt_name_tag}_lr{cfg.optimizer.lr}_wd{cfg.optimizer.weight_decay}_"
-            "{epoch}-{val_loss:.4f}"
+            "{epoch}-{val/loss:.4f}"
         ),
         save_top_k=3,
         mode="min",
@@ -174,8 +174,7 @@ def build_pretrain_callbacks(cfg):
 def build_baseline_callbacks(cfg, wandb_id=None):
     filename = (
         f"{cfg.etc.ckpt_name_tag}_lr{cfg.optimizer.lr}_wd{cfg.optimizer.weight_decay}_"
-        f"{cfg.backbone.model_name}_"
-        "{epoch}-{val_hss:.4f}"
+        "{epoch}-{val/loss:.4f}"
     )
     if wandb_id:
         filename = f"{wandb_id}_" + filename

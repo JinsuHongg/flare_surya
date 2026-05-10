@@ -24,7 +24,7 @@ loss:
 
 optimizer:
   type: adamw
-  lr: 2e-4
+  lr: 1e-4
   weight_decay: 1e-3
 
 etc:
@@ -32,7 +32,7 @@ etc:
   resume: false
   ckpt_dir: ./results/checkpoints/baselines/alexnet/daily_m/
   ckpt_name_tag: alexnet_daily_m_ce_nosample
-  ckpt_file: last.ckpt
+  ckpt_file: alexnet_daily_m_ce_nosample_lr0.0001_wd0.001_alexnet_epoch=6-val_hss=0.0000.ckpt
   ckpt_weights_only: false
   max_epochs: 50
 
@@ -44,4 +44,4 @@ wandb:
   group: alexent
   notes: ""
   offline: false
-  tag: ["alexnet", "M", "nasgh", "daily", "cross_entropy", "nosampling"] # backbone model, head type, task
+  tag: ["alexnet", "M", "nasgh", "daily", "cross_entropy", "nosampling", "noclassweights"] # backbone model, head type, task

@@ -852,21 +852,6 @@ class BaseLineModel(BaseModule):
         self.test_metrics.reset()
         self._flush_test_results()
 
-    def transfer_batch_to_device(self, batch, device, dataloader_idx):
-        t0 = time.perf_counter()
-        batch = super().transfer_batch_to_device(batch, device, dataloader_idx)
-        t1 = time.perf_counter()
-
-        data, metadata = batch
-
-        if isinstance(data, dict):
-            if "debug" not in data:
-                data["debug"] = {}
-
-            data["debug"]["cpu_to_gpu_sec"] = t1 - t0
-
-        return (data, metadata)
-
     def _flush_test_results(self, mode="a"):
         if not self.test_results["predictions"]:  # nothing buffered, skip
             return
@@ -1327,21 +1312,6 @@ class SuryaMultiModal(BaseModule):
 
         self.test_metrics.reset()
         self._flush_test_results()
-
-    def transfer_batch_to_device(self, batch, device, dataloader_idx):
-        t0 = time.perf_counter()
-        batch = super().transfer_batch_to_device(batch, device, dataloader_idx)
-        t1 = time.perf_counter()
-
-        data, metadata = batch
-
-        if isinstance(data, dict):
-            if "debug" not in data:
-                data["debug"] = {}
-
-            data["debug"]["cpu_to_gpu_sec"] = t1 - t0
-
-        return (data, metadata)
 
     def _flush_test_results(self, mode="a"):
         if not self.save_test_results_path:

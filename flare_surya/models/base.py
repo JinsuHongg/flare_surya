@@ -1,3 +1,4 @@
+import time
 import torch
 import lightning as L
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -12,6 +13,21 @@ class BaseModule(L.LightningModule):
         self.lr = self.optimizer_dict.get("lr", 1e-4)
         self.weight_decay = self.optimizer_dict.get("weight_decay", 0.01)
         self.eps = self.optimizer_dict.get("eps", 1e-8)
+
+    def transfer_batch_to_device(self, batch, device, dataloader_idx):
+        t0 = time.perf_counter()
+        batch = super().transfer_batch_to_device(batch, device, dataloader_idx)
+        t1 = time.perf_counter()
+
+        data, metadata = batch
+
+        if isinstance(data, dict):
+            if "debug" not in data:
+                data["debug"] = {}
+
+            data["debug"]["cpu_to_gpu_sec"] = t1 - t0
+
+        return (data, metadata)
 
     def configure_optimizers(self):
         opt_type = self.optimizer_dict.get("type", "adamw")

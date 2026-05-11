@@ -24,15 +24,15 @@ loss:
 
 optimizer:
   type: adamw
-  lr: 1e-4
+  lr: 1.5e-4
   weight_decay: 0.03
 
 etc:
   phase: train # test
-  resume: true
+  resume: false
   ckpt_dir: ./results/checkpoints/surya_flare/daily_m/
   ckpt_name_tag: mlp_daily_m_ce_nosample
-  ckpt_file: mlp_daily_m_ce_nosample_lr0.0001_wd0.03_mlp_epoch=6-val_hss=0.0000.ckpt
+  ckpt_file: null
   ckpt_weights_only: false
   max_epochs: 50
 

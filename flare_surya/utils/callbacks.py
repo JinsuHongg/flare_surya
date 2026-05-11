@@ -124,7 +124,7 @@ def build_callbacks(cfg):
         dirpath=cfg.etc.ckpt_dir,
         filename=(
             f"{cfg.etc.ckpt_name_tag}_lr{cfg.optimizer.lr}_wd{cfg.optimizer.weight_decay}_"
-            "{epoch}-{val/loss:.4f}"
+            "{epoch}"
         ),
         save_top_k=3,
         mode="max",
@@ -151,7 +151,7 @@ def build_pretrain_callbacks(cfg):
         dirpath=cfg.etc.ckpt_dir,
         filename=(
             f"{cfg.etc.ckpt_name_tag}_lr{cfg.optimizer.lr}_wd{cfg.optimizer.weight_decay}_"
-            "{epoch}-{val/loss:.4f}"
+            "{epoch}"
         ),
         save_top_k=3,
         mode="min",
@@ -172,17 +172,13 @@ def build_pretrain_callbacks(cfg):
 
 
 def build_baseline_callbacks(cfg, wandb_id=None):
-    filename = (
-        f"{cfg.etc.ckpt_name_tag}_lr{cfg.optimizer.lr}_wd{cfg.optimizer.weight_decay}_"
-        "{epoch}-{val/loss:.4f}"
-    )
-    if wandb_id:
-        filename = f"{wandb_id}_" + filename
-
     checkpoint_callback = ModelCheckpoint(
         monitor=cfg.optimizer.scheduler.monitor,  # e.g., "val_loss"
         dirpath=cfg.etc.ckpt_dir,
-        filename=filename,
+        filename=(
+            f"{cfg.etc.ckpt_name_tag}_lr{cfg.optimizer.lr}_wd{cfg.optimizer.weight_decay}_"
+            "{epoch}"
+        ),
         save_top_k=3,
         mode="max",
         verbose=True,

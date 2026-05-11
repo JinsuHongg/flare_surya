@@ -15,7 +15,7 @@ backbone:
 loss:
   type: cross_entropy
   cross_entropy:
-    class_weights: [1.0, 2.0]
+    class_weights: [1.0, 1.0]
   focal:
     alpha: 0.75
     gamma: 2.0
@@ -31,14 +31,14 @@ etc:
   phase: train # test
   resume: false
   ckpt_dir: ./results/checkpoints/baselines/alexnet/daily_m/
-  ckpt_name_tag: alexnet_daily_m_ce_nosample
+  ckpt_name_tag: alexnet_daily_m_ce_nosample_noclswg
   ckpt_file: alexnet_daily_m_ce_nosample_lr0.0001_wd0.001_alexnet_epoch=6-val_hss=0.0000.ckpt
   ckpt_weights_only: false
   max_epochs: 50
 
 wandb:
-  name: alexnet_daily_m_ce_nosample_nasgh
-  id: alexnet_daily_m_ce_nosample_nasgh
+  name: alexnet_daily_m_ce_nosample_noclswg_nasgh
+  id: alexnet_daily_m_ce_nosample_noclswg_nasgh
   resume: allow
   project: flareforecasting-nosampling
   group: alexent

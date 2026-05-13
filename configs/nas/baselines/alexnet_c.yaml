@@ -1,10 +1,11 @@
 # @package _global_
 
 data:
-  train_flare_data_path: ./data/surya-bench-flare-forecasting/C24w/train_C24w_freq4.csv
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/C24w/train_C24w_freq24.csv
   valid_flare_data_path: ./data/surya-bench-flare-forecasting/C24w/val_C24w.csv
   leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/C24w/leaky_val_C24w.csv
   test_flare_data_path: ./data/surya-bench-flare-forecasting/C24w/test_C24w.csv
+  apply_undersampling: false
   undersample_factor: 1
   seed: 1004
 

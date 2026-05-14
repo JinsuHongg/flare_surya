@@ -17,7 +17,7 @@ from lightning.pytorch import Trainer
 from flare_surya.datamodule import FlareDataModule
 from flare_surya.models import BaseLineModel
 from flare_surya.utils.callbacks import build_baseline_callbacks
-from flare_surya.utils.logger_utils import build_wandb
+from flare_surya.utils.logger_utils import build_loggers
 
 torch.set_float32_matmul_precision("medium")
 # This changes the sharing strategy from RAM (shm) to Disk (file_system)
@@ -64,8 +64,9 @@ def train(cfg: OmegaConf):
             map_location="cpu",
         )
 
-    # Create wandb obejct
-    wandb_logger = build_wandb(cfg=cfg)
+    # Create loggers
+    loggers = build_loggers(cfg=cfg)
+    wandb_logger = loggers[0]
 
     callbacks = build_baseline_callbacks(cfg, wandb_id=wandb_logger.experiment.id)
 
@@ -76,7 +77,7 @@ def train(cfg: OmegaConf):
         num_nodes=cfg.etc.num_nodes,
         max_epochs=cfg.etc.max_epochs,
         precision=cfg.etc.precision,
-        logger=wandb_logger,
+        logger=loggers,
         callbacks=callbacks,
         log_every_n_steps=cfg.backbone.log_step_size,
         limit_train_batches=cfg.etc.limit_train_batches,

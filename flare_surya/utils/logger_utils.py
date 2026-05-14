@@ -1,6 +1,6 @@
 from typing import Any
 from omegaconf import DictConfig, OmegaConf
-from lightning.pytorch.loggers import WandbLogger
+from lightning.pytorch.loggers import WandbLogger, CSVLogger
 
 
 def build_wandb(cfg: DictConfig) -> WandbLogger:
@@ -97,3 +97,20 @@ def build_wandb(cfg: DictConfig) -> WandbLogger:
     wandb_logger.log_hyperparams(hparams)
 
     return wandb_logger
+
+
+def build_loggers(cfg: DictConfig) -> list:
+    """Builds a list of loggers including WandbLogger and CSVLogger."""
+    wandb_logger = build_wandb(cfg)
+
+    # Extract same unique identifiers used in build_wandb
+    lr = cfg.optimizer.get("lr", "unknown")
+    wd = cfg.optimizer.get("weight_decay", "unknown")
+    unique_id = f"{cfg.wandb.id}_lr{lr}_wd{wd}"
+
+    csv_logger = CSVLogger(
+        save_dir=cfg.wandb.save_dir,
+        name=cfg.wandb.name,
+        version=unique_id,
+    )
+    return [wandb_logger, csv_logger]

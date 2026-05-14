@@ -11,7 +11,7 @@ from flare_surya.datamodule import (
     FlareDataModuleZarr,
 )
 from flare_surya.models import FlareSurya
-from flare_surya.utils.logger_utils import build_wandb
+from flare_surya.utils.logger_utils import build_loggers
 from flare_surya.utils.callbacks import build_callbacks
 
 torch.set_float32_matmul_precision("medium")
@@ -88,8 +88,9 @@ def train(cfg: OmegaConf):
     # Load model
     model = build_model(cfg=cfg)
 
-    # Create wandb obejct
-    wandb_logger = build_wandb(cfg=cfg)
+    # Create loggers
+    loggers = build_loggers(cfg=cfg)
+    wandb_logger = loggers[0]
 
     # Trainer
     callbacks = build_callbacks(cfg=cfg, wandb_logger=wandb_logger)
@@ -100,7 +101,7 @@ def train(cfg: OmegaConf):
         num_nodes=cfg.etc.num_nodes,
         max_epochs=cfg.etc.max_epochs,
         precision=cfg.etc.precision,
-        logger=wandb_logger,
+        logger=loggers,
         callbacks=callbacks,
         log_every_n_steps=cfg.head.log_step_size,
         limit_train_batches=cfg.etc.limit_train_batches,

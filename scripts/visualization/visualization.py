@@ -10,6 +10,19 @@ from flare_surya.datamodule import SolarPretrainDataModule
 from flare_surya.models import PretrainSolarModel
 
 
+def inverse_normalize(data_arr, stats, norm_type, eps=1e-10):
+    """Inverse normalization."""
+    if stats is None:
+        return data_arr
+    
+    mean = stats.mean
+    std = stats.std
+    
+    if norm_type == "zscore":
+        return (data_arr * (std + eps)) + mean
+    else: # log_zscore
+        return np.power(10, (data_arr * (std + eps)) + mean)
+
 def build_model(cfg):
     """Build the PretrainSolarModel."""
     model = PretrainSolarModel(
@@ -67,6 +80,7 @@ def visualize(cfg: OmegaConf):
 
     datamodule.setup("test")
     test_loader = datamodule.test_dataloader()
+    test_dataset = datamodule.test_dataset
 
     model = build_model(cfg=cfg)
     model = load_checkpoint(cfg, model)
@@ -91,6 +105,17 @@ def visualize(cfg: OmegaConf):
     y_np = y.detach().cpu().numpy()
     recon_np = reconstruction.detach().cpu().numpy()
 
+    # Inverse normalize
+    if test_dataset.scalers is not None:
+        channels = list(cfg.data.channels)
+        norm_type = test_dataset.norm_type
+        
+        for ch_idx, ch in enumerate(channels):
+            stats = test_dataset.scalers.get(ch, test_dataset.scalers)
+            x_np[:, ch_idx] = inverse_normalize(x_np[:, ch_idx], stats, norm_type)
+            y_np[:, ch_idx] = inverse_normalize(y_np[:, ch_idx], stats, norm_type)
+            recon_np[:, ch_idx] = inverse_normalize(recon_np[:, ch_idx], stats, norm_type)
+
     data_type = cfg.model.data_type
 
     if data_type == "1d":
@@ -104,13 +129,14 @@ def visualize_1d(x, y, reconstruction, num_samples=4):
     batch_size, channels, seq_len = x.shape
     num_samples = min(num_samples, batch_size)
 
-    fig, axes = plt.subplots(num_samples, 3, figsize=(15, 4 * num_samples))
+    fig, axes = plt.subplots(num_samples * channels, 3, figsize=(15, 3 * num_samples * channels))
 
     for i in range(num_samples):
         for ch in range(channels):
-            ax_input = axes[i, 0] if num_samples > 1 else axes[0]
-            ax_target = axes[i, 1] if num_samples > 1 else axes[1]
-            ax_recon = axes[i, 2] if num_samples > 1 else axes[2]
+            row_idx = i * channels + ch
+            ax_input = axes[row_idx, 0]
+            ax_target = axes[row_idx, 1]
+            ax_recon = axes[row_idx, 2]
 
             ax_input.plot(x[i, ch], label="Input", alpha=0.7)
             ax_target.plot(y[i, ch], label="Target", alpha=0.7)
@@ -131,14 +157,14 @@ def visualize_2d(x, y, reconstruction, num_samples=4):
     batch_size, channels, h, w = x.shape
     num_samples = min(num_samples, batch_size)
 
-    fig, axes = plt.subplots(num_samples, 3, figsize=(15, 4 * num_samples))
+    fig, axes = plt.subplots(num_samples * channels, 3, figsize=(15, 4 * num_samples * channels))
 
     for i in range(num_samples):
         for ch in range(channels):
-            idx = i * 3 + ch
-            ax_input = axes[idx // 3, 0] if num_samples > 1 else axes[0]
-            ax_target = axes[idx // 3, 1] if num_samples > 1 else axes[1]
-            ax_recon = axes[idx // 3, 2] if num_samples > 1 else axes[2]
+            row_idx = i * channels + ch
+            ax_input = axes[row_idx, 0]
+            ax_target = axes[row_idx, 1]
+            ax_recon = axes[row_idx, 2]
 
             im_input = ax_input.imshow(x[i, ch], cmap="viridis", aspect="auto")
             im_target = ax_target.imshow(y[i, ch], cmap="viridis", aspect="auto")

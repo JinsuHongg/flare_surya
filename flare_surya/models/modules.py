@@ -38,10 +38,24 @@ class GlobalR2Score(Metric):
     def __init__(self):
         super().__init__()
         # Use float64 for states to maintain precision with large number of samples
-        self.add_state("ss_res", default=torch.tensor(0.0, dtype=torch.float64), dist_reduce_fx="sum")
-        self.add_state("sum_y", default=torch.tensor(0.0, dtype=torch.float64), dist_reduce_fx="sum")
-        self.add_state("sum_y_sq", default=torch.tensor(0.0, dtype=torch.float64), dist_reduce_fx="sum")
-        self.add_state("n", default=torch.tensor(0, dtype=torch.int64), dist_reduce_fx="sum")
+        self.add_state(
+            "ss_res",
+            default=torch.tensor(0.0, dtype=torch.float64),
+            dist_reduce_fx="sum",
+        )
+        self.add_state(
+            "sum_y",
+            default=torch.tensor(0.0, dtype=torch.float64),
+            dist_reduce_fx="sum",
+        )
+        self.add_state(
+            "sum_y_sq",
+            default=torch.tensor(0.0, dtype=torch.float64),
+            dist_reduce_fx="sum",
+        )
+        self.add_state(
+            "n", default=torch.tensor(0, dtype=torch.int64), dist_reduce_fx="sum"
+        )
 
     def update(self, preds: torch.Tensor, target: torch.Tensor):
         # Convert to float64 for accumulation
@@ -57,20 +71,20 @@ class GlobalR2Score(Metric):
             return torch.tensor(0.0)
 
         ss_tot = self.sum_y_sq - (self.sum_y**2) / self.n
-        
+
         # Diagnostics
-        mean = self.sum_y / self.n
-        variance = ss_tot / self.n
-        lgr_logger.info(
-            f"GlobalR2 Debug: n={self.n.item()}, "
-            f"mean={mean.item():.4f}, var={variance.item():.4f}, "
-            f"ss_res={self.ss_res.item():.4f}, ss_tot={ss_tot.item():.4f}"
-        )
+        # mean = self.sum_y / self.n
+        # variance = ss_tot / self.n
+        # lgr_logger.info(
+        #     f"GlobalR2 Debug: n={self.n.item()}, "
+        #     f"mean={mean.item():.4f}, var={variance.item():.4f}, "
+        #     f"ss_res={self.ss_res.item():.4f}, ss_tot={ss_tot.item():.4f}"
+        # )
 
         # Handle zero variance case
         if ss_tot <= 1e-10:
             return torch.tensor(0.0)
-        
+
         r2 = 1 - self.ss_res / ss_tot
         return r2.to(torch.float32)
 
@@ -1581,7 +1595,9 @@ class PretrainSolarModel(pl.LightningModule):
         self.test_metrics.update(pred, y)
 
         loss = nn.functional.mse_loss(pred, y)
-        self.log("test/loss", loss, prog_bar=True, sync_dist=True, batch_size=x.shape[0])
+        self.log(
+            "test/loss", loss, prog_bar=True, sync_dist=True, batch_size=x.shape[0]
+        )
 
     def on_test_epoch_end(self):
         metrics = self.test_metrics.compute()
@@ -1591,7 +1607,6 @@ class PretrainSolarModel(pl.LightningModule):
         lgr_logger.info("============================")
         self.log_dict({k: v for k, v in metrics.items()})
         self.test_metrics.reset()
-
 
     def predict_step(self, batch, batch_idx):
         # Expects batch to contain (x, timestamp) or just x

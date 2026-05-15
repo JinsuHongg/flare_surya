@@ -152,7 +152,7 @@ class FlareSurya(BaseModule):
         save_test_results_path=None,
     ):
         super().__init__(optimizer_dict=optimizer_dict)
-        self.save_hyperparameters(ignore=["optimizer_dict", "loss_dict", "lora_dict"])
+        self.save_hyperparameters(ignore=["optimizer_dict", "loss_dict", "lora_dict", "dtype"])
         self.pooling_type = pooling_type
         self.save_test_results_path = save_test_results_path
         self.freeze_backbone = freeze_backbone
@@ -343,6 +343,7 @@ class FlareSurya(BaseModule):
             on_step=False,
             prog_bar=False,
             sync_dist=True,
+            batch_size=target.shape[0],
         )
 
     def on_validation_epoch_end(self):
@@ -921,7 +922,7 @@ class SuryaMultiModal(BaseModule):
         save_test_results_path=None,
     ):
         super().__init__(optimizer_dict=optimizer_dict)
-        self.save_hyperparameters(ignore=["optimizer_dict", "loss_dict", "lora_dict"])
+        self.save_hyperparameters(ignore=["optimizer_dict", "loss_dict", "lora_dict", "dtype"])
         self.pooling_type = pooling_type
         self.secondary_pooling_type = secondary_pooling_type
         self.freeze_backbone = freeze_backbone

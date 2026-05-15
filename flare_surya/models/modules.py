@@ -370,7 +370,7 @@ class FlareSurya(BaseModule):
             metadata["timestamps_input"].detach().cpu().numpy().tolist()
         )
         self.test_results["targets"].extend(target.view(-1).cpu().numpy().tolist())
-        self.test_results["predictions"].extend(probs.view(-1).cpu().numpy().tolist())
+        self.test_results["predictions"].extend(probs.view(-1).float().cpu().numpy().tolist())
 
         # Update Metrics
         # Pass predicted probabilities (sigmoid(x_hat)) and the target (squeezed to [B])
@@ -392,7 +392,7 @@ class FlareSurya(BaseModule):
         tokens = self.backbone(data)
 
         timestamps = metadata["timestamps_input"][0].detach().cpu().numpy().tolist()
-        embeddings = tokens.detach().cpu().numpy()
+        embeddings = tokens.detach().float().cpu().numpy()
 
         if self.save_embeddings_path:
             zarr_path = self.save_embeddings_path
@@ -817,7 +817,7 @@ class BaseLineModel(BaseModule):
             metadata["timestamps_input"].detach().cpu().numpy().tolist()
         )
         self.test_results["targets"].extend(target.view(-1).cpu().numpy().tolist())
-        self.test_results["predictions"].extend(probs.view(-1).cpu().numpy().tolist())
+        self.test_results["predictions"].extend(probs.view(-1).float().cpu().numpy().tolist())
 
         # Calculate Loss
         loss = self.criterion(x_hat, target)
@@ -1082,7 +1082,7 @@ class SuryaMultiModal(BaseModule):
             metadata["timestamps_input"].detach().cpu().numpy().tolist()
         )
         self.test_results["targets"].extend(target.view(-1).cpu().numpy().tolist())
-        self.test_results["predictions"].extend(probs.view(-1).cpu().numpy().tolist())
+        self.test_results["predictions"].extend(probs.view(-1).float().cpu().numpy().tolist())
 
         # Update Metrics
         # Pass predicted probabilities (sigmoid(x_hat)) and the target (squeezed to [B])
@@ -1484,7 +1484,7 @@ class PretrainSolarModel(pl.LightningModule):
 
         # Store embeddings and timestamps
         # Convert to numpy for storage
-        emb_np = embeddings.cpu().detach().numpy()
+        emb_np = embeddings.float().cpu().detach().numpy()
 
         if timestamps is not None:
             # Assuming timestamps are datetime or int

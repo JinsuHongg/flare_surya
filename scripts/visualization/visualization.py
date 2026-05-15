@@ -102,8 +102,8 @@ def visualize(cfg: OmegaConf):
     with torch.no_grad():
         reconstruction = model.forward(x, use_mask=False)
 
-    x_np = x.detach().cpu().numpy()
-    recon_np = reconstruction.detach().cpu().numpy()
+    x_np = x.detach().float().cpu().numpy()
+    recon_np = reconstruction.detach().float().cpu().numpy()
 
     # Inverse normalize
     if test_dataset.scalers is not None:

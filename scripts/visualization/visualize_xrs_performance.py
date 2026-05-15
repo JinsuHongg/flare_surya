@@ -220,8 +220,8 @@ def visualize(cfg: OmegaConf) -> None:
             if target.dim() == 3:
                 target = target.squeeze(1)
 
-            all_targets.append(target.cpu().numpy())
-            all_predictions.append(predictions.cpu().numpy())
+            all_targets.append(target.float().cpu().numpy())
+            all_predictions.append(predictions.float().cpu().numpy())
 
     targets_np = np.concatenate(all_targets, axis=0)
     predictions_np = np.concatenate(all_predictions, axis=0)

@@ -85,3 +85,5 @@ etc:
   ckpt_weights_only: false
   save_test_results_path: ./results/
   enable_version_counter: False
+  vis_out_dir: ./results/vis/lasco_c2/
+  vis_out_name: visualization_lasco_c2.png

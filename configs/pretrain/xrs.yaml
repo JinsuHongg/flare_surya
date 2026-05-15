@@ -86,6 +86,8 @@ etc:
   ckpt_weights_only: false
   save_test_results_path: ./results/test/
   enable_version_counter: False
+  vis_out_dir: ./results/vis/xrs/
+  vis_out_name: visualization_xrs.png
 
   # visualization
   out_dir: ./results/vis/

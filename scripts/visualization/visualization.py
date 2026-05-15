@@ -65,15 +65,6 @@ def load_checkpoint(cfg, model):
     config_path="../../configs/pretrain/",
     config_name="solar_pretrain",
 )
-def get_cmap(cfg):
-    """Select colormap based on dataset type."""
-    path = cfg.data.zarr_path.lower()
-    if "halpha" in path:
-        return "afmhot"
-    elif "lasco" in path:
-        return "gray"
-    return "viridis"
-
 def visualize(cfg: OmegaConf):
     datamodule = SolarPretrainDataModule(
         zarr_path=cfg.data.zarr_path,
@@ -132,6 +123,16 @@ def visualize(cfg: OmegaConf):
         visualize_2d(x_np, recon_np, cfg)
 
 
+def get_cmap(cfg):
+    """Select colormap based on dataset type."""
+    path = cfg.data.zarr_path.lower()
+    if "halpha" in path:
+        return "afmhot"
+    elif "lasco" in path:
+        return "gray"
+    return "viridis"
+
+
 def visualize_1d(x, reconstruction, cfg, num_samples=4):
     """Visualize 1D time series data."""
     batch_size, channels, seq_len = x.shape
@@ -152,9 +153,13 @@ def visualize_1d(x, reconstruction, cfg, num_samples=4):
             ax_input.set_title(f"Sample {i} - Input{title_suffix}")
             ax_recon.set_title(f"Sample {i} - Reconstruction{title_suffix}")
 
+    out_dir = cfg.etc.get("vis_out_dir", ".")
+    out_name = cfg.etc.get("vis_out_name", "visualization_1d.png")
+    os.makedirs(out_dir, exist_ok=True)
+    save_path = os.path.join(out_dir, out_name)
     plt.tight_layout()
-    plt.savefig("visualization_1d.png", dpi=150)
-    lgr_logger.info("Saved visualization_1d.png")
+    plt.savefig(save_path, dpi=150)
+    lgr_logger.info(f"Saved {save_path}")
     plt.close()
 
 
@@ -184,9 +189,13 @@ def visualize_2d(x, reconstruction, cfg, num_samples=4):
             plt.colorbar(im_input, ax=ax_input)
             plt.colorbar(im_recon, ax=ax_recon)
 
+    out_dir = cfg.etc.get("vis_out_dir", ".")
+    out_name = cfg.etc.get("vis_out_name", "visualization_2d.png")
+    os.makedirs(out_dir, exist_ok=True)
+    save_path = os.path.join(out_dir, out_name)
     plt.tight_layout()
-    plt.savefig("visualization_2d.png", dpi=150)
-    lgr_logger.info("Saved visualization_2d.png")
+    plt.savefig(save_path, dpi=150)
+    lgr_logger.info(f"Saved {save_path}")
     plt.close()
 
 

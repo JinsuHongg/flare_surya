@@ -36,6 +36,6 @@ wandb:
   resume: allow
   project: flareforecasting-nosampling-test
   group: surya
-  notes: ""
   offline: false
+  notes: ""
   tag: ["mlp", "M", "daily", "nasgh", "cross_entropy", "nosampling"] # backbone model, head type, task

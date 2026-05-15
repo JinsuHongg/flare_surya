@@ -84,7 +84,7 @@ etc:
   resume: false
   ckpt_dir: ./results/check_point/pretrain/halpha/
   ckpt_name_tag: halpha_1e-4_medium
-  ckpt_file: null
+  ckpt_file: halpha_1e-4_medium_lr0.0001_wd0.01_epoch=29.ckpt
   ckpt_weights_only: false
   save_test_results_path: ./results/
   enable_version_counter: False

@@ -153,6 +153,7 @@ etc:
   ckpt_file: last.ckpt
   ckpt_weights_only: false
   save_test_results_path: ./results/
+  save_test_embeddings: false
   precision: bf16-mixed #16-mixed
   accelerator: gpu
   devices: 1 #[0, 1, 2, 3]

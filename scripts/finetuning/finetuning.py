@@ -59,6 +59,7 @@ def build_model(cfg):
         "loss_dict": cfg.loss,
         "threshold": cfg.head.threshold,
         "save_test_results_path": cfg.etc.save_test_results_path,
+        "save_test_embeddings": cfg.etc.save_test_embeddings,
     }
     if cfg.etc.resume and cfg.etc.ckpt_weights_only:
         ckpt_path = os.path.join(

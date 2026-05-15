@@ -1,4 +1,6 @@
+import os
 import time
+import pandas as pd
 import torch
 import lightning as L
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -13,6 +15,18 @@ class BaseModule(L.LightningModule):
         self.lr = self.optimizer_dict.get("lr", 1e-4)
         self.weight_decay = self.optimizer_dict.get("weight_decay", 0.01)
         self.eps = self.optimizer_dict.get("eps", 1e-8)
+
+    def _flush_test_results(self, mode="a"):
+        if not hasattr(self, "save_test_results_path") or not self.save_test_results_path:
+            return
+        if not hasattr(self, "test_results") or not self.test_results["predictions"]:
+            return
+        df = pd.DataFrame(self.test_results)
+        write_header = not os.path.exists(self.save_test_results_path)
+        df.to_csv(
+            self.save_test_results_path, mode=mode, header=write_header, index=False
+        )
+        self.test_results = {"timestamps": [], "predictions": [], "targets": []}
 
     def transfer_batch_to_device(self, batch, device, dataloader_idx):
         t0 = time.perf_counter()

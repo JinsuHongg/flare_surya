@@ -506,6 +506,8 @@ class FlareSurya(BaseModule):
             self.pred_timestamps = []
             self.pred_embeddings = []
 
+        self._flush_test_results()
+
     def configure_optimizers(self):
         optimizer_type = self.optimizer_dict.get("type", "adamw").lower()
         lr = self.optimizer_dict.get("lr", 1e-4)
@@ -866,15 +868,8 @@ class BaseLineModel(BaseModule):
         self.test_metrics.reset()
         self._flush_test_results()
 
-    def _flush_test_results(self, mode="a"):
-        if not self.test_results["predictions"]:  # nothing buffered, skip
-            return
-        df = pd.DataFrame(self.test_results)
-        write_header = not os.path.exists(self.save_test_results_path)
-        df.to_csv(
-            self.save_test_results_path, mode=mode, header=write_header, index=False
-        )
-        self.test_results = {"timestamps": [], "predictions": [], "targets": []}
+        return loss
+
 
 
 class SuryaMultiModal(BaseModule):
@@ -1326,17 +1321,6 @@ class SuryaMultiModal(BaseModule):
 
         self.test_metrics.reset()
         self._flush_test_results()
-
-    def _flush_test_results(self, mode="a"):
-        if not self.save_test_results_path:
-            return
-        if not self.test_results["predictions"]:
-            return
-        df = pd.DataFrame(self.test_results)
-        write_header = not os.path.exists(self.save_test_results_path)
-        df.to_csv(
-            self.save_test_results_path, mode=mode, header=write_header, index=False
-        )
 
 
 class PretrainSolarModel(pl.LightningModule):

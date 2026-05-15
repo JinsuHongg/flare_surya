@@ -7,12 +7,15 @@
 #PBS -l walltime=24:00:00
 #PBS -M jhong36@gsu.edu
 #PBS -m abe
-#PBS -kod -ked
 #PBS -W umask=002
 
+echo "Changing directory to: $PBS_O_WORKDIR"
+cd $PBS_O_WORKDIR
+
 JOBID=$(echo "$PBS_JOBID" | cut -d. -f1)
-exec >logs/surya/test_surya_gh.${JOBID}.out
-exec 2>logs/surya/test_surya_gh.${JOBID}.err
+
+exec >logs/test/test_surya_gh.${JOBID}.out
+exec 2>logs/test/test_surya_gh.${JOBID}.err
 
 mapfile -t NODES < <(sort -u "$PBS_NODEFILE")
 if [[ ${#NODES[@]} -ne 1 ]]; then
@@ -20,9 +23,7 @@ if [[ ${#NODES[@]} -ne 1 ]]; then
   exit 1
 fi
 
-echo "Changing directory to: $PBS_O_WORKDIR"
-cd $PBS_O_WORKDIR
-
 source /nobackupp17/jhong15/miniforge3_gh/etc/profile.d/conda.sh
 conda activate flare_surya
-python scripts/finetuning.py --config-name=test_run
+
+python scripts/finetuning/finetuning.py +surya=test_run

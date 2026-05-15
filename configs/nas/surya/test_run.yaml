@@ -1,8 +1,8 @@
 # @package _global_
 
 defaults:
-  - override hydra/job_logging: disabled
-  - override hydra/hydra_logging: disabled
+  - override /hydra/job_logging: disabled
+  - override /hydra/hydra_logging: disabled
 
 hydra:
   output_subdir: null
@@ -18,6 +18,9 @@ data:
   undersample_factor: 1
   seed: 1004
 
+backbone:
+  pooling_type: attention_pooling
+
 etc:
   phase: test # test
   resume: true
@@ -25,6 +28,7 @@ etc:
   ckpt_name_tag: mlp_daily_m_ce_nosample
   ckpt_file: mlp_daily_m_ce_nosample_lr0.00015_wd0.03_epoch=7.ckpt
   ckpt_weights_only: false
+  save_test_results_path: ./results/surya_daily_m_ce_nosample.csv
 
 wandb:
   name: mlp_daily_m_ce_nosample_nasgh_test

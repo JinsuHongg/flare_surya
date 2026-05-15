@@ -72,15 +72,6 @@ class GlobalR2Score(Metric):
 
         ss_tot = self.sum_y_sq - (self.sum_y**2) / self.n
 
-        # Diagnostics
-        # mean = self.sum_y / self.n
-        # variance = ss_tot / self.n
-        # lgr_logger.info(
-        #     f"GlobalR2 Debug: n={self.n.item()}, "
-        #     f"mean={mean.item():.4f}, var={variance.item():.4f}, "
-        #     f"ss_res={self.ss_res.item():.4f}, ss_tot={ss_tot.item():.4f}"
-        # )
-
         # Handle zero variance case
         if ss_tot <= 1e-10:
             return torch.tensor(0.0)
@@ -150,11 +141,13 @@ class FlareSurya(BaseModule):
         # misc
         save_embeddings_path=None,
         save_test_results_path=None,
+        save_test_embeddings=True,
     ):
         super().__init__(optimizer_dict=optimizer_dict)
         self.save_hyperparameters(ignore=["optimizer_dict", "loss_dict", "lora_dict", "dtype"])
         self.pooling_type = pooling_type
         self.save_test_results_path = save_test_results_path
+        self.save_test_embeddings = save_test_embeddings
         self.freeze_backbone = freeze_backbone
         self.lora_dict = lora_dict
         self.test_results = {"timestamps": [], "predictions": [], "targets": []}
@@ -373,11 +366,11 @@ class FlareSurya(BaseModule):
         probs = torch.sigmoid(x_hat)
 
         # Store predictions and targets for later analysis
-        self.test_results["timestamps"].append(
-            metadata["timestamps_input"][0].detach().cpu().numpy().tolist()
+        self.test_results["timestamps"].extend(
+            metadata["timestamps_input"].detach().cpu().numpy().tolist()
         )
-        self.test_results["targets"].append(target.item())
-        self.test_results["predictions"].append(probs.item())
+        self.test_results["targets"].extend(target.view(-1).cpu().numpy().tolist())
+        self.test_results["predictions"].extend(probs.view(-1).cpu().numpy().tolist())
 
         # Update Metrics
         # Pass predicted probabilities (sigmoid(x_hat)) and the target (squeezed to [B])
@@ -391,10 +384,6 @@ class FlareSurya(BaseModule):
             on_epoch=True,
             sync_dist=True,
         )
-
-        # Every rank saves its own shard
-        if batch_idx % 50 == 0:
-            self._flush_test_results()
 
         return loss
 
@@ -469,22 +458,102 @@ class FlareSurya(BaseModule):
         for k, v in metrics.items():
             lgr_logger.info(f"  {k}: {v.float():.4f}")
         lgr_logger.info("===================")
-        self.log_dict({k: v for k, v in metrics.items()})
+        self.log_dict({k: v for k, v in metrics.items()}, sync_dist=True)
+
+        # Log ROC and PR curves to wandb
+        if self.test_results["predictions"]:
+            y_true = np.array(self.test_results["targets"])
+            y_probas = np.array(self.test_results["predictions"])
+
+            # Transform 1D probs [N] to 2D [N, 2] for wandb
+            y_probas_2d = np.column_stack([1 - y_probas, y_probas])
+
+            # Log ROC curve
+            self.log({"test/roc_curve": wandb.plot.roc_curve(y_true, y_probas_2d)})
+
+            # Log PR curve
+            self.log({"test/pr_curve": wandb.plot.pr_curve(y_true, y_probas_2d)})
+
+            # Compute skill scores at multiple thresholds
+            thresholds = np.linspace(0.01, 0.99, 99)
+            tss_scores = []
+            hss_scores = []
+            css_scores = []
+            f1_macro_scores = []
+
+            for thresh in thresholds:
+                preds = (y_probas > thresh).astype(int)
+
+                tp = np.sum((preds == 1) & (y_true == 1))
+                tn = np.sum((preds == 0) & (y_true == 0))
+                fp = np.sum((preds == 1) & (y_true == 0))
+                fn = np.sum((preds == 0) & (y_true == 1))
+
+                eps = 1e-7
+
+                # TSS = Sensitivity + Specificity - 1
+                sensitivity = tp / (tp + fn + eps)
+                specificity = tn / (tn + fp + eps)
+                tss = sensitivity + specificity - 1
+                tss_scores.append(tss)
+
+                # HSS
+                numerator = 2 * (tp * tn - fn * fp)
+                denominator = (tp + fn) * (fn + tn) + (tp + fp) * (tn + fp)
+                hss = numerator / (denominator + eps)
+                hss_scores.append(hss)
+
+                # CSS
+                css = np.sqrt(np.maximum(0, hss) * np.maximum(0, tss))
+                css_scores.append(css)
+
+                # F1-macro (average of F1 for each class)
+                precision = tp / (tp + fp + eps)
+                recall = tp / (tp + fn + eps)
+                f1_pos = 2 * (precision * recall) / (precision + recall + eps)
+
+                # F1 for negative class
+                precision_neg = tn / (tn + fn + eps)
+                recall_neg = tn / (tn + fp + eps)
+                f1_neg = (
+                    2
+                    * (precision_neg * recall_neg)
+                    / (precision_neg + recall_neg + eps)
+                )
+
+                f1_macro = (f1_pos + f1_neg) / 2
+                f1_macro_scores.append(f1_macro)
+
+            # Log skill scores table and line plot to wandb
+            df = pd.DataFrame(
+                {
+                    "threshold": thresholds,
+                    "TSS": tss_scores,
+                    "HSS": hss_scores,
+                    "CSS": css_scores,
+                    "F1_macro": f1_macro_scores,
+                }
+            )
+            self.log({"test/threshold_df": wandb.Table(dataframe=df)})
+            self.log(
+                {
+                    "test/threshold_vs_scores": wandb.plot.line_series(
+                        xs=thresholds,
+                        ys=[tss_scores, hss_scores, css_scores, f1_macro_scores],
+                        keys=["TSS", "HSS", "CSS", "F1_macro"],
+                        title="Threshold vs Skill Scores",
+                        xname="Threshold",
+                    )
+                }
+            )
 
         # Save embeddings to Zarr
-        if self.save_embeddings_path:
+        if self.save_test_embeddings and self.save_embeddings_path:
             lgr_logger.info(f"Saving embeddings to {self.save_embeddings_path}")
 
             # Concatenate all batches
             all_timestamps = np.concatenate(self.pred_timestamps, axis=0)
             all_embeddings = np.concatenate(self.pred_embeddings, axis=0)
-
-            # Create xarray Dataset
-            # Embeddings shape: [total_samples, seq_len, embed_dim]
-            # Or flatten to [total_samples, seq_len * embed_dim] if preferred
-
-            # We need to be careful with dimensions.
-            # Let's assume we keep it as [time, seq, dim]
 
             ds = xr.Dataset(
                 {
@@ -496,7 +565,6 @@ class FlareSurya(BaseModule):
             )
 
             # Save to zarr
-            # Using consolidated=True for faster loading later
             ds.to_zarr(self.save_embeddings_path, mode="w", consolidated=True)
 
             lgr_logger.info(
@@ -507,6 +575,7 @@ class FlareSurya(BaseModule):
             self.pred_timestamps = []
             self.pred_embeddings = []
 
+        self.test_metrics.reset()
         self._flush_test_results()
 
     def configure_optimizers(self):
@@ -744,11 +813,11 @@ class BaseLineModel(BaseModule):
         probs = torch.sigmoid(x_hat)
 
         # Store predictions and targets for later analysis
-        self.test_results["timestamps"].append(
-            metadata["timestamps_input"][0].detach().cpu().numpy().tolist()
+        self.test_results["timestamps"].extend(
+            metadata["timestamps_input"].detach().cpu().numpy().tolist()
         )
-        self.test_results["targets"].append(target.item())
-        self.test_results["predictions"].append(probs.item())
+        self.test_results["targets"].extend(target.view(-1).cpu().numpy().tolist())
+        self.test_results["predictions"].extend(probs.view(-1).cpu().numpy().tolist())
 
         # Calculate Loss
         loss = self.criterion(x_hat, target)
@@ -766,10 +835,6 @@ class BaseLineModel(BaseModule):
             sync_dist=True,
         )
 
-        # Every rank saves its own shard
-        if batch_idx % 50 == 0:
-            self._flush_test_results()
-
         return loss
 
     def on_test_epoch_end(self):
@@ -779,19 +844,22 @@ class BaseLineModel(BaseModule):
             lgr_logger.info(f"  {k}: {v.float():.4f}")
         lgr_logger.info("===================")
         self.log_dict(
-            {f"test/{k}": v.float() for k, v in metrics.items()}, sync_dist=False
+            {f"test/{k}": v.float() for k, v in metrics.items()}, sync_dist=True
         )
 
         # Log ROC and PR curves to wandb
         if self.test_results["predictions"]:
             y_true = np.array(self.test_results["targets"])
             y_probas = np.array(self.test_results["predictions"])
+            
+            # Transform 1D probs [N] to 2D [N, 2] for wandb
+            y_probas_2d = np.column_stack([1 - y_probas, y_probas])
 
             # Log ROC curve
-            self.log({"test/roc_curve": wandb.plot.roc_curve(y_true, y_probas)})
+            self.log({"test/roc_curve": wandb.plot.roc_curve(y_true, y_probas_2d)})
 
             # Log PR curve
-            self.log({"test/pr_curve": wandb.plot.pr_curve(y_true, y_probas)})
+            self.log({"test/pr_curve": wandb.plot.pr_curve(y_true, y_probas_2d)})
 
             # Compute skill scores at multiple thresholds
             thresholds = np.linspace(0.01, 0.99, 99)
@@ -870,7 +938,6 @@ class BaseLineModel(BaseModule):
         self._flush_test_results()
 
         return loss
-
 
 
 class SuryaMultiModal(BaseModule):
@@ -952,244 +1019,56 @@ class SuryaMultiModal(BaseModule):
             use_latitude_in_learned_flow=use_latitude_in_learned_flow,
             init_weights=init_weights,
             checkpoint_layers=checkpoint_layers,
-            nglo=nglo,
             rpe=rpe,
             ensemble=ensemble,
             finetune=finetune,
+            nglo=nglo,
+            path_weights=path_weights,
         )
-
         self.secondary_encoder = SecondaryEncoder(
             in_channels=in_channels,
             seq_len=seq_len,
             embed_dim=secondary_embed_dim,
             depth=secondary_depth,
             num_heads=secondary_num_heads,
+            pooling_type=secondary_pooling_type,
         )
-
-        self.fusion = FusionModule(
-            fusion_type=fusion_type,
-            img_dim=embed_dim,
-            secondary_dim=secondary_embed_dim,
-            fuse_dim=fuse_embed_dim,
-            num_heads=secondary_num_heads,
+        self.fusion = FusionModule(fusion_type, fuse_embed_dim, embed_dim, secondary_embed_dim)
+        self.head = SuryaHead(
+            head_type=head_type,
+            head_layer_dict=head_layer_dict,
+            in_features=self.fusion.output_dim,
         )
+        self.criterion = get_criterion(loss_dict)
 
-        # load pretrained weights for backbone
-        if path_weights:
-            lgr_logger.info(f"Pretrained weights loaded from: {path_weights}")
-            weights = torch.load(
-                path_weights, map_location=torch.device("cpu"), weights_only=True
-            )
-            self.backbone.load_state_dict(weights, strict=False)
-
-        if self.freeze_backbone:
-            for name, param in self.backbone.named_parameters():
+        if freeze_backbone:
+            for param in self.backbone.parameters():
+                param.requires_grad = False
+            for param in self.secondary_encoder.parameters():
                 param.requires_grad = False
 
-        if self.lora_dict["use"]:
-            config = LoraConfig(**self.lora_dict["config"])
-            # get peft model
+        if lora_dict:
+            config = LoraConfig(
+                r=lora_dict.get("r", 8),
+                lora_alpha=lora_dict.get("lora_alpha", 16),
+                target_modules=lora_dict.get("target_modules", ["qkv"]),
+                lora_dropout=lora_dict.get("lora_dropout", 0.05),
+                bias=lora_dict.get("bias", "none"),
+            )
             self.backbone = get_peft_model(self.backbone, config)
 
-        if self.pooling_type == "attention_pooling":
-            self.attn_pooling = nn.Linear(embed_dim, 1)
-
-        # define head
-        in_feature = self.fusion.output_dim
-
-        # Create post-fusion pooling layer for cross_attention fusion
-        if self.pooling_type == "attention_pooling":
-            self.post_fusion_pooling = nn.Linear(in_feature, 1)
-
-        # Create secondary encoder pooling layer
-        if self.secondary_pooling_type == "attention_pooling":
-            self.secondary_attn_pooling = nn.Linear(secondary_embed_dim, 1)
-
-        self.head = SuryaHead(
-            in_feature=in_feature,
-            layer_type=head_type,
-            layer_dict=head_layer_dict,
-        )
-
-        self.criterion = get_criterion(loss_dict, module_name="SuryaMultiModal")
-
-        # Initialize the metrics instances
-        self.train_metrics = DistributedClassificationMetrics(threshold=threshold)
         self.val_metrics = DistributedClassificationMetrics(threshold=threshold)
         self.test_metrics = DistributedClassificationMetrics(threshold=threshold)
-        self.threshold = threshold
-
-    def forward_features(self, data):
-        """
-        Helper method to handle backbone forward pass and pooling.
-        Reduces repetition across train/val/test steps.
-        """
-        tokens = self.backbone(data)
-        return self.pool_tokens(tokens)
-
-    def pool_tokens(self, tokens: torch.Tensor) -> torch.Tensor:
-        """Apply pooling strategy to tokens."""
-        match self.pooling_type:
-            case "cls_token":
-                return tokens[:, 0, :]
-            case "avg_pooling":
-                return tokens.mean(dim=1)
-            case "max_pooling":
-                return tokens.max(dim=1).values
-            case "attention_pooling":
-                return self._attention_pool(tokens)
-            case _:
-                raise ValueError(f"Unknown pooling_type: {self.pooling_type}")
-
-    def _attention_pool(
-        self, tokens: torch.Tensor, attn_layer: nn.Module | None = None
-    ) -> torch.Tensor:
-        """Apply attention-based pooling."""
-        attn_layer = attn_layer or self.attn_pooling
-        w = torch.softmax(attn_layer(tokens), dim=1)  # [B, T, 1]
-        return (w * tokens).sum(dim=1)  # [B, D]
-
-    def pool_secondary(self, tokens: torch.Tensor) -> torch.Tensor:
-        """Apply pooling strategy to secondary tokens."""
-        match self.secondary_pooling_type:
-            case "avg_pooling":
-                return tokens.mean(dim=1)
-            case "max_pooling":
-                return tokens.max(dim=1).values
-            case "attention_pooling":
-                return self._attention_pool(tokens, self.secondary_attn_pooling)
-            case "none":
-                return tokens  # keep as sequence
-            case _:
-                raise ValueError(
-                    f"Unknown secondary_pooling_type: {self.secondary_pooling_type}"
-                )
 
     def forward(self, data):
-        if self.fusion.requires_pooled:
-            img_tokens = self.forward_features(data)
-        else:
-            img_tokens = self.backbone(data)
+        img_data = data["img"]
+        secondary_data = data["secondary"]
 
-        secondary_tokens = self.secondary_encoder(data["xrs"].to(self.device))
+        img_tokens = self.backbone(img_data)
+        secondary_tokens = self.secondary_encoder(secondary_data)
 
-        if self.fusion.requires_pooled:
-            secondary_tokens = self.pool_secondary(secondary_tokens)
-
-        tokens = self.fusion(img_tokens, secondary_tokens)
-
-        if not self.fusion.requires_pooled:
-            if self.pooling_type == "attention_pooling":
-                tokens = self._attention_pool(tokens, self.post_fusion_pooling)
-            else:
-                tokens = self.pool_tokens(tokens)
-
-        if isinstance(self.criterion, FlareSSMLoss):
-            x_hat, h = self.head.forward_with_hidden(tokens)
-            return {"logits": x_hat, "hidden": h}
-        else:
-            x_hat = self.head(tokens)
-            return {"logits": x_hat}
-
-    def _compute_loss(self, output, target):
-        x_hat = output["logits"].view(target.shape)
-        target = target.to(x_hat.device)
-        if isinstance(self.criterion, FlareSSMLoss):
-            loss = self.criterion(
-                x_hat, target, output["hidden"], current_epoch=self.current_epoch
-            )
-        else:
-            loss = self.criterion(x_hat, target)
-        return x_hat, loss
-
-    def train(self, mode=True):
-        super().train(mode)
-        if self.freeze_backbone and mode:
-            self.backbone.eval()
-
-    def training_step(self, batch, batch_idx):
-        # training_step defines the train loop.
-        data, metadata = batch
-        stats = data["debug"]
-        target = data["label"].float().unsqueeze(1)
-
-        output = self(data)
-        x_hat, loss = self._compute_loss(output, target)
-        probs = torch.sigmoid(x_hat)
-
-        # Update Metrics
-        self.train_metrics.update(probs, target)
-        self.log_dict(
-            {
-                "perf/file_open_latency_sec": stats["open_time"].float().mean(),
-                "perf/file_read_bandwidth_sec": stats["read_time"].float().mean(),
-                "perf/cpu_to_gpu_sec": stats["cpu_to_gpu_sec"],
-            },
-            on_step=True,
-            prog_bar=False,
-            sync_dist=False,
-        )
-
-        # Log training loss every step
-        self.log(
-            "train/loss",
-            loss,
-            on_step=True,
-            on_epoch=True,
-            prog_bar=True,
-            sync_dist=False,
-            batch_size=target.shape[0],
-        )
-
-        return loss
-
-    def on_train_epoch_end(self):
-        # Compute, log, and reset the metrics accumulated over the last 100 steps
-        metrics = self.train_metrics.compute()
-
-        # Log the computed metrics
-        self.log_dict(
-            {f"train/{k}": v.float() for k, v in metrics.items()},
-            on_step=False,
-            on_epoch=True,
-            prog_bar=False,
-            sync_dist=True,
-        )
-
-        self.train_metrics.reset()
-
-    def validation_step(self, batch, batch_idx):
-        data, metadata = batch
-        target = data["label"].float().unsqueeze(1)
-        output = self(data)
-        x_hat, loss = self._compute_loss(output, target)
-
-        probs = torch.sigmoid(x_hat)
-
-        # Update states
-        self.val_metrics.update(probs, target)
-
-        # Log step loss normally
-        self.log(
-            "val/loss",
-            loss,
-            on_epoch=True,
-            on_step=False,
-            prog_bar=False,
-            sync_dist=True,
-            batch_size=target.shape[0],
-        )
-
-    def on_validation_epoch_end(self):
-        # Compute global metrics (Auto-synced across GPUs)
-        metrics = self.val_metrics.compute()
-
-        self.log_dict(
-            {f"val/{k}": v.float() for k, v in metrics.items()}, sync_dist=True
-        )
-
-        # Reset for next epoch
-        self.val_metrics.reset()
+        fused = self.fusion(img_tokens, secondary_tokens)
+        return self.head(fused)
 
     def test_step(self, batch, batch_idx):
         data, metadata = batch
@@ -1199,13 +1078,11 @@ class SuryaMultiModal(BaseModule):
         probs = torch.sigmoid(x_hat)
 
         # Store predictions and targets for later analysis
-        self.test_results["timestamps"].append(
-            metadata["timestamps_input"][0].detach().cpu().numpy().tolist()
+        self.test_results["timestamps"].extend(
+            metadata["timestamps_input"].detach().cpu().numpy().tolist()
         )
-        self.test_results["targets"].extend(target.detach().cpu().squeeze(1).tolist())
-        self.test_results["predictions"].extend(
-            probs.detach().cpu().squeeze(1).tolist()
-        )
+        self.test_results["targets"].extend(target.view(-1).cpu().numpy().tolist())
+        self.test_results["predictions"].extend(probs.view(-1).cpu().numpy().tolist())
 
         # Update Metrics
         # Pass predicted probabilities (sigmoid(x_hat)) and the target (squeezed to [B])
@@ -1220,10 +1097,6 @@ class SuryaMultiModal(BaseModule):
             sync_dist=True,
         )
 
-        # Every rank saves its own shard
-        if batch_idx % 50 == 0:
-            self._flush_test_results()
-
         return loss
 
     def on_test_epoch_end(self):
@@ -1233,7 +1106,7 @@ class SuryaMultiModal(BaseModule):
             lgr_logger.info(f"  {k}: {v.float():.4f}")
         lgr_logger.info("===================")
         self.log_dict(
-            {f"test/{k}": v.float() for k, v in metrics.items()}, sync_dist=False
+            {f"test/{k}": v.float() for k, v in metrics.items()}, sync_dist=True
         )
 
         # Log ROC and PR curves to wandb
@@ -1241,11 +1114,14 @@ class SuryaMultiModal(BaseModule):
             y_true = np.array(self.test_results["targets"])
             y_probas = np.array(self.test_results["predictions"])
 
+            # Transform 1D probs [N] to 2D [N, 2] for wandb
+            y_probas_2d = np.column_stack([1 - y_probas, y_probas])
+
             # Log ROC curve
-            self.log({"test/roc_curve": wandb.plot.roc_curve(y_true, y_probas)})
+            self.log({"test/roc_curve": wandb.plot.roc_curve(y_true, y_probas_2d)})
 
             # Log PR curve
-            self.log({"test/pr_curve": wandb.plot.pr_curve(y_true, y_probas)})
+            self.log({"test/pr_curve": wandb.plot.pr_curve(y_true, y_probas_2d)})
 
             # Compute skill scores at multiple thresholds
             thresholds = np.linspace(0.01, 0.99, 99)
@@ -1322,6 +1198,8 @@ class SuryaMultiModal(BaseModule):
 
         self.test_metrics.reset()
         self._flush_test_results()
+
+        return loss
 
 
 class PretrainSolarModel(pl.LightningModule):

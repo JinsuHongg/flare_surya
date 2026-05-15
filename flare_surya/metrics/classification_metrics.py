@@ -79,16 +79,16 @@ class DistributedClassificationMetrics(Metric):
         css = torch.sqrt(torch.clamp(hss, min=0) * torch.clamp(tss, min=0))
 
         return {
-            "accuracy": accuracy,
-            "precision": precision,
-            "recall": recall,
-            "f1": f1,
-            "tss": tss,
-            "hss": hss,
-            "css": css,
+            "accuracy": accuracy.float(),
+            "precision": precision.float(),
+            "recall": recall.float(),
+            "f1": f1.float(),
+            "tss": tss.float(),
+            "hss": hss.float(),
+            "css": css.float(),
             # Raw counts can be useful for debugging
-            "tp": self.tp,
-            "tn": self.tn,
-            "fp": self.fp,
-            "fn": self.fn,
+            "tp": self.tp.float(),
+            "tn": self.tn.float(),
+            "fp": self.fp.float(),
+            "fn": self.fn.float(),
         }

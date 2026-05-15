@@ -12,7 +12,7 @@ model:
   data_type: "2d"  # Options: "1d" or "2d"
   image_size: 512  # Only used if data_type is "2d"
   patch_size: 16   # Only used if data_type is "2d"
-  mask_ratio: 0.5
+  mask_ratio: null
 
 # Optimizer Configuration
 optimizer:
@@ -67,8 +67,8 @@ logger:
 
 # Wandb Configuration
 wandb:
-  name: halpha_pretrain_mask50_newloss
-  id: halpha_pretrain_mask50_newloss
+  name: halpha_pretrain_nomask_newloss_1
+  id: halpha_pretrain_nomask_newloss_1
   resume: allow
   save_dir: ./results
   entity: gsu-dmlab

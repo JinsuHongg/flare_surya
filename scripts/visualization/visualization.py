@@ -65,6 +65,15 @@ def load_checkpoint(cfg, model):
     config_path="../../configs/pretrain/",
     config_name="solar_pretrain",
 )
+def get_cmap(cfg):
+    """Select colormap based on dataset type."""
+    path = cfg.data.zarr_path.lower()
+    if "halpha" in path:
+        return "afmhot"
+    elif "lasco" in path:
+        return "gray"
+    return "viridis"
+
 def visualize(cfg: OmegaConf):
     datamodule = SolarPretrainDataModule(
         zarr_path=cfg.data.zarr_path,
@@ -97,13 +106,12 @@ def visualize(cfg: OmegaConf):
         x, y = batch
 
     x = x.to(device)
-    y = y.to(device)
+    # Target y is not needed for visualization as it is same as input
 
     with torch.no_grad():
         reconstruction = model.forward(x, use_mask=False)
 
     x_np = x.detach().cpu().numpy()
-    y_np = y.detach().cpu().numpy()
     recon_np = reconstruction.detach().cpu().numpy()
 
     # Inverse normalize
@@ -114,38 +122,35 @@ def visualize(cfg: OmegaConf):
         for ch_idx, ch in enumerate(channels):
             stats = test_dataset.scalers.get(ch, test_dataset.scalers)
             x_np[:, ch_idx] = inverse_normalize(x_np[:, ch_idx], stats, norm_type)
-            y_np[:, ch_idx] = inverse_normalize(y_np[:, ch_idx], stats, norm_type)
             recon_np[:, ch_idx] = inverse_normalize(recon_np[:, ch_idx], stats, norm_type)
 
     data_type = cfg.model.data_type
 
     if data_type == "1d":
-        visualize_1d(x_np, y_np, recon_np)
+        visualize_1d(x_np, recon_np, cfg)
     elif data_type == "2d":
-        visualize_2d(x_np, y_np, recon_np)
+        visualize_2d(x_np, recon_np, cfg)
 
 
-def visualize_1d(x, y, reconstruction, num_samples=4):
+def visualize_1d(x, reconstruction, cfg, num_samples=4):
     """Visualize 1D time series data."""
     batch_size, channels, seq_len = x.shape
     num_samples = min(num_samples, batch_size)
 
-    fig, axes = plt.subplots(num_samples * channels, 3, figsize=(15, 3 * num_samples * channels))
+    fig, axes = plt.subplots(num_samples * channels, 2, figsize=(10, 3 * num_samples * channels), squeeze=False)
 
     for i in range(num_samples):
         for ch in range(channels):
             row_idx = i * channels + ch
             ax_input = axes[row_idx, 0]
-            ax_target = axes[row_idx, 1]
-            ax_recon = axes[row_idx, 2]
+            ax_recon = axes[row_idx, 1]
 
             ax_input.plot(x[i, ch], label="Input", alpha=0.7)
-            ax_target.plot(y[i, ch], label="Target", alpha=0.7)
             ax_recon.plot(reconstruction[i, ch], label="Reconstruction", alpha=0.7)
 
-            ax_input.set_title(f"Sample {i} - Input (Channel {ch})")
-            ax_target.set_title(f"Sample {i} - Target (Channel {ch})")
-            ax_recon.set_title(f"Sample {i} - Reconstruction (Channel {ch})")
+            title_suffix = f" (Channel {ch})" if channels > 1 else ""
+            ax_input.set_title(f"Sample {i} - Input{title_suffix}")
+            ax_recon.set_title(f"Sample {i} - Reconstruction{title_suffix}")
 
     plt.tight_layout()
     plt.savefig("visualization_1d.png", dpi=150)
@@ -153,32 +158,30 @@ def visualize_1d(x, y, reconstruction, num_samples=4):
     plt.close()
 
 
-def visualize_2d(x, y, reconstruction, num_samples=4):
+def visualize_2d(x, reconstruction, cfg, num_samples=4):
     """Visualize 2D image data."""
     batch_size, channels, h, w = x.shape
     num_samples = min(num_samples, batch_size)
+    cmap = get_cmap(cfg)
 
-    fig, axes = plt.subplots(num_samples * channels, 3, figsize=(15, 4 * num_samples * channels))
+    fig, axes = plt.subplots(num_samples * channels, 2, figsize=(10, 4 * num_samples * channels), squeeze=False)
 
     for i in range(num_samples):
         for ch in range(channels):
             row_idx = i * channels + ch
             ax_input = axes[row_idx, 0]
-            ax_target = axes[row_idx, 1]
-            ax_recon = axes[row_idx, 2]
+            ax_recon = axes[row_idx, 1]
 
-            im_input = ax_input.imshow(x[i, ch], cmap="viridis", aspect="auto")
-            im_target = ax_target.imshow(y[i, ch], cmap="viridis", aspect="auto")
+            im_input = ax_input.imshow(x[i, ch], cmap=cmap, aspect="auto")
             im_recon = ax_recon.imshow(
-                reconstruction[i, ch], cmap="viridis", aspect="auto"
+                reconstruction[i, ch], cmap=cmap, aspect="auto"
             )
 
-            ax_input.set_title(f"Sample {i} - Input (Channel {ch})")
-            ax_target.set_title(f"Sample {i} - Target (Channel {ch})")
-            ax_recon.set_title(f"Sample {i} - Reconstruction (Channel {ch})")
+            title_suffix = f" (Channel {ch})" if channels > 1 else ""
+            ax_input.set_title(f"Sample {i} - Input{title_suffix}")
+            ax_recon.set_title(f"Sample {i} - Reconstruction{title_suffix}")
 
             plt.colorbar(im_input, ax=ax_input)
-            plt.colorbar(im_target, ax=ax_target)
             plt.colorbar(im_recon, ax=ax_recon)
 
     plt.tight_layout()

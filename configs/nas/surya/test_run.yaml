@@ -13,7 +13,7 @@ data:
   train_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/train_M24w_freq24.csv
   valid_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/val_M24w.csv
   leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
-  test_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/test_M24w.csv
+  test_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/test_M24w_freq4.csv
   apply_undersampling: false
   undersample_factor: 1
   seed: 1004
@@ -26,7 +26,7 @@ etc:
   resume: true
   ckpt_dir: ./results/checkpoints/surya_flare/daily_m/
   ckpt_name_tag: mlp_daily_m_ce_nosample
-  ckpt_file: mlp_daily_m_ce_nosample_lr0.00015_wd0.03_epoch=7.ckpt
+  ckpt_file: mlp_daily_m_ce_nosample_lr0.00015_wd0.03_epoch=9.ckpt
   ckpt_weights_only: false
   save_test_results_path: ./results/surya_daily_m_ce_nosample.csv
 

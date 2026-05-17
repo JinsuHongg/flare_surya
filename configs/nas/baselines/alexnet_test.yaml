@@ -4,7 +4,7 @@ data:
   train_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/train_M24w_freq24.csv
   valid_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/val_M24w.csv
   leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
-  test_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/test_M24w.csv
+  test_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/test_M24w_freq4.csv
 
 backbone:
   model_name: alexnet # resnet18, resnet34, resnet50, alexnet,

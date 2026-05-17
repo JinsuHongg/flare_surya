@@ -15,7 +15,7 @@ backbone:
 loss:
   type: cross_entropy
   cross_entropy:
-    class_weights: [1.0, 1.0]
+    class_weights: [1.0, 1.1]
   focal:
     alpha: 0.5
     gamma: 0.99
@@ -24,22 +24,24 @@ loss:
 
 optimizer:
   type: adamw
-  lr: 2e-4
+  lr: 1e-4
   weight_decay: 1e-3
 
 etc:
   phase: train # test
   resume: false
   ckpt_dir: ./results/checkpoints/baselines/alexnet/daily_c/
-  ckpt_name_tag: alexnet_daily_c_ce_undersample
+  ckpt_name_tag: alexnet_daily_c_ce_nosample
   ckpt_file: last.ckpt
   ckpt_weights_only: false
   max_epochs: 50
 
 wandb:
-  name: alexnet_daily_c_ce_undersample_nasgh
-  id: alexnet_daily_c_ce_undersample_nasgh
+  name: alexnet_daily_c_ce_nosample_nasgh
+  id: alexnet_daily_c_ce_nosample_nasgh
   resume: allow
-  notes: alexnet
+  project: flareforecasting-nosampling
+  group: alexent
+  notes: ""
   offline: false
-  tag: ["alexnet", "C", "nasgh", "daily", "cross_entropy", "undersample"] # backbone model, head type, task
+  tag: ["alexnet", "C", "nasgh", "daily", "cross_entropy", "nosample"] # backbone model, head type, task

@@ -21,18 +21,18 @@ loss:
 etc:
   phase: test # test
   resume: true
-  ckpt_dir: ./results/checkpoints/baselines/alexnet/daily_m/
-  ckpt_name_tag: alexnet_daily_m_ce_nosample
-  ckpt_file: alexnet_daily_m_ce_nosample_lr0.0001_wd0.001_epoch=7.ckpt
+  ckpt_dir: ./results/checkpoints/baselines/alexnet/8hour_m/
+  ckpt_name_tag: alexnet_8hour_m_ce_nosample
+  ckpt_file: alexnet_8hour_m_ce_nosample_lr0.0001_wd0.001_epoch=3.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ./results/alexnet_daily.csv
+  save_test_results_path: ./results/alexnet_m_8hour_test_result.csv
 
 wandb:
-  name: alexnet_daily_m_nasgh_test
-  id: alexnet_daily_m_nasgh_test
+  name: alexnet_8hour_m_nasgh_test
+  id: alexnet_8hour_m_nasgh_test
   resume: allow
   project: flareforecasting-nosampling-test
   group: alexnet
   offline: false
   notes: ""
-  tag: ["alexnet", "M", "nasgh", "daily", "cross_entropy", "nosampling", "test"] # backbone model, head type, task
+  tag: ["alexnet", "M", "nasgh", "8hour", "cross_entropy", "nosampling", "test"] # backbone model, head type, task

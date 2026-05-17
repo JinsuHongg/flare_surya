@@ -1,5 +1,5 @@
 ## use below command
-## task_name="c_focal"; qsub -N "$task_name" -v TASK_NAME="$task_name" ./shell_scripts/nas/finetune_flaresurya_gh.pbs
+## task_name="c_exp"; qsub -N "$task_name" -v TASK_NAME="$task_name" ./shell_scripts/nas/finetune_flaresurya_gh.pbs
 
 #!/usr/bin/bash
 #PBS -S /usr/bin/bash

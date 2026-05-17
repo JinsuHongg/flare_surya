@@ -172,6 +172,7 @@ wandb:
   id: mlp_8hour_c_nasgh
   resume: allow
   save_dir: ./results
+  csv_logger_save_dir: ./results/csv_logger
   entity: gsu-dmlab
   project: helio-fm
   group: null

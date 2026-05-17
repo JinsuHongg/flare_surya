@@ -122,6 +122,7 @@ wandb:
   id: resnet18_daily_c_nasgh_new_wg
   resume: allow
   save_dir: ./results
+  csv_logger_save_dir: ./results/csv_logger
   entity: gsu-dmlab
   project: helio-fm
   group: null

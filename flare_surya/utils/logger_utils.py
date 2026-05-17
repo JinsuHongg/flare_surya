@@ -106,11 +106,9 @@ def build_loggers(cfg: DictConfig) -> list:
     # Extract same unique identifiers used in build_wandb
     lr = cfg.optimizer.get("lr", "unknown")
     wd = cfg.optimizer.get("weight_decay", "unknown")
-    unique_id = f"{cfg.wandb.id}_lr{lr}_wd{wd}"
 
     csv_logger = CSVLogger(
-        save_dir=cfg.wandb.save_dir,
+        save_dir=cfg.wandb.csv_logger_save_dir,
         name=cfg.wandb.name,
-        version=unique_id,
     )
     return [wandb_logger, csv_logger]

@@ -1,12 +1,10 @@
 import os
-import time
 
 import numpy as np
 import pandas as pd
 import torch
 import xarray as xr
 import torch.nn as nn
-import torch.nn.functional as F
 import pytorch_lightning as pl
 from torchmetrics import Metric, MetricCollection, MeanAbsoluteError, MeanSquaredError
 import wandb
@@ -469,10 +467,10 @@ class FlareSurya(BaseModule):
             y_probas_2d = np.column_stack([1 - y_probas, y_probas])
 
             # Log ROC curve
-            self.log({"test/roc_curve": wandb.plot.roc_curve(y_true, y_probas_2d)})
+            self.log_dict({"test/roc_curve": wandb.plot.roc_curve(y_true, y_probas_2d)})
 
             # Log PR curve
-            self.log({"test/pr_curve": wandb.plot.pr_curve(y_true, y_probas_2d)})
+            self.log_dict({"test/pr_curve": wandb.plot.pr_curve(y_true, y_probas_2d)})
 
             # Compute skill scores at multiple thresholds
             thresholds = np.linspace(0.01, 0.99, 99)
@@ -534,8 +532,8 @@ class FlareSurya(BaseModule):
                     "F1_macro": f1_macro_scores,
                 }
             )
-            self.log({"test/threshold_df": wandb.Table(dataframe=df)})
-            self.log(
+            self.log_dict({"test/threshold_df": wandb.Table(dataframe=df)})
+            self.log_dict(
                 {
                     "test/threshold_vs_scores": wandb.plot.line_series(
                         xs=thresholds,
@@ -856,10 +854,10 @@ class BaseLineModel(BaseModule):
             y_probas_2d = np.column_stack([1 - y_probas, y_probas])
 
             # Log ROC curve
-            self.log({"test/roc_curve": wandb.plot.roc_curve(y_true, y_probas_2d)})
+            self.log_dict({"test/roc_curve": wandb.plot.roc_curve(y_true, y_probas_2d)})
 
             # Log PR curve
-            self.log({"test/pr_curve": wandb.plot.pr_curve(y_true, y_probas_2d)})
+            self.log_dict({"test/pr_curve": wandb.plot.pr_curve(y_true, y_probas_2d)})
 
             # Compute skill scores at multiple thresholds
             thresholds = np.linspace(0.01, 0.99, 99)
@@ -921,8 +919,8 @@ class BaseLineModel(BaseModule):
                     "F1_macro": f1_macro_scores,
                 }
             )
-            self.log({"test/threshold_df": wandb.Table(dataframe=df)})
-            self.log(
+            self.log_dict({"test/threshold_df": wandb.Table(dataframe=df)})
+            self.log_dict(
                 {
                     "test/threshold_vs_scores": wandb.plot.line_series(
                         xs=thresholds,
@@ -1118,10 +1116,10 @@ class SuryaMultiModal(BaseModule):
             y_probas_2d = np.column_stack([1 - y_probas, y_probas])
 
             # Log ROC curve
-            self.log({"test/roc_curve": wandb.plot.roc_curve(y_true, y_probas_2d)})
+            self.log_dict({"test/roc_curve": wandb.plot.roc_curve(y_true, y_probas_2d)})
 
             # Log PR curve
-            self.log({"test/pr_curve": wandb.plot.pr_curve(y_true, y_probas_2d)})
+            self.log_dict({"test/pr_curve": wandb.plot.pr_curve(y_true, y_probas_2d)})
 
             # Compute skill scores at multiple thresholds
             thresholds = np.linspace(0.01, 0.99, 99)
@@ -1183,8 +1181,8 @@ class SuryaMultiModal(BaseModule):
                     "F1_macro": f1_macro_scores,
                 }
             )
-            self.log({"test/threshold_df": wandb.Table(dataframe=df)})
-            self.log(
+            self.log_dict({"test/threshold_df": wandb.Table(dataframe=df)})
+            self.log_dict(
                 {
                     "test/threshold_vs_scores": wandb.plot.line_series(
                         xs=thresholds,

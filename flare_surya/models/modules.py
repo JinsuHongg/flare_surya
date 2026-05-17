@@ -456,7 +456,7 @@ class FlareSurya(BaseModule):
         for k, v in metrics.items():
             lgr_logger.info(f"  {k}: {v.float():.4f}")
         lgr_logger.info("===================")
-        self.log_dict({k: v for k, v in metrics.items()}, sync_dist=True)
+        self.log_dict({f"test/{k}": v.float() for k, v in metrics.items()}, sync_dist=True)
 
         # Log ROC and PR curves to wandb
         if self.test_results["predictions"]:
@@ -466,11 +466,11 @@ class FlareSurya(BaseModule):
             # Transform 1D probs [N] to 2D [N, 2] for wandb
             y_probas_2d = np.column_stack([1 - y_probas, y_probas])
 
-            # Log ROC curve
-            self.log_dict({"test/roc_curve": wandb.plot.roc_curve(y_true, y_probas_2d)})
-
-            # Log PR curve
-            self.log_dict({"test/pr_curve": wandb.plot.pr_curve(y_true, y_probas_2d)})
+            if self.logger and hasattr(self.logger, "experiment") and hasattr(self.logger.experiment, "log"):
+                self.logger.experiment.log({
+                    "test/roc_curve": wandb.plot.roc_curve(y_true, y_probas_2d),
+                    "test/pr_curve": wandb.plot.pr_curve(y_true, y_probas_2d),
+                })
 
             # Compute skill scores at multiple thresholds
             thresholds = np.linspace(0.01, 0.99, 99)
@@ -532,9 +532,9 @@ class FlareSurya(BaseModule):
                     "F1_macro": f1_macro_scores,
                 }
             )
-            self.log_dict({"test/threshold_df": wandb.Table(dataframe=df)})
-            self.log_dict(
-                {
+            if self.logger and hasattr(self.logger, "experiment") and hasattr(self.logger.experiment, "log"):
+                self.logger.experiment.log({
+                    "test/threshold_df": wandb.Table(dataframe=df),
                     "test/threshold_vs_scores": wandb.plot.line_series(
                         xs=thresholds,
                         ys=[tss_scores, hss_scores, css_scores, f1_macro_scores],
@@ -542,8 +542,7 @@ class FlareSurya(BaseModule):
                         title="Threshold vs Skill Scores",
                         xname="Threshold",
                     )
-                }
-            )
+                })
 
         # Save embeddings to Zarr
         if self.save_test_embeddings and self.save_embeddings_path:
@@ -853,11 +852,11 @@ class BaseLineModel(BaseModule):
             # Transform 1D probs [N] to 2D [N, 2] for wandb
             y_probas_2d = np.column_stack([1 - y_probas, y_probas])
 
-            # Log ROC curve
-            self.log_dict({"test/roc_curve": wandb.plot.roc_curve(y_true, y_probas_2d)})
-
-            # Log PR curve
-            self.log_dict({"test/pr_curve": wandb.plot.pr_curve(y_true, y_probas_2d)})
+            if self.logger and hasattr(self.logger, "experiment") and hasattr(self.logger.experiment, "log"):
+                self.logger.experiment.log({
+                    "test/roc_curve": wandb.plot.roc_curve(y_true, y_probas_2d),
+                    "test/pr_curve": wandb.plot.pr_curve(y_true, y_probas_2d),
+                })
 
             # Compute skill scores at multiple thresholds
             thresholds = np.linspace(0.01, 0.99, 99)
@@ -919,9 +918,9 @@ class BaseLineModel(BaseModule):
                     "F1_macro": f1_macro_scores,
                 }
             )
-            self.log_dict({"test/threshold_df": wandb.Table(dataframe=df)})
-            self.log_dict(
-                {
+            if self.logger and hasattr(self.logger, "experiment") and hasattr(self.logger.experiment, "log"):
+                self.logger.experiment.log({
+                    "test/threshold_df": wandb.Table(dataframe=df),
                     "test/threshold_vs_scores": wandb.plot.line_series(
                         xs=thresholds,
                         ys=[tss_scores, hss_scores, css_scores, f1_macro_scores],
@@ -929,14 +928,10 @@ class BaseLineModel(BaseModule):
                         title="Threshold vs Skill Scores",
                         xname="Threshold",
                     )
-                }
-            )
+                })
 
         self.test_metrics.reset()
         self._flush_test_results()
-
-        return loss
-
 
 class SuryaMultiModal(BaseModule):
     def __init__(
@@ -1111,15 +1106,15 @@ class SuryaMultiModal(BaseModule):
         if self.test_results["predictions"]:
             y_true = np.array(self.test_results["targets"])
             y_probas = np.array(self.test_results["predictions"])
-
+            
             # Transform 1D probs [N] to 2D [N, 2] for wandb
             y_probas_2d = np.column_stack([1 - y_probas, y_probas])
 
-            # Log ROC curve
-            self.log_dict({"test/roc_curve": wandb.plot.roc_curve(y_true, y_probas_2d)})
-
-            # Log PR curve
-            self.log_dict({"test/pr_curve": wandb.plot.pr_curve(y_true, y_probas_2d)})
+            if self.logger and hasattr(self.logger, "experiment") and hasattr(self.logger.experiment, "log"):
+                self.logger.experiment.log({
+                    "test/roc_curve": wandb.plot.roc_curve(y_true, y_probas_2d),
+                    "test/pr_curve": wandb.plot.pr_curve(y_true, y_probas_2d),
+                })
 
             # Compute skill scores at multiple thresholds
             thresholds = np.linspace(0.01, 0.99, 99)
@@ -1181,9 +1176,9 @@ class SuryaMultiModal(BaseModule):
                     "F1_macro": f1_macro_scores,
                 }
             )
-            self.log_dict({"test/threshold_df": wandb.Table(dataframe=df)})
-            self.log_dict(
-                {
+            if self.logger and hasattr(self.logger, "experiment") and hasattr(self.logger.experiment, "log"):
+                self.logger.experiment.log({
+                    "test/threshold_df": wandb.Table(dataframe=df),
                     "test/threshold_vs_scores": wandb.plot.line_series(
                         xs=thresholds,
                         ys=[tss_scores, hss_scores, css_scores, f1_macro_scores],
@@ -1191,13 +1186,10 @@ class SuryaMultiModal(BaseModule):
                         title="Threshold vs Skill Scores",
                         xname="Threshold",
                     )
-                }
-            )
+                })
 
         self.test_metrics.reset()
         self._flush_test_results()
-
-        return loss
 
 
 class PretrainSolarModel(pl.LightningModule):

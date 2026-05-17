@@ -51,6 +51,7 @@ data:
 
 # Trainer Configuration
 trainer:
+  phase: test
   max_epochs: 100
   accelerator: auto
   devices: 1

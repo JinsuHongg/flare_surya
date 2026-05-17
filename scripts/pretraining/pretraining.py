@@ -107,6 +107,8 @@ def train(cfg: OmegaConf):
         trainer.test(
             model=model,
             dataloaders=datamodule,
+            ckpt_path=os.path.join(cfg.etc.ckpt_dir, cfg.etc.ckpt_file),
+            weights_only=False,
             verbose=True,
         )
     elif phase == "predict":

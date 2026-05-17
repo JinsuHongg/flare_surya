@@ -5,7 +5,7 @@ defaults:
 model:
   in_channels: 1  # Number of channels (soft, hard)
   seq_len: 1024   # Updated to match (512/16)^2 patches
-  embed_dim: 768  # Reduced embed_dim for lightweight model
+  embed_dim: 256  # Reduced embed_dim for lightweight model
   encoder_depth: 4
   decoder_depth: 2
   num_heads: 8
@@ -37,7 +37,7 @@ loss:
 
 # DataModule Configuration
 data:
-  zarr_path: ./data/gong_halpha_2015_2025.zarr
+  zarr_path: /nobackupnfs1/sroy14/processed_data/helio/gong_halpha_2015_2025.zarr
   train_index_path: ./data/pretrain/train.csv
   val_index_path: ./data/pretrain/val.csv
   test_index_path: ./data/pretrain/test.csv
@@ -53,6 +53,7 @@ data:
 
 # Trainer Configuration
 trainer:
+  phase: train
   max_epochs: 100
   accelerator: auto
   devices: 1
@@ -67,8 +68,8 @@ logger:
 
 # Wandb Configuration
 wandb:
-  name: halpha_pretrain_nomask_newloss_1
-  id: halpha_pretrain_nomask_newloss_1
+  name: halpha_pretrain_nomask_small
+  id: halpha_pretrain_nomask_small
   resume: allow
   save_dir: ./results
   entity: gsu-dmlab
@@ -83,8 +84,8 @@ wandb:
 etc:
   resume: false
   ckpt_dir: ./results/check_point/pretrain/halpha/
-  ckpt_name_tag: halpha_1e-4_medium
-  ckpt_file: halpha_1e-4_medium_lr0.0001_wd0.01_epoch=29.ckpt
+  ckpt_name_tag: halpha_1e-4_small
+  ckpt_file: null
   ckpt_weights_only: false
   save_test_results_path: ./results/
   enable_version_counter: False

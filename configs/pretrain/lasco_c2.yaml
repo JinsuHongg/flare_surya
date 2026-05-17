@@ -5,7 +5,7 @@ defaults:
 model:
   in_channels: 1  # Number of channels (c2)
   seq_len: 1024   # (512/16)^2 patches
-  embed_dim: 768
+  embed_dim: 256 # 256, 768, 1280
   encoder_depth: 4
   decoder_depth: 2
   num_heads: 8
@@ -36,7 +36,7 @@ loss:
 
 # DataModule Configuration
 data:
-  zarr_path: ./data/soho_lasco_c2_2010_2025_v1.zarr
+  zarr_path: /nobackupnfs1/sroy14/processed_data/helio/soho_lasco_c2_2010_2025_v1.zarr
   train_index_path: ./data/pretrain/train.csv
   val_index_path: ./data/pretrain/val.csv
   test_index_path: ./data/pretrain/test.csv
@@ -50,6 +50,7 @@ data:
 
 # Trainer Configuration
 trainer:
+  phase: train
   max_epochs: 100
   accelerator: auto
   devices: 1
@@ -64,8 +65,8 @@ logger:
 
 # Wandb Configuration
 wandb:
-  name: lasco_c2_pretrain
-  id: lasco_c2_pretrain
+  name: lasco_c2_pretrain_small
+  id: lasco_c2_pretrain_small
   resume: allow
   save_dir: ./results
   entity: gsu-dmlab
@@ -80,8 +81,8 @@ wandb:
 etc:
   resume: false
   ckpt_dir: ./results/check_point/pretrain/lasco_c2/
-  ckpt_name_tag: lasco_c2_1e-4_medium
-  ckpt_file: null
+  ckpt_name_tag: lasco_c2_1e-4_small
+  ckpt_file: lasco_c2_1e-4_medium_lr0.0001_wd0.01_epoch=75.ckpt
   ckpt_weights_only: false
   save_test_results_path: ./results/
   enable_version_counter: False

@@ -50,7 +50,7 @@ data:
 
 # Trainer Configuration
 trainer:
-  phase: train
+  phase: test
   max_epochs: 100
   accelerator: auto
   devices: 1
@@ -65,8 +65,8 @@ logger:
 
 # Wandb Configuration
 wandb:
-  name: lasco_c2_pretrain_small
-  id: lasco_c2_pretrain_small
+  name: lasco_c2_pretrain_small_test
+  id: lasco_c2_pretrain_small_test
   resume: allow
   save_dir: ./results
   entity: gsu-dmlab
@@ -82,7 +82,7 @@ etc:
   resume: false
   ckpt_dir: ./results/check_point/pretrain/lasco_c2/
   ckpt_name_tag: lasco_c2_1e-4_small
-  ckpt_file: lasco_c2_1e-4_medium_lr0.0001_wd0.01_epoch=75.ckpt
+  ckpt_file: lasco_c2_1e-4_small_lr0.0001_wd0.01_epoch=91.ckpt
   ckpt_weights_only: false
   save_test_results_path: ./results/
   enable_version_counter: False

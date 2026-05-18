@@ -53,7 +53,7 @@ data:
 
 # Trainer Configuration
 trainer:
-  phase: train
+  phase: test
   max_epochs: 100
   accelerator: auto
   devices: 1
@@ -68,8 +68,8 @@ logger:
 
 # Wandb Configuration
 wandb:
-  name: halpha_pretrain_nomask_small
-  id: halpha_pretrain_nomask_small
+  name: halpha_pretrain_nomask_small_test
+  id: halpha_pretrain_nomask_small_test
   resume: allow
   save_dir: ./results
   entity: gsu-dmlab
@@ -85,7 +85,7 @@ etc:
   resume: false
   ckpt_dir: ./results/check_point/pretrain/halpha/
   ckpt_name_tag: halpha_1e-4_small
-  ckpt_file: null
+  ckpt_file: halpha_1e-4_small_lr0.0001_wd0.01_epoch=10.ckpt 
   ckpt_weights_only: false
   save_test_results_path: ./results/
   enable_version_counter: False

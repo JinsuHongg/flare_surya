@@ -84,6 +84,7 @@ class SolarPretrainingMetrics(MetricCollection):
             {
                 "mae": MeanAbsoluteError(),
                 "mse": MeanSquaredError(),
+                "rmse": MeanSquaredError(squared=False),
                 "r2": GlobalR2Score(),
             },
             prefix=prefix,
@@ -94,12 +95,6 @@ class SolarPretrainingMetrics(MetricCollection):
         preds_flat = preds.reshape(-1)
         target_flat = target.reshape(-1)
         super().update(preds_flat, target_flat)
-
-    def compute(self):
-        computed = super().compute()
-        if "mse" in computed:
-            computed["rmse"] = torch.sqrt(computed["mse"])
-        return computed
 
 
 class FlareSurya(BaseModule):

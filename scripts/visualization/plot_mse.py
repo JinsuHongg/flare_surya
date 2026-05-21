@@ -6,7 +6,7 @@ import re
 # Configuration
 BASE_DIR = "/home/jhong90/github_proj/flare_surya/results/train/light-weight_fm"
 OUTPUT_DIR = "/home/jhong90/github_proj/flare_surya/results/plots"
-MAX_EPOCH = 60
+MAX_EPOCH = 100
 
 # Define data configurations
 DATA_CONFIG = {
@@ -24,8 +24,7 @@ STYLES = {
     "Small": {"linestyle": "-", "marker": "o", "color": "#0072B2"},
     "Medium": {"linestyle": "--", "marker": "s", "color": "#D55E00"},
     "Large": {"linestyle": ":", "marker": "^", "color": "#009E73"},
-    "Halpha-base": {"linestyle": "-", "marker": "o", "color": "#0072B2"},
-    "C2-base": {"linestyle": "-", "marker": "o", "color": "#0072B2"},
+    "Base": {"linestyle": "--", "marker": "s", "color": "#D55E00"},
 }
 DEFAULT_STYLE = {"linestyle": "-", "marker": "o", "color": "#0072B2"}
 
@@ -36,16 +35,16 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 def get_display_name(col):
     """Generates a display name from the column name."""
     base = col.split(" - ")[0].lower()
-    if "test13" in base:
+    if "small" in base or "test13" in base:
         return "Small"
     if "test14" in base:
         return "Medium"
     if "test12" in base:
         return "Large"
     if "halpha" in base:
-        return "Halpha-base"
+        return "Base"
     if "c2" in base or "lasco" in base:
-        return "C2-base"
+        return "Base"
     return base.replace("_", " ").title()
 
 

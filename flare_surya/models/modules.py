@@ -376,6 +376,7 @@ class FlareSurya(BaseModule):
             on_step=False,
             on_epoch=True,
             sync_dist=True,
+            batch_size=target.shape[0],
         )
 
         return loss
@@ -744,6 +745,7 @@ class BaseLineModel(BaseModule):
             on_epoch=True,
             prog_bar=True,
             sync_dist=False,
+            batch_size=target.shape[0],
         )
 
         return loss
@@ -825,6 +827,7 @@ class BaseLineModel(BaseModule):
             on_step=False,
             on_epoch=True,
             sync_dist=True,
+            batch_size=target.shape[0],
         )
 
         return loss
@@ -1083,6 +1086,7 @@ class SuryaMultiModal(BaseModule):
             on_step=False,
             on_epoch=True,
             sync_dist=True,
+            batch_size=target.shape[0],
         )
 
         return loss

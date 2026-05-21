@@ -5,7 +5,7 @@ defaults:
 model:
   in_channels: 1  # Number of channels (soft, hard)
   seq_len: 1024   # Updated to match (512/16)^2 patches
-  embed_dim: 256  # Reduced embed_dim for lightweight model
+  embed_dim: 768  # Reduced embed_dim for lightweight model
   encoder_depth: 4
   decoder_depth: 2
   num_heads: 8
@@ -68,8 +68,8 @@ logger:
 
 # Wandb Configuration
 wandb:
-  name: halpha_pretrain_nomask_small_test
-  id: halpha_pretrain_nomask_small_test
+  name: halpha_pretrain_nomask_medium_test
+  id: halpha_pretrain_nomask_medium_test
   resume: allow
   save_dir: ./results
   entity: gsu-dmlab
@@ -85,7 +85,7 @@ etc:
   resume: false
   ckpt_dir: ./results/check_point/pretrain/halpha/
   ckpt_name_tag: halpha_1e-4_small
-  ckpt_file: halpha_1e-4_small_lr0.0001_wd0.01_epoch=10.ckpt 
+  ckpt_file: halpha_1e-4_medium_lr0.0001_wd0.01_epoch=21.ckpt
   ckpt_weights_only: false
   save_test_results_path: ./results/
   enable_version_counter: False

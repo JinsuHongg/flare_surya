@@ -26,4 +26,4 @@ fi
 source /nobackupp17/jhong15/miniforge3_gh/etc/profile.d/conda.sh
 conda activate flare_surya
 
-python scripts/finetuning/finetuning.py +surya=test_run
+python scripts/finetuning/finetuning.py +surya=test_x_run

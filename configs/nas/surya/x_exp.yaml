@@ -1,10 +1,11 @@
 # @package _global_
 
 data:
-  train_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/train_X24w_freq4.csv
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/train_X24w_freq2.csv
   valid_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/val_X24w.csv
   leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/leaky_val_X24w.csv
   test_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/test_X24w.csv
+  apply_undersampling: true
   undersample_factor: 4
   seed: 1004
 
@@ -23,22 +24,24 @@ loss:
 
 optimizer:
   type: adamw
-  lr: 5e-5
-  weight_decay: 0.05
+  lr: 3.0e-4
+  weight_decay: 0.01
 
 etc:
   phase: train # test
-  resume: false
-  ckpt_dir: ./results/checkpoints/surya_flare/daily_x/
-  ckpt_name_tag: mlp_daily_x_ce_undersample
+  resume: true
+  ckpt_dir: ./results/checkpoints/surya_flare/2hour_x/
+  ckpt_name_tag: mlp_2hour_x_ce_undersample
   ckpt_file: last.ckpt
   ckpt_weights_only: false
   max_epochs: 50
 
 wandb:
-  name: mlp_daily_x_ce_undersample_nasgh
-  id: mlp_daily_x_ce_undersample_nasgh
+  name: mlp_2hour_x_ce_undersample_nasgh
+  id: mlp_2hour_x_ce_undersample_nasgh
   resume: allow
+  project: flareforecasting-undersampling
+  group: surya
   notes: "simple mlp head"
   offline: false
-  tag: ["mlp", "X", "daily", "nasgh", "cross_entropy", "undersample"] # backbone model, head type, task
+  tag: ["mlp", "X", "2hour", "nasgh", "cross_entropy", "undersample"] # backbone model, head type, task

@@ -1,0 +1,38 @@
+# @package _global_
+
+data:
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/train_X24w_freq24.csv
+  valid_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/val_X24w.csv
+  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/leaky_val_X24w.csv
+  test_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/test_X24w_freq4.csv
+
+backbone:
+  model_name: alexnet # resnet18, resnet34, resnet50, alexnet,
+
+loss:
+  type: cross_entropy
+  cross_entropy:
+    class_weights: [1.0, 2.0]
+  focal:
+    alpha: 0.25
+    gamma: 2.0
+    reduction: mean
+
+etc:
+  phase: test # test
+  resume: true
+  ckpt_dir: ./results/checkpoints/baselines/alexnet/2hour_x/
+  ckpt_name_tag: alexnet_2hour_x_ce_nosample
+  ckpt_file: alexnet_2hour_x_ce_undersample_lr0.0001_wd0.001_epoch=7.ckpt
+  ckpt_weights_only: false
+  save_test_results_path: ./results/alexnet_x_2hour_test_result.csv
+
+wandb:
+  name: alexnet_2hour_x_nasgh_test
+  id: alexnet_2hour_x_nasgh_test
+  resume: allow
+  project: flareforecasting-nosampling-test
+  group: alexnet
+  offline: false
+  notes: ""
+  tag: ["alexnet", "X", "nasgh", "2hour", "cross_entropy", "undersampling", "test"] # backbone model, head type, task

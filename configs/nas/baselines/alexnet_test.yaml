@@ -1,10 +1,10 @@
 # @package _global_
 
 data:
-  train_flare_data_path: ./data/surya-bench-flare-forecasting/C24w/train_C24w_freq24.csv
-  valid_flare_data_path: ./data/surya-bench-flare-forecasting/C24w/val_C24w.csv
-  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/C24w/leaky_val_C24w.csv
-  test_flare_data_path: ./data/surya-bench-flare-forecasting/C24w/test_C24w_freq4.csv
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/train_M24w_freq24.csv
+  valid_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/val_M24w.csv
+  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
+  test_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/test_M24w_freq4.csv
 
 backbone:
   model_name: alexnet # resnet18, resnet34, resnet50, alexnet,
@@ -21,18 +21,18 @@ loss:
 etc:
   phase: test # test
   resume: true
-  ckpt_dir: ./results/checkpoints/baselines/alexnet/daily_c/
-  ckpt_name_tag: alexnet_daily_c_ce_nosample
-  ckpt_file: alexnet_daily_c_ce_nosample_lr0.0001_wd0.001_epoch=3.ckpt
+  ckpt_dir: ./results/checkpoints/baselines/alexnet/4hour_m/
+  ckpt_name_tag: alexnet_4hour_m_ce_nosample
+  ckpt_file: alexnet_4hour_m_ce_undersample_lr0.0001_wd0.001_epoch=5.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ./results/alexnet_c_daily_test_result.csv
+  save_test_results_path: ./results/alexnet_m_4hour_test_result.csv
 
 wandb:
-  name: alexnet_daily_c_nasgh_test
-  id: alexnet_daily_c_nasgh_test
+  name: alexnet_4hour_m_nasgh_test
+  id: alexnet_4hour_m_nasgh_test
   resume: allow
   project: flareforecasting-nosampling-test
   group: alexnet
   offline: false
   notes: ""
-  tag: ["alexnet", "C", "nasgh", "daily", "cross_entropy", "nosampling", "test"] # backbone model, head type, task
+  tag: ["alexnet", "M", "nasgh", "4hour", "cross_entropy", "undersampling", "test"] # backbone model, head type, task

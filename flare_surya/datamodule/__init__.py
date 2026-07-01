@@ -4,4 +4,3 @@ from .datamodule import (
     FlareDataModuleZarr,
     SuryaFluxDataModule,
 )
-from .solar_pretrain_datamodule import SolarPretrainDataModule

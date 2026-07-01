@@ -4,4 +4,3 @@ from .flare_cls_dataset import (
     SolarFlareClsDatasetZarr,
     SolarFlareClsXRSDataset,
 )
-from .solar_pretrain_dataset import SolarPretrainDataset

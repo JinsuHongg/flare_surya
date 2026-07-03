@@ -29,6 +29,8 @@ def sub_class_num(df: pd.DataFrame):
 
     # Use np.select for multiple conditions to avoid repeated operations
     conditions = [
+        df["fl_goescls"].str.startswith("A"),
+        df["fl_goescls"].str.startswith("B"),
         df["fl_goescls"].str.startswith("C"),
         df["fl_goescls"].str.startswith("M"),
         df["fl_goescls"].str.startswith("X"),
@@ -36,9 +38,11 @@ def sub_class_num(df: pd.DataFrame):
 
     # Corresponding choices based on class
     choices = [
-        numeric_part,  # C-class: same value
-        10 * numeric_part,  # M-class: multiply by 10
-        100 * numeric_part,  # X-class: multiply by 100
+        0.01 * numeric_part,  # A-class: divide by 100 (relative to C)
+        0.1 * numeric_part,   # B-class: divide by 10 (relative to C)
+        numeric_part,         # C-class: same value
+        10 * numeric_part,    # M-class: multiply by 10
+        100 * numeric_part,   # X-class: multiply by 100
     ]
 
     return np.select(conditions, choices, default=None)
@@ -50,8 +54,8 @@ def rolling_window(
     save_path: str,
     start: str,
     stop: str,
-    cadence: dict,
-    windowsize: dict,
+    cadence: int,
+    window_size: int,
     thres_max: str = "M1.0",
     thres_cum: float = 10,
 ) -> pd.DataFrame:
@@ -71,10 +75,10 @@ def rolling_window(
         Start date in "YYYY-MM-DD" format.
     stop : str
         Stop date in "YYYY-MM-DD HH:MM:SS" format.
-    cadence : dict
-        Dictionary to define the rolling window stride (e.g., {'hours': 1}).
-    windowsize : dict
-        Dictionary to define window length (e.g., {'hours': 24}).
+    cadence : int
+        Rolling window stride in hours.
+    window_size : int
+        Window length in hours.
     thres_max : str
         Threshold GOES class string for max label (e.g., "M1.0").
     thres_cum : float
@@ -95,15 +99,31 @@ def rolling_window(
 
     # Create sub-class column
     df_fl["sub_cls"] = sub_class_num(df_fl)
+    # Convert thres_max to numeric value for proper comparison
+    thres_max_num = 0.0
+    if thres_max == "FQ":
+        thres_max_num = -1.0  # Represents a state below any measurable flare
+    elif thres_max.startswith("A"):
+        thres_max_num = float(thres_max[1:]) * 0.01
+    elif thres_max.startswith("B"):
+        thres_max_num = float(thres_max[1:]) * 0.1
+    elif thres_max.startswith("C"):
+        thres_max_num = float(thres_max[1:])
+    elif thres_max.startswith("M"):
+        thres_max_num = float(thres_max[1:]) * 10
+    elif thres_max.startswith("X"):
+        thres_max_num = float(thres_max[1:]) * 100
+
     result = []
     while window_start < stop:
         print(f"Processing, {window_start}")
         window = df_fl[
             (df_fl.event_starttime > window_start)
-            & (df_fl.event_starttime <= window_start + timedelta(**windowsize))
+            & (df_fl.event_starttime < window_start + timedelta(hours=window_size))
         ]
 
-        window_sorted = window.sort_values("fl_goescls", ascending=False)
+        # Use numeric sub_cls for sorting to avoid string comparison issues like "M10.0" < "M9.0"
+        window_sorted = window.sort_values("sub_cls", ascending=False)
         top_row = window_sorted.head(1)
 
         if not top_row.empty:
@@ -120,7 +140,7 @@ def rolling_window(
         else:
             ins = Maximum_index.fl_goescls
 
-            if ins >= thres_max:  # FQ and A class flares
+            if Maximum_index.sub_cls >= thres_max_num:  # FQ and A class flares
                 target = 1
             else:
                 target = 0
@@ -132,7 +152,7 @@ def rolling_window(
             target_cumulative = 0
 
         result.append([window_start, ins, cumulative_index, target, target_cumulative])
-        window_start += timedelta(**cadence)
+        window_start += timedelta(hours=cadence)
 
     cols = ["timestamp", "max_goes_class", "cumulative_index", "label_max", "label_cum"]
 
@@ -151,7 +171,7 @@ def rolling_window(
 
     print(f"Total {len(df)} instances!")
     df.to_csv(
-        save_path + f"data_thres_{thres_max[0].lower()}_24hour_window.csv", index=False
+        save_path + f"data_thres_{thres_max[0].lower()}_{window_size}hour_window.csv", index=False
     )
     split_dataset(df, savepath=save_path)
 
@@ -275,10 +295,26 @@ if __name__ == "__main__":
         default="2025-01-01 00:00:00",
         help="end time of the dataset",
     )
+    parser.add_argument(
+        "--cadence", type=int, default=1, help="Rolling window stride in hours"
+    )
+    parser.add_argument(
+        "--window_size", type=int, default=24, help="Window size in hours"
+    )
+    parser.add_argument(
+        "--thres_max", type=str, default="X1.0", help="Threshold for max GOES class"
+    )
+    parser.add_argument(
+        "--thres_cum", type=float, default=10.0, help="Threshold for cumulative GOES class"
+    )
     args = parser.parse_args()
 
+    start_year = pd.to_datetime(args.start).year
+    # Subtracting 1 day ensures an exclusive stop like "2025-01-01" maps to "2024"
+    end_year = (pd.to_datetime(args.stop) - pd.Timedelta(days=1)).year
+    
     df = pd.read_csv(
-        args.file_path + "flare_catalog_2010-2024.csv",
+        args.file_path + f"flare_catalog_{start_year}-{end_year}.csv",
         usecols=["event_starttime", "fl_goescls"],
     )
 
@@ -286,11 +322,11 @@ if __name__ == "__main__":
     df_res = rolling_window(
         df_fl=df,
         valid_input_df=False,
-        save_path=args.save_path + "surya-bench-flare-forecasting/X24w/",
+        save_path=args.save_path + f"surya-bench-flare-forecasting/{args.thres_max[0].upper()}{args.window_size}w/",
         start=args.start,
         stop=args.stop,
-        cadence={"hours": 1, "minutes": 0, "seconds": 0},
-        windowsize={"hours": 23, "minutes": 59, "seconds": 59},
-        thres_max="X1.0",
-        thres_cum=10,
+        cadence=args.cadence,
+        window_size=args.window_size,
+        thres_max=args.thres_max,
+        thres_cum=args.thres_cum,
     )

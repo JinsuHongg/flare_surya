@@ -97,6 +97,7 @@ optimizer:
         patience: 10
 
 etc:
+  seed: 1004
   phase: train # test
   resume: false
   ckpt_dir: ./results/check_point/baselines/resnet18/daily_c/

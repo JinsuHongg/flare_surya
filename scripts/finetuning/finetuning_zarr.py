@@ -82,6 +82,10 @@ def build_model(cfg):
     config_name="experiment_with_zarr.yaml",
 )
 def train(cfg: OmegaConf):
+    import lightning as L
+    if hasattr(cfg.etc, "seed") and cfg.etc.seed is not None:
+        L.seed_everything(cfg.etc.seed, workers=True)
+
     # Datamodule
     datamodule = FlareDataModuleZarr(cfg=cfg)
 

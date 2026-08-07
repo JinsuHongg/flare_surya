@@ -98,6 +98,10 @@ def build_model(cfg):
     config_name="exp_surya",
 )
 def train(cfg: OmegaConf):
+    import lightning as L
+    if hasattr(cfg.etc, "seed") and cfg.etc.seed is not None:
+        L.seed_everything(cfg.etc.seed, workers=True)
+
     # Datamodule
     datamodule = SuryaFluxDataModule(cfg=cfg)
 

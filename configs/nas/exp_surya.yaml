@@ -147,6 +147,7 @@ optimizer:
         patience: 10
 
 etc:
+  seed: 1004
   phase: train # test
   resume: true
   ckpt_dir: ./results/check_point/surya_flare/8hour_c/

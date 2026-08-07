@@ -64,3 +64,5 @@ Thumbs.db
 *.csv
 *.pdf
 
+# Ignore docs directory as requested
+docs/

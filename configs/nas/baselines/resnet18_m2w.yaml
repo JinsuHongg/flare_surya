@@ -5,12 +5,12 @@ data:
   valid_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/val_M2w.csv
   leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/leaky_val_M2w.csv
   test_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/test_M2w.csv
-  apply_undersampling: true
-  undersample_factor: 4
+  apply_undersampling: false
+  undersample_factor: 1
   seed: 1004
 
 backbone:
-  pooling_type: attention_pooling
+  model_name: resnet18 # resnet18, resnet34, resnet50, alexnet,
 
 loss:
   type: cross_entropy
@@ -24,24 +24,24 @@ loss:
 
 optimizer:
   type: adamw
-  lr: 1.5e-4
-  weight_decay: 0.03
+  lr: 1e-4
+  weight_decay: 1e-2
 
 etc:
   phase: train # test
   resume: false
-  ckpt_dir: ./results/checkpoints/surya_flare/daily_m2w/
-  ckpt_name_tag: mlp_daily_m2w_ce_nosample
+  ckpt_dir: ./results/checkpoints/baselines/resnet18/daily_m2w/
+  ckpt_name_tag: resnet18_daily_m2w_ce_nosample
   ckpt_file: null
   ckpt_weights_only: false
   max_epochs: 50
 
 wandb:
-  name: mlp_daily_m2w_ce_nosample_nasgh
-  id: mlp_daily_m2w_ce_nosample_nasgh
+  name: resnet18_daily_m2w_ce_nosample_nasgh
+  id: resnet18_daily_m2w_ce_nosample_nasgh
   resume: allow
-  project: surya-flare-2hwindow-nosample
-  group: surya
+  project: flareforecasting-nosampling
+  group: resnet18
   notes: ""
   offline: false
-  tag: ["mlp", "M2w", "daily", "nasgh", "cross_entropy", "nosampling"] # backbone model, head type, task
+  tag: ["resnet18", "M2w", "nasgh", "daily", "cross_entropy", "nosampling"] # backbone model, head type, task

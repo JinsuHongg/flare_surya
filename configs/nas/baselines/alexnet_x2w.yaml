@@ -1,0 +1,47 @@
+# @package _global_
+
+data:
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/X2w/train_X2w.csv
+  valid_flare_data_path: ./data/surya-bench-flare-forecasting/X2w/val_X2w.csv
+  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/X2w/leaky_val_X2w.csv
+  test_flare_data_path: ./data/surya-bench-flare-forecasting/X2w/test_X2w.csv
+  apply_undersampling: true
+  undersample_factor: 4
+  seed: 1004
+
+backbone:
+  model_name: alexnet # resnet18, resnet34, resnet50, alexnet,
+
+loss:
+  type: cross_entropy
+  cross_entropy:
+    class_weights: [1.0, 2.0]
+  focal:
+    alpha: 0.75
+    gamma: 2.0
+    reduction: mean
+    label_smoothing: 0.2
+
+optimizer:
+  type: adamw
+  lr: 1e-5
+  weight_decay: 1e-3
+
+etc:
+  phase: train # test
+  resume: false
+  ckpt_dir: ./results/checkpoints/baselines/alexnet/daily_x2w/
+  ckpt_name_tag: alexnet_daily_x2w_ce_undersample
+  ckpt_file: last.ckpt
+  ckpt_weights_only: false
+  max_epochs: 50
+
+wandb:
+  name: alexnet_daily_x2w_ce_undersample_nasgh
+  id: alexnet_daily_x2w_ce_undersample_nasgh
+  resume: allow
+  project: surya-flare-2hwindow-undersample
+  group: alexent
+  notes: ""
+  offline: false
+  tag: ["alexnet", "X2w", "nasgh", "daily", "cross_entropy"] # backbone model, head type, task

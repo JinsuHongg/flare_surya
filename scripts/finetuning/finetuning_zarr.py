@@ -40,7 +40,7 @@ def build_model(cfg):
         "ensemble": cfg.backbone.ensemble,
         "finetune": cfg.backbone.finetune,
         "nglo": cfg.backbone.nglo,
-        "path_weights": cfg.backbone.path_weights,
+        "path_weights": None if (cfg.etc.resume and not cfg.etc.ckpt_weights_only) else cfg.backbone.path_weights,
         # Put finetuning additions below this line
         "pooling_type": cfg.backbone.pooling_type,
         "head_type": cfg.head.type,

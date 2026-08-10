@@ -1,7 +1,7 @@
 # @package _global_
 
 data:
-  train_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/train_M2w.csv
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/train_M2w_freq2.csv
   valid_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/val_M2w.csv
   leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/leaky_val_M2w.csv
   test_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/test_M2w.csv
@@ -30,18 +30,18 @@ optimizer:
 etc:
   phase: train # test
   resume: true
-  ckpt_dir: ./results/checkpoints/baselines/alexnet/daily_m2w/
-  ckpt_name_tag: alexnet_daily_m2w_ce_undersample
+  ckpt_dir: ./results/checkpoints/baselines/alexnet/2hour_m2w/
+  ckpt_name_tag: alexnet_2hour_m2w_ce_undersample
   ckpt_file: last.ckpt
   ckpt_weights_only: false
   max_epochs: 50
 
 wandb:
-  name: alexnet_daily_m2w_ce_undersample_nasgh
-  id: alexnet_daily_m2w_ce_undersample_nasgh
+  name: alexnet_2hour_m2w_ce_undersample_nasgh
+  id: alexnet_2hour_m2w_ce_undersample_nasgh
   resume: allow
   project: surya-flare-2hwindow-undersample
   group: alexent
   notes: ""
   offline: false
-  tag: ["alexnet", "M2w", "nasgh", "daily", "cross_entropy"] # backbone model, head type, task
+  tag: ["alexnet", "M2w", "nasgh", "2hour", "cross_entropy"] # backbone model, head type, task

@@ -1,7 +1,7 @@
 # @package _global_
 
 data:
-  train_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/train_M2w.csv
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/train_M2w_freq2.csv
   valid_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/val_M2w.csv
   leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/leaky_val_M2w.csv
   test_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/test_M2w.csv
@@ -30,18 +30,18 @@ optimizer:
 etc:
   phase: train # test
   resume: true
-  ckpt_dir: ./results/checkpoints/surya_flare/daily_m2w/
-  ckpt_name_tag: mlp_daily_m2w_ce_undersample
-  ckpt_file: mlp_daily_m2w_ce_undersample_lr1e-05_wd0.03_epoch=7.ckpt
+  ckpt_dir: ./results/checkpoints/surya_flare/2hour_m2w/
+  ckpt_name_tag: mlp_2hour_m2w_ce_undersample
+  ckpt_file: mlp_2hour_m2w_ce_undersample_lr1e-05_wd0.03_epoch=5.ckpt
   ckpt_weights_only: false
   max_epochs: 50
 
 wandb:
-  name: mlp_daily_m2w_ce_undersample_nasgh
-  id: mlp_daily_m2w_ce_undersample_nasgh
+  name: mlp_2hour_m2w_ce_undersample_nasgh
+  id: mlp_2hour_m2w_ce_undersample_nasgh
   resume: allow
   project: surya-flare-2hwindow-undersample
   group: surya
   notes: ""
   offline: false
-  tag: ["mlp", "M2w", "daily", "nasgh", "cross_entropy"] # backbone model, head type, task
+  tag: ["mlp", "M2w", "2hour", "nasgh", "cross_entropy"] # backbone model, head type, task

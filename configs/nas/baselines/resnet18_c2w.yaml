@@ -24,12 +24,12 @@ loss:
 
 optimizer:
   type: adamw
-  lr: 1e-4
-  weight_decay: 1e-2
+  lr: 1e-5
+  weight_decay: 1e-3
 
 etc:
   phase: train # test
-  resume: true
+  resume: false
   ckpt_dir: ./results/checkpoints/baselines/resnet18/8hour_c2w/
   ckpt_name_tag: resnet18_8hour_c2w_ce_nosample
   ckpt_file: last.ckpt

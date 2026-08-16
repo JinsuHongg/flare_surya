@@ -27,6 +27,7 @@ def build_model(config):
         num_classes=config.backbone.num_classes,
         p_drop=config.backbone.p_drop,
         threshold=config.backbone.threshold,
+        group_norm_groups=config.backbone.get("group_norm_groups", 8),
         optimizer_dict=config.optimizer,
         save_test_results_path=config.etc.save_test_results_path,
     )

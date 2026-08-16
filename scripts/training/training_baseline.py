@@ -32,6 +32,7 @@ def build_model(config):
         num_classes=config.backbone.num_classes,
         p_drop=config.backbone.p_drop,
         threshold=config.backbone.threshold,
+        group_norm_groups=config.backbone.group_norm_groups,
         optimizer_dict=config.optimizer,
         loss_dict=config.loss,
         save_test_results_path=config.etc.save_test_results_path,

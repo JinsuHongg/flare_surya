@@ -553,6 +553,7 @@ class FlareSurya(BaseModule):
         self.test_metrics.reset()
         self._flush_test_results()
 
+
     def configure_optimizers(self):
         optimizer_type = self.optimizer_dict.get("type", "adamw").lower()
         lr = self.optimizer_dict.get("lr", 1e-4)
@@ -629,6 +630,42 @@ class FlareSurya(BaseModule):
         return optimizer
 
 
+def replace_batch_norm_with_group_norm(module: nn.Module, num_groups: int) -> None:
+    """Replace BatchNorm2d layers in a module with GroupNorm layers.
+
+    Args:
+        module: Module whose child modules are inspected recursively.
+        num_groups: Number of groups to use in each GroupNorm layer.
+
+    Raises:
+        ValueError: If ``num_groups`` is not positive or does not divide a
+            BatchNorm layer's number of features.
+    """
+    if num_groups <= 0:
+        raise ValueError(f"num_groups must be positive, got {num_groups}.")
+
+    for name, child in module.named_children():
+        if isinstance(child, nn.BatchNorm2d):
+            if child.num_features % num_groups != 0:
+                raise ValueError(
+                    "num_groups must divide the BatchNorm feature count: "
+                    f"{num_groups} does not divide {child.num_features}."
+                )
+            group_norm = nn.GroupNorm(
+                num_groups=num_groups,
+                num_channels=child.num_features,
+                eps=child.eps,
+                affine=child.affine,
+            )
+            if child.affine:
+                with torch.no_grad():
+                    group_norm.weight.copy_(child.weight)
+                    group_norm.bias.copy_(child.bias)
+            setattr(module, name, group_norm)
+        else:
+            replace_batch_norm_with_group_norm(child, num_groups)
+
+
 class BaseLineModel(BaseModule):
     def __init__(
         self,
@@ -641,6 +678,7 @@ class BaseLineModel(BaseModule):
         # head parameters
         optimizer_dict,
         loss_dict,
+        group_norm_groups: int = 8,
         # misc
         save_test_results_path=None,
     ):
@@ -668,6 +706,9 @@ class BaseLineModel(BaseModule):
                     time_steps=time_steps,
                     num_classes=num_classes,
                     dropout=p_drop,
+                )
+                replace_batch_norm_with_group_norm(
+                    self.backbone, num_groups=group_norm_groups
                 )
             case "resnet34":
                 self.backbone = ResNet34Classifier(
@@ -1171,5 +1212,3 @@ class SuryaMultiModal(BaseModule):
 
         self.test_metrics.reset()
         self._flush_test_results()
-
-

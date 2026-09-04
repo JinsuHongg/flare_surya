@@ -10,10 +10,10 @@ hydra:
     dir: .
 
 data:
-  train_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/train_X24w_freq24.csv
-  valid_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/val_X24w.csv
-  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/leaky_val_X24w.csv
-  test_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/test_X24w_freq4.csv
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/X2w/train_X2w_freq24.csv
+  valid_flare_data_path: ./data/surya-bench-flare-forecasting/X2w/val_X2w.csv
+  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/X2w/leaky_val_X2w.csv
+  test_flare_data_path: ./data/surya-bench-flare-forecasting/X2w/test_X2w_freq4.csv
   apply_undersampling: false
   undersample_factor: 1
   seed: 1004
@@ -24,18 +24,18 @@ backbone:
 etc:
   phase: test # test
   resume: true
-  ckpt_dir: ./results/checkpoints/surya_flare/2hour_x/
-  ckpt_name_tag: mlp_2hour_x_ce_nosample
+  ckpt_dir: ./results/checkpoints/surya_flare/2hour_x2w/
+  ckpt_name_tag: mlp_2hour_x2w_ce_nosample
   ckpt_file: last.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ./results/surya_2hour_x_ce_nosample.csv
+  save_test_results_path: ./results/surya_2hour_x2w_ce_nosample.csv
 
 wandb:
-  name: mlp_2hour_x_ce_nosample_nasgh_test
-  id: mlp_2hour_x_ce_nosample_nasgh_test
+  name: mlp_2hour_x2w_ce_nosample_nasgh_test
+  id: mlp_2hour_x2w_ce_nosample_nasgh_test
   resume: allow
   project: flareforecasting-nosampling-test
   group: surya
   offline: false
   notes: ""
-  tag: ["mlp", "X", "2hour", "nasgh", "cross_entropy", "undersampling"] # backbone model, head type, task
+  tag: ["mlp", "X2w", "2hour", "nasgh", "cross_entropy", "undersampling"] # backbone model, head type, task

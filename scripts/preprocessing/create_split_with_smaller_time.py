@@ -18,11 +18,11 @@ def create_data_with_hour(
 
 if __name__ == "__main__":
     base_dir = Path("./data/surya-bench-flare-forecasting/")
-    source_freq = "C2w"
-    hour = 8
+    source_freq = "M2w"
+    hour = 4
     stem_suffix = f"_freq{hour}.csv"
 
-    target_files = ["train"]
+    target_files = ["test"]
 
     for stem in target_files:
         create_data_with_hour(

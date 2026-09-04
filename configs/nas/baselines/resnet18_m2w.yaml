@@ -1,7 +1,7 @@
 # @package _global_
 
 data:
-  train_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/train_M2w_freq2.csv
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/train_M2w_freq3.csv
   valid_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/val_M2w.csv
   leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/leaky_val_M2w.csv
   test_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/test_M2w.csv
@@ -29,19 +29,19 @@ optimizer:
 
 etc:
   phase: train # test
-  resume: true
-  ckpt_dir: ./results/checkpoints/baselines/resnet18/2hour_m2w/
-  ckpt_name_tag: resnet18_2hour_m2w_ce_nosample_groupnorm
+  resume: false
+  ckpt_dir: ./results/checkpoints/baselines/resnet18/3hour_m2w/
+  ckpt_name_tag: resnet18_3hour_m2w_ce_nosample_groupnorm
   ckpt_file: last.ckpt
   ckpt_weights_only: false
   max_epochs: 50
 
 wandb:
-  name: resnet18_2hour_m2w_ce_undersample_nasgh_groupnorm
-  id: resnet18_2hour_m2w_ce_undersample_nasgh_groupnorm
+  name: resnet18_3hour_m2w_ce_undersample_nasgh_groupnorm
+  id: resnet18_3hour_m2w_ce_undersample_nasgh_groupnorm
   resume: allow
   project: surya-flare-2hwindow-undersample
   group: resnet18
   notes: ""
   offline: false
-  tag: ["resnet18", "M2w", "nasgh", "2hour", "cross_entropy"] # backbone model, head type, task
+  tag: ["resnet18", "M2w", "nasgh", "3hour", "cross_entropy"] # backbone model, head type, task

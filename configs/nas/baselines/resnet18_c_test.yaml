@@ -1,0 +1,44 @@
+# @package _global_
+
+data:
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/train_C2w_freq8.csv
+  valid_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/val_C2w.csv
+  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/leaky_val_C2w.csv
+  test_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/test_C2w_freq4.csv
+
+backbone:
+  model_name: resnet18 # resnet18, resnet34, resnet50, alexnet,
+
+loss:
+  type: cross_entropy
+  cross_entropy:
+    class_weights: [1.0, 2.0]
+  focal:
+    alpha: 0.25
+    gamma: 2.0
+    reduction: mean
+
+optimizer:
+  type: adamw
+  lr: 1e-4
+  weight_decay: 1e-2
+
+etc:
+  phase: test # test
+  resume: true
+  ckpt_dir: ./results/checkpoints/baselines/resnet18/8hour_c2w/
+  ckpt_name_tag: resnet18_8hour_c2w_test
+  ckpt_file: resnet18_8hour_c2w_ce_nosample_groupnorm_lr1e-05_wd0.001_epoch=5.ckpt
+  ckpt_weights_only: false
+  save_test_results_path: ./results/test_results/resnet18_c2w_8hour_test_result.csv
+
+wandb:
+  name: resnet18_8hour_c2w_test
+  id: resnet18_8hour_c2w_test
+  resume: allow
+  project: flareforecasting-nosampling-test
+  group: resnet18
+  offline: false
+  notes: ""
+  tag: ["resnet18", "C2w", "nasgh", "8hour", "test"] # backbone model, head type, task
+

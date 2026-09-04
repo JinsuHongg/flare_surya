@@ -1,7 +1,7 @@
 # @package _global_
 
 data:
-  train_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/train_C2w_freq12.csv
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/train_C2w_freq24.csv
   valid_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/val_C2w.csv
   leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/leaky_val_C2w.csv
   test_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/test_C2w.csv
@@ -30,18 +30,18 @@ optimizer:
 etc:
   phase: train # test
   resume: true
-  ckpt_dir: ./results/checkpoints/baselines/resnet18/12hour_c2w/
-  ckpt_name_tag: resnet18_12hour_c2w_ce_nosample_groupnorm
+  ckpt_dir: ./results/checkpoints/baselines/resnet18/daily_c2w/
+  ckpt_name_tag: resnet18_daily_c2w_ce_nosample_groupnorm
   ckpt_file: last.ckpt
   ckpt_weights_only: false
   max_epochs: 50
 
 wandb:
-  name: resnet18_12hour_c2w_ce_nosample_nasgh_groupnorm
-  id: resnet18_12hour_c2w_ce_nosample_nasgh_groupnorm
+  name: resnet18_daily_c2w_ce_nosample_nasgh_groupnorm
+  id: resnet18_daily_c2w_ce_nosample_nasgh_groupnorm
   resume: allow
   project: surya-flare-2hwindow-nosample
   group: resnet18
   notes: ""
   offline: false
-  tag: ["resnet18", "C2w", "nasgh", "12hour", "cross_entropy", "nosampling"] # backbone model, head type, task
+  tag: ["resnet18", "C2w", "nasgh", "daily", "cross_entropy", "nosampling"] # backbone model, head type, task

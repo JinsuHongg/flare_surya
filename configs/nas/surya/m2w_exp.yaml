@@ -30,7 +30,7 @@ optimizer:
 etc:
   phase: train # test
   resume: true
-  ckpt_dir: /nobackupnfs1/sroy14/heliofm/jinsu/checkpoints/3hour_m2w/
+  ckpt_dir: /nobackupnfs1/sroy14/heliofm/jinsu/checkpoints/surya/3hour_m2w/
   ckpt_name_tag: mlp_3hour_m2w_ce_undersample
   ckpt_file: last.ckpt
   ckpt_weights_only: false

@@ -1,14 +1,5 @@
 # @package _global_
 
-defaults:
-  - override /hydra/job_logging: disabled
-  - override /hydra/hydra_logging: disabled
-
-hydra:
-  output_subdir: null
-  run:
-    dir: .
-
 data:
   train_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/train_C2w.csv
   valid_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/val_C2w.csv
@@ -33,7 +24,7 @@ loss:
 etc:
   phase: test # test
   resume: true
-  ckpt_dir: ./results/checkpoints/surya_flare/8hour_c2w/
+  ckpt_dir: /nobackupnfs1/sroy14/heliofm/jinsu/checkpoints/surya/8hour_c2w/
   ckpt_name_tag: null
   ckpt_file: mlp_8hour_c2w_ce_nosample_lr0.00015_wd0.03_epoch=3.ckpt
   ckpt_weights_only: false

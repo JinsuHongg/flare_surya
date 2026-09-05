@@ -1,14 +1,5 @@
 # @package _global_
 
-defaults:
-  - override /hydra/job_logging: disabled
-  - override /hydra/hydra_logging: disabled
-
-hydra:
-  output_subdir: null
-  run:
-    dir: .
-
 data:
   train_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/train_M2w_freq24.csv
   valid_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/val_M2w.csv

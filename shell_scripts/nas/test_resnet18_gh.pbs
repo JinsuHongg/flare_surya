@@ -24,4 +24,4 @@ fi
 
 source /nobackupp17/jhong15/miniforge3_gh/etc/profile.d/conda.sh
 conda activate flare_surya
-python scripts/training/training_baseline.py +baselines=resnet18_c_test
+python scripts/training/training_baseline.py +baselines=resnet18_m_test

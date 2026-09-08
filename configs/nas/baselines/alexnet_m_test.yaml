@@ -10,7 +10,7 @@ data:
   seed: 1004
 
 backbone:
-  pooling_type: attention_pooling
+  model_name: alexnet # resnet18, resnet34, resnet50, alexnet,
 
 loss:
   type: cross_entropy
@@ -22,24 +22,24 @@ loss:
     reduction: mean
 
 optimizer:
-  lr: 1.5e-5
-  weight_decay: 0.03
+  lr: 1e-5
+  weight_decay: 0.001
 
 etc:
   phase: test # test
   resume: true
-  ckpt_dir: /nobackupnfs1/sroy14/heliofm/jinsu/checkpoints/surya/2hour_m2w
-  ckpt_name_tag: mlp_2hour_m2w_ce_nosample
-  ckpt_file: mlp_2hour_m2w_ce_undersample_lr1e-05_wd0.03_epoch=16.ckpt
+  ckpt_dir: ./results/checkpoints/baselines/alexnet/2hour_m2w/
+  ckpt_name_tag: alexnet_2hour_m2w_ce_nosample
+  ckpt_file: alexnet_2hour_m2w_ce_undersample_lr1e-05_wd0.001_epoch=11.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ./results/surya_2hour_m2w_ce_nosample.csv
+  save_test_results_path: ./results/alexnet_m2w_2hour_test_result.csv
 
 wandb:
-  name: mlp_2hour_m2w_ce_nosample_nasgh_test
-  id: mlp_2hour_m2w_ce_nosample_nasgh_test
+  name: alexnet_2hour_m2w_test
+  id: alexnet_2hour_m2w_test
   resume: allow
   project: flareforecasting-nosampling-test
-  group: surya
+  group: alexnet
   offline: false
   notes: ""
-  tag: ["mlp", "M2w", "2hour", "nasgh", "cross_entropy", "undersampling"] # backbone model, head type, task
+  tag: ["alexnet", "M2w", "nasgh", "2hour", "cross_entropy", "nosampling", "test"] # backbone model, head type, task

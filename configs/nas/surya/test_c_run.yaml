@@ -21,21 +21,25 @@ loss:
     gamma: 2.0
     reduction: mean
 
+optimizer:
+  lr: 1.5e-5
+  weight_decay: 0.03
+
 etc:
   phase: test # test
   resume: true
-  ckpt_dir: /nobackupnfs1/sroy14/heliofm/jinsu/checkpoints/surya/12hour_c2w/
+  ckpt_dir: /nobackupnfs1/sroy14/heliofm/jinsu/checkpoints/surya/daily_c2w/
   ckpt_name_tag: null
-  ckpt_file: mlp_12hour_c2w_ce_nosample_lr0.00015_wd0.03_epoch=2.ckpt
+  ckpt_file: mlp_daily_c2w_ce_nosample_lr0.00015_wd0.03_epoch=7.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ./results/test_results/surya_12hour_c2w_ce_nosample.csv
+  save_test_results_path: ./results/test_results/surya_daily_c2w_ce_nosample.csv
 
 wandb:
-  name: mlp_12hour_c2w_ce_nosample_nasgh_test
-  id: mlp_12hour_c2w_ce_nosample_nasgh_test
+  name: mlp_daily_c2w_ce_nosample_nasgh_test
+  id: mlp_daily_c2w_ce_nosample_nasgh_test
   resume: allow
   project: flareforecasting-nosampling-test
   group: surya
   offline: false
   notes: ""
-  tag: ["mlp", "C2w", "12hour", "nasgh", "cross_entropy", "nosampling"] # backbone model, head type, task
+  tag: ["mlp", "C2w", "daily", "nasgh", "cross_entropy", "nosampling"] # backbone model, head type, task

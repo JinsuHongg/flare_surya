@@ -1,7 +1,7 @@
 # @package _global_
 
 data:
-  train_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/train_C2w_freq8.csv
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/train_C2w_freq24.csv
   valid_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/val_C2w.csv
   leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/leaky_val_C2w.csv
   test_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/test_C2w_freq4.csv
@@ -31,7 +31,7 @@ etc:
   resume: true
   ckpt_dir: ./results/checkpoints/baselines/resnet18/daily_c2w/
   ckpt_name_tag: resnet18_daily_c2w_test
-  ckpt_file: resnet18_daily_c2w_ce_nosample_groupnorm_lr1e-05_wd0.001_epoch=10.ckpt
+  ckpt_file: resnet18_daily_c2w_ce_nosample_groupnorm_lr1e-05_wd0.001_epoch=12.ckpt
   ckpt_weights_only: false
   save_test_results_path: ./results/test_results/resnet18_c2w_daily_test_result.csv
 

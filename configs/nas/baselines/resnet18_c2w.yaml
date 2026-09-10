@@ -32,7 +32,7 @@ etc:
   resume: true
   ckpt_dir: ./results/checkpoints/baselines/resnet18/daily_c2w/
   ckpt_name_tag: resnet18_daily_c2w_ce_nosample_groupnorm
-  ckpt_file: last.ckpt
+  ckpt_file: resnet18_daily_c2w_ce_nosample_groupnorm_lr1e-05_wd0.001_epoch=9.ckpt
   ckpt_weights_only: false
   max_epochs: 50
 

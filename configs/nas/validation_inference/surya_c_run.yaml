@@ -1,0 +1,20 @@
+# Config-first validation recovery for one selected Surya checkpoint.
+# Edit this manifest and the referenced Hydra configs; no W&B config is read.
+model_kind: surya
+architecture: Surya
+run_id: ???
+checkpoint_path: ???
+output_dir: ./results/validation_predictions
+event_threshold: c
+forecasting_window_hours: 2
+sampling_strategy: full
+sampling_interval_hours: ???
+device: cuda
+dry_run: false
+overwrite: false
+# These paths are asserted against the composed configuration before inference.
+validation_image_index_path: ./data/surya-bench_sdo.csv
+validation_label_index_path: ./data/surya-bench-flare-forecasting/C2w/val_C2w.csv
+# Modify these files directly, or point to dedicated copies for this recovery.
+base_config: configs/nas/exp_surya.yaml
+experiment_config: configs/nas/surya/c2w_exp.yaml

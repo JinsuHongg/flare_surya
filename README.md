@@ -1,34 +1,54 @@
-# README #
+# flare-surya
 
-This is the flare forecasting experiments using Surya, Terratorch-Surya, and Terratorch.
+`flare-surya` evaluates the Surya heliophysics foundation model for imbalanced
+solar-flare forecasting, alongside AlexNet and ResNet18 supervised baselines.
+The current study is being prepared for *Scientific Reports* and examines when
+a foundation-model advantage persists—and when rare-event sample scarcity
+limits it.
 
-## Data
-All the experiments are based on Surya Bench dataset. You can download the flare dataset [here](https://huggingface.co/datasets/nasa-ibm-ai4science/surya-bench-flare-forecasting)
+The experiments use the [Surya Bench flare-forecasting dataset](https://huggingface.co/datasets/nasa-ibm-ai4science/surya-bench-flare-forecasting).
+Surya input imagery is provided separately through the associated Surya data
+release. This repository does not include the dataset, checkpoints, W&B runs,
+or generated results.
 
-For the Surya input data (4K SDO images), please contact [Surya](https://huggingface.co/datasets/nasa-ibm-ai4science/core-sdo).
+## Experiment organization
 
-### What is this repository for? ###
+- `configs/nas/surya/`: Surya fine-tuning configurations.
+- `configs/nas/baselines/`: AlexNet and ResNet18 configurations.
+- `configs/nas/exp_surya.yaml` and `configs/nas/baselines_exp.yaml`: shared
+  Hydra defaults.
+- `scripts/finetuning/`: Surya training and test entry points.
+- `scripts/training/`: baseline training and test entry points.
+- `shell_scripts/`: PBS launch scripts.
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+The study separates a 24-hour forecasting-window historical experiment family
+from an active 2-hour forecasting-window family. “Forecasting window” is the
+prediction horizon; “sampling interval” is the frequency used to extract
+timeline samples. See [the current research state](docs/research/current_state.md),
+[24-hour experiments](docs/experiments/24h_forecasting.md), and
+[2-hour experiments](docs/experiments/2h_forecasting.md) for the evidence and
+status matrix.
 
-### How do I get set up? ###
+## Running configured work
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+With the project environment and data paths available, launch Hydra-configured
+Surya jobs with:
 
-### Contribution guidelines ###
+```bash
+python scripts/finetuning/finetuning.py +surya=c2w_exp
+```
 
-* Writing tests
-* Code review
-* Other guidelines
+Launch a baseline job with:
 
-### Who do I talk to? ###
+```bash
+python scripts/training/training_baseline.py +baselines=resnet18_c2w
+```
 
-* Repo owner or admin
-* Other community or team contact
+Use a test configuration (for example, `+surya=test_m_run` or
+`+baselines=resnet18_m_test`) only after verifying its referenced checkpoint
+and test index. PBS launch scripts under `shell_scripts/nas/` encode the
+cluster execution environment.
+
+Large and local artifacts—including `data/`, `results/`, checkpoints, W&B
+files, logs, Zarr stores, and CSV outputs—are intentionally ignored. Project
+documentation under `docs/` is version controlled.

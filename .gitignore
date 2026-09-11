@@ -13,6 +13,7 @@
 node_modules/
 dist/
 results/
+configs/nas/validation_inference/generated/
 *egg-info/
 wandb/
 logs/
@@ -63,6 +64,3 @@ Thumbs.db
 *.wmv
 *.csv
 *.pdf
-
-# Ignore docs directory as requested
-docs/

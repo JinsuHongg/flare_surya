@@ -1,0 +1,59 @@
+% Validation-only tables for the Solar Cycle 24 manuscript.
+% Source: results/audits/validation_wandb_cloud_audit.csv.
+% Surya corresponds to the organized mlp_* experiment IDs.
+
+\begin{table*}[t]
+\centering
+\caption{Validation performance on Solar Cycle 24 using the full training data. The best checkpoint for each configuration was selected using validation CSS, where $\mathrm{CSS}=\sqrt{\mathrm{TSS}\times\mathrm{HSS}}$. Bold values indicate the highest CSS for each model and flare threshold across sampling intervals.}
+\label{tab:validation-full-data}
+\small
+\begin{tabular}{llrrr rrr}
+\toprule
+& & \multicolumn{3}{c}{Flare threshold $\geq$ C1.0} & \multicolumn{3}{c}{Flare threshold $\geq$ M1.0} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+Sampling interval & Model & HSS & TSS & CSS & HSS & TSS & CSS \\
+\midrule
+\multirow{2}{*}{24 h}
+  & Surya   & 0.5637 & 0.5650 & 0.5643 & 0.5500 & 0.6159 & 0.5820 \\
+  & AlexNet & 0.5726 & 0.5733 & 0.5730 & 0.5501 & 0.5743 & 0.5621 \\
+\addlinespace
+\multirow{2}{*}{12 h}
+  & Surya   & 0.6298 & 0.6298 & 0.6298 & 0.5304 & 0.6763 & \textbf{0.5989} \\
+  & AlexNet & 0.6242 & 0.6238 & 0.6240 & 0.5965 & 0.5724 & \textbf{0.5843} \\
+\addlinespace
+\multirow{2}{*}{8 h}
+  & Surya   & 0.6417 & 0.6428 & \textbf{0.6423} & 0.5451 & 0.6037 & 0.5736 \\
+  & AlexNet & 0.6301 & 0.6297 & \textbf{0.6299} & 0.5809 & 0.4871 & 0.5320 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\caption{Validation performance on Solar Cycle 24 using undersampled training data. The best checkpoint for each configuration was selected using validation CSS, where $\mathrm{CSS}=\sqrt{\mathrm{TSS}\times\mathrm{HSS}}$. Bold values indicate the highest CSS for each model and flare threshold across sampling intervals.}
+\label{tab:validation-undersampled-data}
+\small
+\begin{tabular}{llrrr rrr}
+\toprule
+& & \multicolumn{3}{c}{Flare threshold $\geq$ M1.0} & \multicolumn{3}{c}{Flare threshold $\geq$ X1.0} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+Sampling interval & Model & HSS & TSS & CSS & HSS & TSS & CSS \\
+\midrule
+\multirow{2}{*}{4 h}
+  & Surya   & 0.5204 & 0.6311 & 0.5731 & 0.0123 & 0.1385 & 0.0413 \\
+  & AlexNet & 0.6012 & 0.6167 & \textbf{0.6089} & 0.1494 & 0.9249 & \textbf{0.3717} \\
+\addlinespace
+\multirow{2}{*}{3 h}
+  & Surya   & 0.5251 & 0.6638 & \textbf{0.5904} & 0.0372 & 0.0657 & 0.0494 \\
+  & AlexNet & 0.5842 & 0.5856 & 0.5849 & 0.0666 & 0.8333 & 0.2355 \\
+\addlinespace
+\multirow{2}{*}{2 h}
+  & Surya   & 0.5167 & 0.6417 & 0.5758 & 0.0234 & 0.2380 & \textbf{0.0746} \\
+  & AlexNet & 0.5187 & 0.6488 & 0.5801 & 0.0154 & 0.0687 & 0.0326 \\
+\addlinespace
+\multirow{2}{*}{1 h}
+  & Surya   & -- & -- & -- & 0.0102 & 0.1073 & 0.0331 \\
+  & AlexNet & -- & -- & -- & 0.0192 & 0.0999 & 0.0438 \\
+\bottomrule
+\end{tabular}
+\end{table*}

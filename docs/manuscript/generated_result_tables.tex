@@ -1,0 +1,211 @@
+% Generated from results/audits/validation_wandb_cloud_audit.csv,
+% results/audits/test_wandb_cloud_results.csv, and
+% results/audits/test_wandb_project_audit.csv. Point estimates only.
+
+\begin{table*}[t]
+\centering
+\caption{Validation performance on Solar Cycle 24 for the 24-hour forecasting window. For each model and sampling interval, the checkpoint with the highest validation CSS was retained, where $\mathrm{CSS}=\sqrt{\mathrm{TSS}\times\mathrm{HSS}}$. Bold values indicate the highest CSS for each model and flare threshold across the evaluated sampling intervals.}
+\label{tab:validation-24h}
+\small
+\textit{(a) Full/non-undersampled training data.}\\[2pt]
+\begin{tabular}{llrrr rrr}
+\toprule
+& & \multicolumn{3}{c}{Flare threshold $\geq$ C1.0} & \multicolumn{3}{c}{Flare threshold $\geq$ M1.0} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+Sampling interval & Model & HSS & TSS & CSS & HSS & TSS & CSS \\
+\midrule
+\multirow{2}{*}{24 h}
+  & Surya & 0.5637 & 0.5650 & 0.5643 & 0.5500 & 0.6159 & 0.5820 \\
+  & AlexNet & 0.5726 & 0.5733 & 0.5730 & 0.5501 & 0.5743 & 0.5621 \\
+\addlinespace
+\multirow{2}{*}{12 h}
+  & Surya & 0.6298 & 0.6298 & 0.6298 & 0.5304 & 0.6763 & \textbf{0.5989} \\
+  & AlexNet & 0.6242 & 0.6238 & 0.6240 & 0.5965 & 0.5724 & \textbf{0.5843} \\
+\addlinespace
+\multirow{2}{*}{8 h}
+  & Surya & 0.6417 & 0.6428 & \textbf{0.6423} & 0.5451 & 0.6037 & 0.5736 \\
+  & AlexNet & 0.6301 & 0.6297 & \textbf{0.6299} & 0.5809 & 0.4871 & 0.5320 \\
+\bottomrule
+\end{tabular}
+
+\medskip
+\textit{(b) Undersampled training data.}\\[2pt]
+\begin{tabular}{llrrr rrr}
+\toprule
+& & \multicolumn{3}{c}{Flare threshold $\geq$ M1.0} & \multicolumn{3}{c}{Flare threshold $\geq$ X1.0} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+Sampling interval & Model & HSS & TSS & CSS & HSS & TSS & CSS \\
+\midrule
+\multirow{2}{*}{4 h}
+  & Surya & 0.5204 & 0.6311 & 0.5731 & 0.0123 & 0.1385 & 0.0413 \\
+  & AlexNet & 0.6012 & 0.6167 & \textbf{0.6089} & 0.1494 & 0.9249 & \textbf{0.3717} \\
+\addlinespace
+\multirow{2}{*}{3 h}
+  & Surya & 0.5251 & 0.6638 & \textbf{0.5904} & 0.0372 & 0.0657 & 0.0494 \\
+  & AlexNet & 0.5842 & 0.5856 & 0.5849 & 0.0666 & 0.8333 & 0.2355 \\
+\addlinespace
+\multirow{2}{*}{2 h}
+  & Surya & 0.5167 & 0.6417 & 0.5758 & 0.0234 & 0.2380 & \textbf{0.0746} \\
+  & AlexNet & 0.5187 & 0.6488 & 0.5801 & 0.0154 & 0.0687 & 0.0326 \\
+\addlinespace
+\multirow{2}{*}{1 h}
+  & Surya & -- & -- & -- & 0.0102 & 0.1073 & 0.0331 \\
+  & AlexNet & -- & -- & -- & 0.0192 & 0.0999 & 0.0438 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\caption{Performance on the Solar Cycle 25 test set for the 24-hour forecasting window. HSS and TSS quantify forecast skill, while FAR and POD characterize false-alarm burden and event detection. Point estimates are shown without bootstrap confidence intervals.}
+\label{tab:test-24h}
+\small
+\textit{(a) Full/non-undersampled training data.}\\[2pt]
+\begin{tabular}{llrrrr rrrr}
+\toprule
+& & \multicolumn{4}{c}{Flare threshold $\geq$ C1.0} & \multicolumn{4}{c}{Flare threshold $\geq$ M1.0} \\
+\cmidrule(lr){3-6}\cmidrule(lr){7-10}
+Sampling interval & Model & HSS & TSS & FAR & POD & HSS & TSS & FAR & POD \\
+\midrule
+\multirow{2}{*}{24 h}
+  & Surya & 0.7335 & 0.7177 & 0.1414 & 0.9416 & 0.3346 & 0.2936 & 0.4461 & 0.3708 \\
+  & AlexNet & 0.7642 & 0.7646 & 0.0955 & 0.9022 & 0.4150 & 0.3919 & 0.4282 & 0.4860 \\
+\addlinespace
+\multirow{2}{*}{12 h}
+  & Surya & 0.6753 & 0.7117 & 0.0250 & 0.7390 & 0.4358 & 0.4287 & 0.4382 & 0.5370 \\
+  & AlexNet & 0.7345 & 0.7640 & 0.0277 & 0.7968 & 0.4499 & 0.4374 & 0.4188 & 0.5375 \\
+\addlinespace
+\multirow{2}{*}{8 h}
+  & Surya & 0.7975 & 0.8105 & 0.0514 & 0.8793 & 0.4320 & 0.4109 & 0.4185 & 0.5049 \\
+  & AlexNet & 0.6939 & 0.7298 & 0.0200 & 0.7519 & 0.4254 & 0.3895 & 0.3939 & 0.4682 \\
+\bottomrule
+\end{tabular}
+
+\medskip
+\textit{(b) Undersampled training data.}\\[2pt]
+\begin{tabular}{llrrrr rrrr}
+\toprule
+& & \multicolumn{4}{c}{Flare threshold $\geq$ M1.0} & \multicolumn{4}{c}{Flare threshold $\geq$ X1.0} \\
+\cmidrule(lr){3-6}\cmidrule(lr){7-10}
+Sampling interval & Model & HSS & TSS & FAR & POD & HSS & TSS & FAR & POD \\
+\midrule
+\multirow{2}{*}{4 h}
+  & Surya & 0.4341 & 0.4019 & 0.3954 & 0.4837 & -- & -- & -- & -- \\
+  & AlexNet & 0.4663 & 0.4657 & 0.4232 & 0.5748 & -- & -- & -- & -- \\
+\addlinespace
+\multirow{2}{*}{3 h}
+  & Surya & 0.4676 & 0.4824 & 0.4414 & 0.6063 & 0.0672 & 0.1765 & 0.9437 & 0.2426 \\
+  & AlexNet & 0.4871 & 0.5723 & 0.4856 & 0.7570 & 0.0391 & 0.5351 & 0.9644 & 0.9559 \\
+\addlinespace
+\multirow{2}{*}{2 h}
+  & Surya & 0.4759 & 0.4948 & 0.4394 & 0.6206 & 0.0554 & 0.4597 & 0.9554 & 0.7059 \\
+  & AlexNet & 0.4395 & 0.5717 & 0.5438 & 0.8264 & 0.0525 & 0.4916 & 0.9571 & 0.7721 \\
+\addlinespace
+\multirow{2}{*}{1 h}
+  & Surya & -- & -- & -- & -- & 0.0797 & 0.4660 & 0.9417 & 0.6324 \\
+  & AlexNet & -- & -- & -- & -- & 0.0588 & 0.5035 & 0.9537 & 0.7574 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\caption{Performance on the Solar Cycle 25 test set for the active 2-hour forecasting-window experiment family. Run IDs containing \texttt{c2w} denote the C1.0 threshold with a 2-hour forecasting window, and IDs containing \texttt{m2w} denote the M1.0 threshold with a 2-hour forecasting window. Point estimates are shown without bootstrap confidence intervals.}
+\label{tab:test-2h}
+\small
+\textit{(a) Flare threshold $\geq$ C1.0; full/non-undersampled training data.}\\[2pt]
+\begin{tabular}{llrrrr}
+\toprule
+Sampling interval & Model & HSS & TSS & FAR & POD \\
+\midrule
+\multirow{3}{*}{24 h}
+  & Surya & 0.2762 & 0.2306 & 0.4153 & 0.2993 \\
+  & AlexNet & 0.4240 & 0.4856 & 0.4990 & 0.7161 \\
+  & ResNet18 & -- & -- & -- & -- \\
+\addlinespace
+\multirow{3}{*}{12 h}
+  & Surya & 0.0463 & 0.0321 & 0.5025 & 0.0477 \\
+  & AlexNet & 0.4311 & 0.5433 & 0.5237 & 0.8429 \\
+  & ResNet18 & 0.4771 & 0.5666 & 0.4801 & 0.8077 \\
+\addlinespace
+\multirow{3}{*}{8 h}
+  & Surya & 0.2003 & 0.1565 & 0.4218 & 0.2048 \\
+  & AlexNet & 0.4312 & 0.4829 & 0.4863 & 0.6959 \\
+  & ResNet18 & 0.4103 & 0.4007 & 0.4303 & 0.5301 \\
+\bottomrule
+\end{tabular}
+
+\medskip
+\textit{(b) Flare threshold $\geq$ M1.0; undersampled training data.}\\[2pt]
+\begin{tabular}{llrrrr}
+\toprule
+Sampling interval & Model & HSS & TSS & FAR & POD \\
+\midrule
+\multirow{3}{*}{3 h}
+  & Surya & -- & -- & -- & -- \\
+  & AlexNet & -- & -- & -- & -- \\
+  & ResNet18 & -- & -- & -- & -- \\
+\addlinespace
+\multirow{3}{*}{2 h}
+  & Surya & 0.0910 & 0.0641 & 0.8100 & 0.0739 \\
+  & AlexNet & -- & -- & -- & -- \\
+  & ResNet18 & 0.1847 & 0.3281 & 0.8475 & 0.3969 \\
+\addlinespace
+\multirow{3}{*}{1 h}
+  & Surya & 0.1471 & 0.1236 & 0.7907 & 0.1401 \\
+  & AlexNet & 0.1738 & 0.3667 & 0.8617 & 0.4553 \\
+  & ResNet18 & 0.1771 & 0.2980 & 0.8498 & 0.3619 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\caption{Validation performance on Solar Cycle 24 for the 2-hour forecasting window. For each model and sampling interval, the checkpoint with the highest validation CSS was retained, where $\mathrm{CSS}=\sqrt{\mathrm{TSS}\times\mathrm{HSS}}$. The experiment family remains active; no final best-sampling-interval emphasis is shown.}
+\label{tab:validation-2h}
+\small
+\textit{(a) Flare threshold $\geq$ C1.0; full/non-undersampled training data.}\\[2pt]
+\begin{tabular}{llrrr}
+\toprule
+Sampling interval & Model & HSS & TSS & CSS \\
+\midrule
+\multirow{3}{*}{24 h}
+  & Surya & 0.3830 & 0.5111 & 0.4424 \\
+  & AlexNet & 0.3440 & 0.3848 & 0.3638 \\
+  & ResNet18 & \multicolumn{3}{c}{Ongoing} \\
+\addlinespace
+\multirow{3}{*}{12 h}
+  & Surya & 0.4365 & 0.4710 & 0.4534 \\
+  & AlexNet & 0.3223 & 0.4826 & 0.3944 \\
+  & ResNet18 & 0.3115 & 0.4585 & 0.3779 \\
+\addlinespace
+\multirow{3}{*}{8 h}
+  & Surya & 0.4029 & 0.4335 & 0.4179 \\
+  & AlexNet & 0.3324 & 0.3755 & 0.3533 \\
+  & ResNet18 & 0.2896 & 0.4314 & 0.3535 \\
+\bottomrule
+\end{tabular}
+
+\medskip
+\textit{(b) Flare threshold $\geq$ M1.0; undersampled training data.}\\[2pt]
+\begin{tabular}{llrrr}
+\toprule
+Sampling interval & Model & HSS & TSS & CSS \\
+\midrule
+\multirow{3}{*}{3 h}
+  & Surya & 0.2221 & 0.5953 & 0.3636 \\
+  & AlexNet & 0.2021 & 0.6535 & 0.3634 \\
+  & ResNet18 & 0.1357 & 0.7817 & 0.3257 \\
+\addlinespace
+\multirow{3}{*}{2 h}
+  & Surya & 0.2364 & 0.6643 & 0.3963 \\
+  & AlexNet & \multicolumn{3}{c}{Ongoing} \\
+  & ResNet18 & 0.1594 & 0.7591 & 0.3479 \\
+\addlinespace
+\multirow{3}{*}{1 h}
+  & Surya & 0.2008 & 0.8027 & 0.4015 \\
+  & AlexNet & 0.2299 & 0.6191 & 0.3773 \\
+  & ResNet18 & 0.1719 & 0.7458 & 0.3581 \\
+\bottomrule
+\end{tabular}
+\end{table*}

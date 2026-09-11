@@ -1,0 +1,20 @@
+% Validation-only, two-hour forecasting-window results for flare threshold X1.0.
+% Source: W&B cloud runs alexnet_daily_x2w_ce_undersample_nasgh_lr1e-05_wd0.001
+% and mlp_daily_x2w_ce_undersample_nasgh_lr1e-05_wd0.03.
+
+\begin{table*}[t]
+\centering
+\caption{Validation performance on Solar Cycle 24 using a two-hour forecasting window, undersampled training data, and flare threshold $\geq$ X1.0. The best checkpoint for each configuration was selected using validation CSS, where $\mathrm{CSS}=\sqrt{\mathrm{TSS}\times\mathrm{HSS}}$. Only \texttt{daily\_x2w} runs were available; their sampling interval is not recorded in the experiment ledger and requires confirmation.}
+\label{tab:validation-2h-x}
+\small
+\begin{tabular}{llrrr}
+\toprule
+Sampling interval & Model & HSS & TSS & CSS \\
+\midrule
+\multirow{3}{*}{TODO}
+  & Surya    & 0.002569 & 0.684304 & \textbf{0.041930} \\
+  & AlexNet  & 0.000007 & 0.005945 & \textbf{0.000206} \\
+  & ResNet18 & -- & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table*}

@@ -1,0 +1,24 @@
+% Validation-only, two-hour forecasting-window results for flare threshold M1.0.
+% Source: results/audits/validation_wandb_cloud_audit.csv.
+
+\begin{table*}[t]
+\centering
+\caption{Validation performance on Solar Cycle 24 using a two-hour forecasting window, undersampled training data, and flare threshold $\geq$ M1.0. The best checkpoint for each configuration was selected using validation CSS, where $\mathrm{CSS}=\sqrt{\mathrm{TSS}\times\mathrm{HSS}}$. Bold values indicate the highest CSS for each model across sampling intervals.}
+\label{tab:validation-2h-m}
+\small
+\begin{tabular}{llrrr}
+\toprule
+Sampling interval & Model & HSS & TSS & CSS \\
+\midrule
+\multirow{3}{*}{2 h}
+  & Surya    & 0.2364 & 0.6643 & 0.3963 \\
+  & AlexNet  & 0.1841 & 0.7099 & 0.3615 \\
+  & ResNet18 & 0.1594 & 0.7591 & 0.3479 \\
+\addlinespace
+\multirow{3}{*}{1 h}
+  & Surya    & 0.2008 & 0.8027 & \textbf{0.4015} \\
+  & AlexNet  & 0.2299 & 0.6191 & \textbf{0.3773} \\
+  & ResNet18 & 0.1719 & 0.7458 & \textbf{0.3581} \\
+\bottomrule
+\end{tabular}
+\end{table*}

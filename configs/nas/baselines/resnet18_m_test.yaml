@@ -29,19 +29,19 @@ optimizer:
 etc:
   phase: test # test
   resume: true
-  ckpt_dir: ./results/checkpoints/baselines/resnet18/2hour_m2w/
-  ckpt_name_tag: resnet18_2hour_m2w_test
-  ckpt_file: resnet18_2hour_m2w_ce_nosample_groupnorm_lr1e-05_wd0.001_epoch=21.ckpt
+  ckpt_dir: ./results/checkpoints/baselines/resnet18/3hour_m2w/
+  ckpt_name_tag: resnet18_3hour_m2w_test
+  ckpt_file: resnet18_3hour_m2w_ce_nosample_groupnorm_lr1e-05_wd0.001_epoch=6.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ./results/test_results/resnet18_m2w_2hour_test_result.csv
+  save_test_results_path: ./results/test_results/resnet18_m2w_3hour_test_result.csv
 
 wandb:
-  name: resnet18_2hour_m2w_test
-  id: resnet18_2hour_m2w_test
+  name: resnet18_3hour_m2w_test
+  id: resnet18_3hour_m2w_test
   resume: allow
   project: flareforecasting-nosampling-test
   group: resnet18
   offline: false
   notes: ""
-  tag: ["resnet18", "M2w", "nasgh", "2hour", "test"] # backbone model, head type, task
+  tag: ["resnet18", "M2w", "nasgh", "3hour", "test"] # backbone model, head type, task
 

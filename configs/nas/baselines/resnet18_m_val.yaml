@@ -1,7 +1,7 @@
 # @package _global_
 
 data:
-  train_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/train_M2w_freq8.csv
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/train_M2w_freq24.csv
   valid_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/val_M2w.csv
   leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/leaky_val_M2w.csv
   test_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/val_M2w.csv
@@ -22,25 +22,24 @@ loss:
     reduction: mean
 
 optimizer:
-  type: adamw
   lr: 1e-5
   weight_decay: 1e-3
 
 etc:
   phase: test # test
   resume: true
-  ckpt_dir: ./results/checkpoints/baselines/resnet18/3hour_m2w/
-  ckpt_name_tag: resnet18_3hour_m2w_test
-  ckpt_file: resnet18_3hour_m2w_ce_nosample_groupnorm_lr1e-05_wd0.001_epoch=18.ckpt
+  ckpt_dir: ./results/checkpoints/baselines/resnet18/1hour_m2w/
+  ckpt_name_tag: resnet18_1hour_m2w_test
+  ckpt_file: resnet18_1hour_m2w_ce_nosample_groupnorm_lr1e-05_wd0.001_epoch=4.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ./results/val_resnet18_m2w_3hour_predictions.csv
+  save_test_results_path: ./results/val_resnet18_m2w_1hour_predictions.csv
 
 wandb:
-  name: resnet18_3hour_m2w_val_inference
-  id: resnet18_3hour_m2w_val_inference
+  name: resnet18_1hour_m2w_val_inference
+  id: resnet18_1hour_m2w_val_inference
   resume: allow
   project: flareforecasting-validation-inference
   group: resnet18
   offline: true
   notes: "Validation prediction recovery via baseline test pipeline"
-  tag: ["resnet18", "M2w", "nasgh", "3hour", "val_inference"]
+  tag: ["resnet18", "M2w", "nasgh", "1hour", "val_inference"]

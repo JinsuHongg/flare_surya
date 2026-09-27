@@ -1,10 +1,10 @@
 # @package _global_
 
 data:
-  train_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/train_M24w_freq24.csv
-  valid_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/val_M24w.csv
-  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
-  test_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/val_M24w.csv
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/train_M2w_freq24.csv
+  valid_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/val_M2w.csv
+  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/leaky_val_M2w.csv
+  test_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/val_M2w.csv
   apply_undersampling: false
   undersample_factor: 1
   seed: 1004
@@ -28,18 +28,18 @@ optimizer:
 etc:
   phase: test
   resume: true
-  ckpt_dir: /nobackupnfs1/sroy14/heliofm/jinsu/checkpoints/surya/1hour_m
+  ckpt_dir: /nobackupnfs1/sroy14/heliofm/jinsu/checkpoints/surya/1hour_m2w
   ckpt_name_tag: mlp_1hour_m2w_ce_nosample
-  ckpt_file: mlp_1hour_m_ce_nosample_lr0.00015_wd0.03_epoch=2.ckpt
+  ckpt_file: mlp_1hour_m2w_ce_undersample_lr1e-05_wd0.03_epoch=7.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ./results/val_surya_1hour_m24w_predictions.csv
+  save_test_results_path: ./results/validation_inference/val_surya_1hour_m2w_predictions.csv
 
 wandb:
-  name: mlp_1hour_m_ce_nasgh_val_inference
-  id: mlp_1hour_m_ce_nasgh_val_inference
+  name: mlp_1hour_m2w_ce_nasgh_val_inference
+  id: mlp_1hour_m2w_ce_nasgh_val_inference
   resume: allow
   project: flareforecasting-validation-inference
   group: surya
   offline: false
   notes: "Validation prediction recovery via test pipeline"
-  tag: ["mlp", "M24w", "1hour", "nasgh", "val_inference"]
+  tag: ["mlp", "M2w", "1hour", "nasgh", "val_inference"]

@@ -1,11 +1,11 @@
 # @package _global_
 
 data:
-  train_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/train_M24w_freq12.csv
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/train_M24w.csv
   valid_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/val_M24w.csv
   leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
   test_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/test_M24w.csv
-  apply_undersampling: false
+  apply_undersampling: true
   undersample_factor: 1
   seed: 1004
 
@@ -15,7 +15,7 @@ backbone:
 loss:
   type: cross_entropy
   cross_entropy:
-    class_weights: [1.0, 2.0]
+    class_weights: [1.0, 1.0]
   focal:
     alpha: 0.75
     gamma: 2.0
@@ -30,18 +30,18 @@ optimizer:
 etc:
   phase: train # test
   resume: true
-  ckpt_dir: ./results/checkpoints/surya_flare/12hour_m/
-  ckpt_name_tag: mlp_12hour_m_ce_nosample
-  ckpt_file: mlp_12hour_m_ce_nosample_lr0.00015_wd0.03_epoch=5.ckpt
+  ckpt_dir: /nobackupnfs1/sroy14/heliofm/jinsu/checkpoints/surya/1hour_m/
+  ckpt_name_tag: mlp_1hour_m_ce_nosample
+  ckpt_file: last.ckpt
   ckpt_weights_only: false
   max_epochs: 50
 
 wandb:
-  name: mlp_12hour_m_ce_nosample_nasgh
-  id: mlp_12hour_m_ce_nosample_nasgh
+  name: mlp_1hour_m_ce_nosample_nasgh
+  id: mlp_1hour_m_ce_nosample_nasgh
   resume: allow
-  project: flareforecasting-nosampling
+  project: flareforecasting-undersampling
   group: surya
   notes: ""
   offline: false
-  tag: ["mlp", "M", "12hour", "nasgh", "cross_entropy", "nosampling"] # backbone model, head type, task
+  tag: ["mlp", "M", "1hour", "nasgh", "cross_entropy"] # backbone model, head type, task

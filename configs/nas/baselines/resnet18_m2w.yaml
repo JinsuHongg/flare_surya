@@ -1,7 +1,7 @@
 # @package _global_
 
 data:
-  train_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/train_M2w_freq3.csv
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/train_M2w.csv
   valid_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/val_M2w.csv
   leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/leaky_val_M2w.csv
   test_flare_data_path: ./data/surya-bench-flare-forecasting/M2w/test_M2w.csv

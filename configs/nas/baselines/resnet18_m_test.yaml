@@ -31,7 +31,7 @@ etc:
   resume: true
   ckpt_dir: ./results/checkpoints/baselines/resnet18/3hour_m2w/
   ckpt_name_tag: resnet18_3hour_m2w_test
-  ckpt_file: resnet18_3hour_m2w_ce_nosample_groupnorm_lr1e-05_wd0.001_epoch=6.ckpt
+  ckpt_file: resnet18_3hour_m2w_ce_nosample_groupnorm_lr1e-05_wd0.001_epoch=18.ckpt
   ckpt_weights_only: false
   save_test_results_path: ./results/test_results/resnet18_m2w_3hour_test_result.csv
 

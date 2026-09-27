@@ -1,0 +1,41 @@
+# @package _global_
+
+data:
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/train_C2w_freq24.csv
+  valid_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/val_C2w.csv
+  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/leaky_val_C2w.csv
+  test_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/val_C2w.csv
+  apply_undersampling: false
+  undersample_factor: 1
+  seed: 1004
+
+backbone:
+  model_name: alexnet # resnet18, resnet34, resnet50, alexnet,
+
+loss:
+  type: cross_entropy
+  cross_entropy:
+    class_weights: [1.0, 2.0]
+  focal:
+    alpha: 0.25
+    gamma: 2.0
+    reduction: mean
+
+etc:
+  phase: test # test
+  resume: true
+  ckpt_dir: ./results/checkpoints/baselines/alexnet/daily_c2w/
+  ckpt_name_tag: alexnet_daily_c2w_ce_nosample
+  ckpt_file: alexnet_daily_c2w_ce_nosample_lr0.0001_wd0.001_epoch=19.ckpt
+  ckpt_weights_only: false
+  save_test_results_path: ./results/val_alexnet_daily_c2w_predictions.csv
+
+wandb:
+  name: alexnet_daily_c2w_val_inference
+  id: alexnet_daily_c2w_val_inference
+  resume: allow
+  project: flareforecasting-validation-inference
+  group: alexnet
+  offline: true
+  notes: "Validation prediction recovery via baseline test pipeline"
+  tag: ["alexnet", "C2w", "nasgh", "daily", "val_inference"]

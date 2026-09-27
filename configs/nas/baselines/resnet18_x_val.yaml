@@ -1,0 +1,46 @@
+# @package _global_
+
+data:
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/train_X24w_freq4.csv
+  valid_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/val_X24w.csv
+  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/leaky_val_X24w.csv
+  test_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/val_X24w.csv
+  undersample_factor: 1
+  seed: 1004
+
+backbone:
+  model_name: resnet18 # resnet18, resnet34, resnet50, alexnet,
+
+loss:
+  type: cross_entropy
+  cross_entropy:
+    class_weights: [1.0, 1.0]
+  focal:
+    alpha: 0.95
+    gamma: 4.0
+    reduction: mean
+    label_smoothing: 0.2
+
+optimizer:
+  type: adamw
+  lr: 1e-4
+  weight_decay: 1e-2
+
+etc:
+  phase: test # test
+  resume: true
+  ckpt_dir: ./results/checkpoints/baselines/resnet18/daily_x/
+  ckpt_name_tag: resnet18_daily_x_ce_undersample
+  ckpt_file: last.ckpt
+  ckpt_weights_only: false
+  save_test_results_path: ./results/val_resnet18_daily_x_predictions.csv
+
+wandb:
+  name: resnet18_daily_x_val_inference
+  id: resnet18_daily_x_val_inference
+  resume: allow
+  project: flareforecasting-validation-inference
+  group: resnet18
+  offline: true
+  notes: "Validation prediction recovery via baseline test pipeline"
+  tag: ["resnet18", "X24w", "nasgh", "daily", "val_inference"]

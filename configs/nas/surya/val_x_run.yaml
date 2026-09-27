@@ -1,0 +1,32 @@
+# @package _global_
+
+data:
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/train_X24w_freq24.csv
+  valid_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/val_X24w.csv
+  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/leaky_val_X24w.csv
+  test_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/val_X24w.csv
+  apply_undersampling: false
+  undersample_factor: 1
+  seed: 1004
+
+backbone:
+  pooling_type: attention_pooling
+
+etc:
+  phase: test
+  resume: true
+  ckpt_dir: ./results/checkpoints/surya_flare/4hour_x/
+  ckpt_name_tag: mlp_4hour_x_ce_nosample
+  ckpt_file: mlp_4hour_x_ce_undersample_lr0.00015_wd0.02_epoch=7.ckpt
+  ckpt_weights_only: false
+  save_test_results_path: ./results/val_surya_4hour_x_predictions.csv
+
+wandb:
+  name: mlp_4hour_x_ce_nasgh_val_inference
+  id: mlp_4hour_x_ce_nasgh_val_inference
+  resume: allow
+  project: flareforecasting-validation-inference
+  group: surya
+  offline: true
+  notes: "Validation prediction recovery via test pipeline"
+  tag: ["mlp", "X24w", "4hour", "nasgh", "val_inference"]

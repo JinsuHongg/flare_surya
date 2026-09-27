@@ -1,0 +1,38 @@
+# @package _global_
+
+data:
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/train_X24w_freq24.csv
+  valid_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/val_X24w.csv
+  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/leaky_val_X24w.csv
+  test_flare_data_path: ./data/surya-bench-flare-forecasting/X24w/val_X24w.csv
+
+backbone:
+  model_name: alexnet # resnet18, resnet34, resnet50, alexnet,
+
+loss:
+  type: cross_entropy
+  cross_entropy:
+    class_weights: [1.0, 2.0]
+  focal:
+    alpha: 0.25
+    gamma: 2.0
+    reduction: mean
+
+etc:
+  phase: test # test
+  resume: true
+  ckpt_dir: ./results/checkpoints/baselines/alexnet/4hour_x/
+  ckpt_name_tag: alexnet_4hour_x_ce_nosample
+  ckpt_file: alexnet_4hour_x_ce_undersample_lr0.0001_wd0.001_epoch=8.ckpt
+  ckpt_weights_only: false
+  save_test_results_path: ./results/val_alexnet_4hour_x_predictions.csv
+
+wandb:
+  name: alexnet_4hour_x_val_inference
+  id: alexnet_4hour_x_val_inference
+  resume: allow
+  project: flareforecasting-validation-inference
+  group: alexnet
+  offline: true
+  notes: "Validation prediction recovery via baseline test pipeline"
+  tag: ["alexnet", "X24w", "nasgh", "4hour", "val_inference"]

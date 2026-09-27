@@ -1,0 +1,45 @@
+# @package _global_
+
+data:
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/train_C2w.csv
+  valid_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/val_C2w.csv
+  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/leaky_val_C2w.csv
+  test_flare_data_path: ./data/surya-bench-flare-forecasting/C2w/val_C2w.csv
+  apply_undersampling: false
+  undersample_factor: 1
+  seed: 1004
+
+backbone:
+  pooling_type: attention_pooling
+
+loss:
+  type: cross_entropy
+  cross_entropy:
+    class_weights: [1.0, 2.0]
+  focal:
+    alpha: 0.25
+    gamma: 2.0
+    reduction: mean
+
+optimizer:
+  lr: 1.5e-5
+  weight_decay: 0.03
+
+etc:
+  phase: test
+  resume: true
+  ckpt_dir: /nobackupnfs1/sroy14/heliofm/jinsu/checkpoints/surya/daily_c2w/
+  ckpt_name_tag: null
+  ckpt_file: mlp_daily_c2w_ce_nosample_lr0.00015_wd0.03_epoch=7.ckpt
+  ckpt_weights_only: false
+  save_test_results_path: ./results/val_surya_daily_c2w_predictions.csv
+
+wandb:
+  name: mlp_daily_c2w_ce_nasgh_val_inference
+  id: mlp_daily_c2w_ce_nasgh_val_inference
+  resume: allow
+  project: flareforecasting-validation-inference
+  group: surya
+  offline: true
+  notes: "Validation prediction recovery via test pipeline"
+  tag: ["mlp", "C2w", "daily", "nasgh", "val_inference"]

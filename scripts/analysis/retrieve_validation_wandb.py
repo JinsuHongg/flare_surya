@@ -152,6 +152,39 @@ def valid_validation_rows(history: Iterable[dict[str, Any]]) -> list[dict[str, A
     ]
 
 
+def latest_validation_rows_by_epoch(
+    rows: Iterable[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Keep the most recent complete validation record for each epoch.
+
+    W&B runs can be resumed under one immutable run ID, resulting in multiple
+    validation records for an epoch. More recent records are determined by
+    W&B step, then timestamp, then their response order.
+
+    Args:
+        rows: Complete validation records from W&B history.
+
+    Returns:
+        One latest validation record per epoch.
+    """
+    latest_rows: dict[int, tuple[tuple[float, float, int], dict[str, Any]]] = {}
+    for index, row in enumerate(rows):
+        step = row.get("_step")
+        timestamp = row.get("_timestamp")
+        recency = (
+            float(step) if isinstance(step, int | float) else float("-inf"),
+            float(timestamp)
+            if isinstance(timestamp, int | float)
+            else float("-inf"),
+            index,
+        )
+        epoch = int(row["epoch"])
+        current = latest_rows.get(epoch)
+        if current is None or recency > current[0]:
+            latest_rows[epoch] = (recency, row)
+    return [latest_rows[epoch][1] for epoch in sorted(latest_rows)]
+
+
 def retrieve_experiment(
     api: wandb.Api,
     experiment: dict[str, str],
@@ -204,6 +237,7 @@ def retrieve_experiment(
             keys=list(METRIC_KEYS), samples=1_000, pandas=True
         )
         rows = valid_validation_rows(history_frame.to_dict("records"))
+        canonical_rows = latest_validation_rows_by_epoch(rows)
         base_record.update(
             {
                 "entity": entity,
@@ -221,7 +255,10 @@ def retrieve_experiment(
             )
             return base_record
 
-        best = max(rows, key=lambda row: float(row["val/css"]))
+        best = max(
+            canonical_rows,
+            key=lambda row: (float(row["val/css"]), int(row["epoch"])),
+        )
         base_record.update(
             {
                 "best_epoch": int(best["epoch"]),

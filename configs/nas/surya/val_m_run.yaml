@@ -1,0 +1,45 @@
+# @package _global_
+
+data:
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/train_M24w_freq24.csv
+  valid_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/val_M24w.csv
+  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
+  test_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/val_M24w.csv
+  apply_undersampling: false
+  undersample_factor: 1
+  seed: 1004
+
+backbone:
+  pooling_type: attention_pooling
+
+loss:
+  type: cross_entropy
+  cross_entropy:
+    class_weights: [1.0, 2.0]
+  focal:
+    alpha: 0.25
+    gamma: 2.0
+    reduction: mean
+
+optimizer:
+  lr: 1.5e-5
+  weight_decay: 0.03
+
+etc:
+  phase: test
+  resume: true
+  ckpt_dir: /nobackupnfs1/sroy14/heliofm/jinsu/checkpoints/surya/1hour_m
+  ckpt_name_tag: mlp_1hour_m2w_ce_nosample
+  ckpt_file: mlp_1hour_m_ce_nosample_lr0.00015_wd0.03_epoch=2.ckpt
+  ckpt_weights_only: false
+  save_test_results_path: ./results/val_surya_1hour_m24w_predictions.csv
+
+wandb:
+  name: mlp_1hour_m_ce_nasgh_val_inference
+  id: mlp_1hour_m_ce_nasgh_val_inference
+  resume: allow
+  project: flareforecasting-validation-inference
+  group: surya
+  offline: false
+  notes: "Validation prediction recovery via test pipeline"
+  tag: ["mlp", "M24w", "1hour", "nasgh", "val_inference"]

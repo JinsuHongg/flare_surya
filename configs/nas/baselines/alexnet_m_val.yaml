@@ -1,0 +1,45 @@
+# @package _global_
+
+data:
+  train_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/train_M24w_freq24.csv
+  valid_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/val_M24w.csv
+  leaky_valid_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/leaky_val_M24w.csv
+  test_flare_data_path: ./data/surya-bench-flare-forecasting/M24w/val_M24w.csv
+  apply_undersampling: false
+  undersample_factor: 1
+  seed: 1004
+
+backbone:
+  model_name: alexnet # resnet18, resnet34, resnet50, alexnet,
+
+loss:
+  type: cross_entropy
+  cross_entropy:
+    class_weights: [1.0, 2.0]
+  focal:
+    alpha: 0.25
+    gamma: 2.0
+    reduction: mean
+
+optimizer:
+  lr: 1e-5
+  weight_decay: 0.001
+
+etc:
+  phase: test # test
+  resume: true
+  ckpt_dir: ./results/checkpoints/baselines/alexnet/1hour_m/
+  ckpt_name_tag: alexnet_1hour_m_ce_nosample 
+  ckpt_file: alexnet_1hour_m_ce_nosample_lr0.0001_wd0.001_epoch=7.ckpt
+  ckpt_weights_only: false
+  save_test_results_path: ./results/val_alexnet_m24w_1hour_predictions.csv
+
+wandb:
+  name: alexnet_1hour_m_val_inference
+  id: alexnet_1hour_m_val_inference
+  resume: allow
+  project: flareforecasting-validation-inference
+  group: alexnet
+  offline: true
+  notes: "Validation prediction recovery via baseline test pipeline"
+  tag: ["alexnet", "M24w", "nasgh", "1hour", "val_inference"]

@@ -28,18 +28,18 @@ optimizer:
 etc:
   phase: test # test
   resume: true
-  ckpt_dir: ./results/checkpoints/baselines/alexnet/1hour_m2w/
-  ckpt_name_tag: alexnet_1hour_m2w_ce_nosample
-  ckpt_file: alexnet_daily_m2w_ce_undersample_lr1e-05_wd0.001_epoch=11.ckpt
+  ckpt_dir: ./results/checkpoints/baselines/alexnet/2hour_m2w/
+  ckpt_name_tag: alexnet_2hour_m2w_ce_nosample
+  ckpt_file: alexnet_2hour_m2w_ce_undersample_lr1e-05_wd0.001_epoch=18.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ./results/validation_inference/val_alexnet_m2w_1hour_predictions.csv
+  save_test_results_path: ./results/validation_inference/val_alexnet_m2w_2hour_predictions.csv
 
 wandb:
-  name: alexnet_1hour_m2w_val_inference
-  id: alexnet_1hour_m2w_val_inference
+  name: alexnet_2hour_m2w_val_inference
+  id: alexnet_2hour_m2w_val_inference
   resume: allow
   project: flareforecasting-validation-inference
   group: alexnet
   offline: false
   notes: "Validation prediction recovery via baseline test pipeline"
-  tag: ["alexnet", "M2w", "nasgh", "1hour", "val_inference"]
+  tag: ["alexnet", "M2w", "nasgh", "2hour", "val_inference"]

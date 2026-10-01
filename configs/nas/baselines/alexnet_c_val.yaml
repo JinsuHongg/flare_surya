@@ -21,21 +21,25 @@ loss:
     gamma: 2.0
     reduction: mean
 
+optimizer:
+  lr: 1e-4
+  weight_decay: 1e-2
+
 etc:
   phase: test # test
   resume: true
-  ckpt_dir: ./results/checkpoints/baselines/alexnet/daily_c2w/
-  ckpt_name_tag: alexnet_daily_c2w_ce_nosample
-  ckpt_file: alexnet_daily_c2w_ce_nosample_lr0.0001_wd0.001_epoch=19.ckpt
+  ckpt_dir: ./results/checkpoints/baselines/alexnet/8hour_c2w/
+  ckpt_name_tag: alexnet_8hour_c2w_ce_nosample
+  ckpt_file: alexnet_8hour_c2w_ce_nosample_lr0.0001_wd0.001_epoch=7.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ./results/val_alexnet_daily_c2w_predictions.csv
+  save_test_results_path: ./results/validation_inference/val_alexnet_8hour_c2w_predictions.csv
 
 wandb:
-  name: alexnet_daily_c2w_val_inference
-  id: alexnet_daily_c2w_val_inference
+  name: alexnet_8hour_c2w_val_inference
+  id: alexnet_8hour_c2w_val_inference
   resume: allow
   project: flareforecasting-validation-inference
   group: alexnet
-  offline: true
+  offline: false
   notes: "Validation prediction recovery via baseline test pipeline"
-  tag: ["alexnet", "C2w", "nasgh", "daily", "val_inference"]
+  tag: ["alexnet", "C2w", "nasgh", "8hour", "val_inference"]

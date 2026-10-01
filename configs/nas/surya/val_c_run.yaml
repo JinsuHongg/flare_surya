@@ -28,18 +28,18 @@ optimizer:
 etc:
   phase: test
   resume: true
-  ckpt_dir: /nobackupnfs1/sroy14/heliofm/jinsu/checkpoints/surya/daily_c2w/
+  ckpt_dir: /nobackupnfs1/sroy14/heliofm/jinsu/checkpoints/surya/8hour_c2w/
   ckpt_name_tag: null
-  ckpt_file: mlp_daily_c2w_ce_nosample_lr0.00015_wd0.03_epoch=7.ckpt
+  ckpt_file: mlp_8hour_c2w_ce_nosample_lr0.00015_wd0.03_epoch=3.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ./results/val_surya_daily_c2w_predictions.csv
+  save_test_results_path: ./results/validation_inference/val_surya_8hour_c2w_predictions.csv
 
 wandb:
-  name: mlp_daily_c2w_ce_nasgh_val_inference
-  id: mlp_daily_c2w_ce_nasgh_val_inference
+  name: mlp_8hour_c2w_ce_nasgh_val_inference
+  id: mlp_8hour_c2w_ce_nasgh_val_inference
   resume: allow
   project: flareforecasting-validation-inference
   group: surya
-  offline: true
+  offline: false
   notes: "Validation prediction recovery via test pipeline"
-  tag: ["mlp", "C2w", "daily", "nasgh", "val_inference"]
+  tag: ["mlp", "C2w", "8hour", "nasgh", "val_inference"]

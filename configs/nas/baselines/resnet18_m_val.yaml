@@ -28,18 +28,18 @@ optimizer:
 etc:
   phase: test # test
   resume: true
-  ckpt_dir: ./results/checkpoints/baselines/resnet18/2hour_m2w/
-  ckpt_name_tag: resnet18_2hour_m2w_test
-  ckpt_file: resnet18_2hour_m2w_ce_nosample_groupnorm_lr1e-05_wd0.001_epoch=21.ckpt
+  ckpt_dir: ./results/checkpoints/baselines/resnet18/3hour_m2w/
+  ckpt_name_tag: resnet18_3hour_m2w_test
+  ckpt_file: resnet18_3hour_m2w_ce_nosample_groupnorm_lr1e-05_wd0.001_epoch=18.ckpt
   ckpt_weights_only: false
-  save_test_results_path: ./results/val_inference/val_resnet18_m2w_2hour_predictions.csv
+  save_test_results_path: ./results/validation_inference/val_resnet18_m2w_3hour_predictions.csv
 
 wandb:
-  name: resnet18_2hour_m2w_val_inference
-  id: resnet18_2hour_m2w_val_inference
+  name: resnet18_3hour_m2w_val_inference
+  id: resnet18_3hour_m2w_val_inference
   resume: allow
   project: flareforecasting-validation-inference
   group: resnet18
-  offline: true
+  offline: false
   notes: "Validation prediction recovery via baseline test pipeline"
-  tag: ["resnet18", "M2w", "nasgh", "2hour", "val_inference"]
+  tag: ["resnet18", "M2w", "nasgh", "3hour", "val_inference"]

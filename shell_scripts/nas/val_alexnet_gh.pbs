@@ -27,5 +27,5 @@ fi
 source /nobackupp17/jhong15/miniforge3_gh/etc/profile.d/conda.sh
 conda activate flare_surya
 
-VAL_CONFIG="${VAL_CONFIG:-alexnet_m_val}"
+VAL_CONFIG="${VAL_CONFIG:-alexnet_c_val}"
 python scripts/training/training_baseline.py +baselines="$VAL_CONFIG"

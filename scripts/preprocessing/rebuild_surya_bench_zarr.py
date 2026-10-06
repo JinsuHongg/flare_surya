@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
 import os
@@ -788,6 +789,112 @@ def _atomic_json(path: Path, payload: dict[str, Any]) -> None:
             temporary.unlink(missing_ok=True)
 
 
+def _read_frozen_manifest(
+    output: Path, identity: dict[str, Any]
+) -> tuple[list[SourceObject], str, str] | None:
+    """Read and validate an existing immutable manifest, if present."""
+    manifest_path = output / ".checkpoints" / "manifest.json"
+    if manifest_path.is_symlink() or manifest_path.parent.is_symlink():
+        raise ValueError("frozen manifest must not be a symbolic link")
+    if not manifest_path.exists():
+        return None
+    try:
+        saved = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise ValueError("invalid frozen manifest") from error
+    if not isinstance(saved, dict) or saved.get("config_identity") != identity:
+        raise ValueError("frozen manifest configuration identity differs")
+    rows = saved.get("objects")
+    if not isinstance(rows, list):
+        raise ValueError("frozen manifest objects must be a list")
+    fields = {"key", "year", "timestamp_ns", "size", "etag"}
+    objects: list[SourceObject] = []
+    for row in rows:
+        if (
+            not isinstance(row, dict)
+            or set(row) != fields
+            or not isinstance(row["key"], str)
+            or isinstance(row["year"], bool)
+            or not isinstance(row["year"], int)
+            or isinstance(row["timestamp_ns"], bool)
+            or not isinstance(row["timestamp_ns"], int)
+            or isinstance(row["size"], bool)
+            or not isinstance(row["size"], int)
+            or not isinstance(row["etag"], str)
+        ):
+            raise ValueError("invalid frozen manifest source row")
+        objects.append(SourceObject(**row))
+    if any(
+        left.timestamp_ns >= right.timestamp_ns
+        for left, right in zip(objects, objects[1:])
+    ):
+        raise ValueError("frozen manifest timestamps must be sorted and unique")
+    for source in objects:
+        parsed = parse_source_key(source.key)
+        if (
+            parsed is None
+            or parsed.year != source.year
+            or parsed.timestamp_ns != source.timestamp_ns
+            or source.size < 0
+            or not int(identity["start_year"])
+            <= source.year
+            <= int(identity["end_year"])
+        ):
+            raise ValueError("frozen manifest source identity is invalid")
+    manifest_hash = manifest_digest(objects, identity)
+    config_hash = manifest_digest([], identity)
+    if saved.get("manifest_digest") != manifest_hash or saved.get(
+        "config_digest"
+    ) != config_hash:
+        raise ValueError("frozen manifest digest differs")
+    validate_output_root(output, manifest_hash, config_hash, allow_initialize=False)
+    return objects, manifest_hash, config_hash
+
+
+def _load_or_create_frozen_manifest(
+    output: Path,
+    identity: dict[str, Any],
+    bucket: str,
+    endpoint_url: str,
+    prefix: str,
+    start_year: int,
+    end_year: int,
+    timeout_seconds: int,
+) -> tuple[list[SourceObject], str, str]:
+    """Serialize manifest initialization and reuse it across year-array tasks."""
+    output.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = output.parent / f".{output.name}.manifest.lock"
+    if lock_path.is_symlink():
+        raise ValueError("manifest lock must not be a symbolic link")
+    with lock_path.open("a", encoding="utf-8") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        saved = _read_frozen_manifest(output, identity)
+        if saved is not None:
+            return saved
+
+        objects = list_source_objects(
+            bucket=bucket,
+            endpoint_url=endpoint_url,
+            prefix=prefix,
+            start_year=start_year,
+            end_year=end_year,
+            timeout_seconds=timeout_seconds,
+        )
+        manifest_hash = manifest_digest(objects, identity)
+        config_hash = manifest_digest([], identity)
+        validate_output_root(output, manifest_hash, config_hash, allow_initialize=True)
+        _atomic_json(
+            output / ".checkpoints" / "manifest.json",
+            {
+                "manifest_digest": manifest_hash,
+                "config_digest": config_hash,
+                "config_identity": identity,
+                "objects": [asdict(obj) for obj in objects],
+            },
+        )
+        return objects, manifest_hash, config_hash
+
+
 def validate_output_root(
     output_path: Path,
     manifest_digest: str,
@@ -1063,6 +1170,12 @@ def _config_identity(cfg: DictConfig) -> dict[str, Any]:
     _validate_channels(list(cfg.channels))
     if int(cfg.start_year) > int(cfg.end_year):
         raise ValueError("start_year must not exceed end_year")
+    selected_year = config.get("selected_year")
+    if selected_year is not None:
+        if isinstance(selected_year, bool) or not isinstance(selected_year, int):
+            raise ValueError("selected_year must be an integer or null")
+        if not int(cfg.start_year) <= selected_year <= int(cfg.end_year):
+            raise ValueError("selected_year must fall within start_year and end_year")
     for key in ("retry_count", "request_timeout_seconds", "download_timeout_seconds"):
         if int(config[key]) < 1:
             raise ValueError(f"{key} must be positive")
@@ -1104,19 +1217,35 @@ def run(cfg: DictConfig) -> None:
     if raw_output is not None and Path(raw_output).expanduser().is_symlink():
         raise ValueError("output_path must not be a symbolic link")
     output = Path(raw_output).expanduser().resolve() if raw_output is not None else None
-    objects = list_source_objects(
-        bucket=str(cfg.bucket),
-        endpoint_url=str(cfg.endpoint_url),
-        prefix=str(cfg.prefix),
-        start_year=int(cfg.start_year),
-        end_year=int(cfg.end_year),
-        timeout_seconds=int(cfg.request_timeout_seconds),
-    )
-    manifest_hash = manifest_digest(objects, identity)
-    config_hash = manifest_digest([], identity)
+    selected_year = cfg.get("selected_year")
+    if selected_year is not None and not cfg.dry_run:
+        assert output is not None
+        objects, manifest_hash, config_hash = _load_or_create_frozen_manifest(
+            output,
+            identity,
+            str(cfg.bucket),
+            str(cfg.endpoint_url),
+            str(cfg.prefix),
+            int(cfg.start_year),
+            int(cfg.end_year),
+            int(cfg.request_timeout_seconds),
+        )
+    else:
+        objects = list_source_objects(
+            bucket=str(cfg.bucket),
+            endpoint_url=str(cfg.endpoint_url),
+            prefix=str(cfg.prefix),
+            start_year=int(cfg.start_year),
+            end_year=int(cfg.end_year),
+            timeout_seconds=int(cfg.request_timeout_seconds),
+        )
+        manifest_hash = manifest_digest(objects, identity)
+        config_hash = manifest_digest([], identity)
     years: dict[int, list[SourceObject]] = {}
     for obj in objects:
         years.setdefault(obj.year, []).append(obj)
+    if selected_year is not None and selected_year not in years:
+        raise ValueError(f"selected_year {selected_year} has no source objects")
     utc_range = (
         [
             datetime.fromtimestamp(
@@ -1132,6 +1261,7 @@ def run(cfg: DictConfig) -> None:
         json.dumps(
             {
                 "dry_run": cfg.dry_run,
+                "selected_year": selected_year,
                 "candidate_count_by_year": {
                     year: len(rows) for year, rows in years.items()
                 },
@@ -1149,18 +1279,22 @@ def run(cfg: DictConfig) -> None:
     if cfg.dry_run:
         return
     assert output is not None
-    validate_output_root(output, manifest_hash, config_hash, allow_initialize=True)
-    _atomic_json(
-        output / ".checkpoints" / "manifest.json",
-        {
-            "manifest_digest": manifest_hash,
-            "config_digest": config_hash,
-            "config_identity": identity,
-            "objects": [asdict(obj) for obj in objects],
-        },
-    )
+    if selected_year is None:
+        validate_output_root(output, manifest_hash, config_hash, allow_initialize=True)
+        _atomic_json(
+            output / ".checkpoints" / "manifest.json",
+            {
+                "manifest_digest": manifest_hash,
+                "config_digest": config_hash,
+                "config_identity": identity,
+                "objects": [asdict(obj) for obj in objects],
+            },
+        )
     failures: list[int] = []
-    for year, annual in sorted(years.items()):
+    processing_years = (
+        {selected_year: years[selected_year]} if selected_year is not None else years
+    )
+    for year, annual in sorted(processing_years.items()):
         final = output / str(year)
         try:
             if final.exists() or final.is_symlink():

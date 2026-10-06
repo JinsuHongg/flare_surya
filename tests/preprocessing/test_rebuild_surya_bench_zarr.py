@@ -658,6 +658,41 @@ def test_dry_run_reports_summary_without_downloads_or_writes(
     assert "manifest" in summary
 
 
+def test_run_selects_one_year_and_reuses_the_frozen_manifest(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    downloaded = _local_download(monkeypatch, tmp_path)
+    objects = _year_args(tmp_path)["objects"] + [
+        SourceObject("20200101_0000.nc", 2020, 1577836800000000000, 1, '"b"')
+    ]
+    _mock_listing(monkeypatch, objects)
+    cfg = _run_config(tmp_path)
+    baseline_identity = rebuild._config_identity(cfg)
+    cfg.selected_year = 2019
+    assert rebuild._config_identity(cfg) == baseline_identity
+
+    rebuild.run(cfg)
+    output = tmp_path / "output"
+    assert (output / "2019" / "dataset" / ".zmetadata").exists()
+    assert not (output / "2020").exists()
+    build_marker = (output / ".checkpoints" / "build.json").read_bytes()
+    frozen_manifest = (output / ".checkpoints" / "manifest.json").read_bytes()
+
+    cfg.selected_year = 2020
+    monkeypatch.setattr(
+        rebuild,
+        "list_source_objects",
+        lambda **kwargs: pytest.fail("year run should reuse the frozen manifest"),
+    )
+    rebuild.run(cfg)
+
+    assert (output / "2019" / "dataset" / ".zmetadata").exists()
+    assert (output / "2020" / "dataset" / ".zmetadata").exists()
+    assert (output / ".checkpoints" / "build.json").read_bytes() == build_marker
+    assert (output / ".checkpoints" / "manifest.json").read_bytes() == frozen_manifest
+    assert downloaded == ["20190101_0000.nc", "20200101_0000.nc"]
+
+
 def test_run_requires_explicit_output_before_listing(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

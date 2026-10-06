@@ -17,6 +17,9 @@ endpoint_url: https://s3.us-west-2.amazonaws.com
 prefix: ""
 start_year: 2010
 end_year: 2024
+# Optional per-job selector. Keep the full source range above unchanged so all
+# year tasks share one immutable build manifest and output identity.
+selected_year: null
 
 # An explicit, separate destination is required before writes are enabled.
 output_path: null

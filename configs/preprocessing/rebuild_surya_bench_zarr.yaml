@@ -1,0 +1,65 @@
+# Keep Hydra itself from writing logs or metadata during a dry run.
+defaults:
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+  - _self_
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false
+
+# Public input and bounded source year range.
+bucket: nasa-surya-bench
+endpoint_url: https://s3.us-west-2.amazonaws.com
+prefix: ""
+start_year: 2010
+end_year: 2024
+
+# An explicit, separate destination is required before writes are enabled.
+output_path: null
+temporary_directory: /tmp
+
+channels:
+  - aia94
+  - aia131
+  - aia171
+  - aia193
+  - aia211
+  - aia304
+  - aia335
+  - aia1600
+  - hmi_m
+  - hmi_bx
+  - hmi_by
+  - hmi_bz
+  - hmi_v
+# Override at launch, e.g. target_size=512; resume requires the same size.
+target_size: 224
+dtype: float32
+resize_method: INTER_AREA
+
+retry_count: 3
+request_timeout_seconds: 60
+download_timeout_seconds: 300
+
+# Operational limits do not change resume identity. At most two source files
+# (roughly 1.2 GB for the current corpus) are downloaded or transformed at once.
+download_workers: 2
+transform_workers: 1
+max_in_flight_samples: 2
+
+chunks:
+  images: [50, 1, "${target_size}", "${target_size}"]
+  time: [50]
+compression:
+  codec: lz4
+  clevel: 5
+  shuffle: 1
+time_units: nanoseconds since 1970-01-01
+time_calendar: proleptic_gregorian
+time_timezone: UTC
+
+dry_run: true

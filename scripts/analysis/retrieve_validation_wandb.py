@@ -16,6 +16,8 @@ from typing import Any
 
 import wandb
 from loguru import logger
+from wandb.apis.public import Run
+from wandb.errors import CommError
 
 
 WANDB_ROOT = Path("/mnt/storage/surya/wandb")
@@ -143,6 +145,64 @@ def load_audit_paths(audit_path: Path) -> dict[str, list[tuple[str, str]]]:
     return paths_by_run
 
 
+def infer_candidate_paths(experiment: dict[str, str]) -> list[tuple[str, str]]:
+    """Infer candidate W&B entity/project paths from experiment conditions.
+
+    Args:
+        experiment: One experiment-ledger row.
+
+    Returns:
+        Likely entity/project pairs for the given forecasting conditions.
+    """
+    window = experiment.get("forecasting_window_size")
+    sampling = experiment.get("sampling")
+    if window == "2" and sampling == "no":
+        return [("gsu-dmlab", "surya-flare-2hwindow-nosample")]
+    if window == "2" and sampling == "under":
+        return [("gsu-dmlab", "surya-flare-2hwindow-undersample")]
+    if window == "24" and sampling == "no":
+        return [("gsu-dmlab", "flareforecasting-nosampling")]
+    if window == "24" and sampling == "under":
+        return [("gsu-dmlab", "flareforecasting-undersampling")]
+    return []
+
+
+def resolve_run(
+    api: wandb.Api,
+    entity: str,
+    project: str,
+    experiment_id: str,
+) -> tuple[Run | None, str]:
+    """Resolve a W&B run by cloud run ID or fallback to display name.
+
+    Args:
+        api: Authenticated W&B public API client.
+        entity: W&B entity name.
+        project: W&B project name.
+        experiment_id: Target experiment identifier from the ledger.
+
+    Returns:
+        A tuple of (Run object or None, error detail string).
+    """
+    try:
+        return api.run(f"{entity}/{project}/{experiment_id}"), ""
+    except CommError as error:
+        direct_error = str(error)
+
+    # Fallback: search by display name (Run Name) in target project
+    try:
+        runs = list(
+            api.runs(f"{entity}/{project}", filters={"display_name": experiment_id})
+        )
+        if runs:
+            runs.sort(key=lambda item: str(item.created_at), reverse=True)
+            return runs[0], ""
+    except CommError as error:
+        return None, str(error)
+
+    return None, direct_error
+
+
 def valid_validation_rows(history: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     """Filter history rows that contain all required validation metrics."""
     return [
@@ -223,23 +283,26 @@ def retrieve_experiment(
     for candidate in audit_paths:
         if candidate not in candidates:
             candidates.append(candidate)
+    for candidate in infer_candidate_paths(experiment):
+        if candidate not in candidates:
+            candidates.append(candidate)
     for entity, project in candidates:
-        try:
-            run = api.run(f"{entity}/{project}/{experiment_id}")
-        except wandb.errors.CommError as error:
-            base_record["detail"] = str(error)
+        run, error_detail = resolve_run(api, entity, project, experiment_id)
+        if run is None:
+            base_record["detail"] = error_detail
             continue
 
         # Validation is logged once per epoch. Requesting a dense sampled history
         # avoids scanning the high-frequency training-step records remotely while
         # retaining all expected validation records (at most 50 epochs here).
-        history_frame = run.history(
-            keys=list(METRIC_KEYS), samples=1_000, pandas=True
+        history_records = run.history(
+            keys=list(METRIC_KEYS), samples=1_000, pandas=False
         )
-        rows = valid_validation_rows(history_frame.to_dict("records"))
+        rows = valid_validation_rows(history_records)
         canonical_rows = latest_validation_rows_by_epoch(rows)
         base_record.update(
             {
+                "cloud_run_id": str(run.id),
                 "entity": entity,
                 "project": project,
                 "run_state": run.state,

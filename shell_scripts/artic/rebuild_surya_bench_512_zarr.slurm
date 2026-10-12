@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+#SBATCH --job-name=surya_bench_512
+#SBATCH --partition=qGPU24
+#SBATCH --array=2010-2024%4
+#SBATCH --output=surya_bench_512_%A_%a.out
+#SBATCH --error=surya_bench_512_%A_%a.err
+#SBATCH --time=24:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=64G
+
+set -euo pipefail
+
+cd "${SLURM_SUBMIT_DIR:-$PWD}"
+export PYTHONPATH="$PWD/src:$PWD/scripts${PYTHONPATH:+:$PYTHONPATH}"
+
+source "$(conda info --base)/etc/profile.d/conda.sh"
+conda activate flare_surya
+
+# Keep the 512 build isolated from the existing 224 output, checkpoints, and logs.
+OUT=/scratch/users/jhong36/surya-bench-512.zarr
+TEMP_DIR="${SLURM_TMPDIR:-${TMPDIR:-/tmp}}"
+YEAR="${SLURM_ARRAY_TASK_ID:?This script must run as a year array}"
+
+echo "hostname=$(hostname) job_id=${SLURM_JOB_ID:-unset} cwd=$PWD"
+echo "python=$(command -v python) conda_env=${CONDA_DEFAULT_ENV:-unset}"
+echo "year=$YEAR output_path=$OUT temporary_directory=$TEMP_DIR"
+
+# The builder keeps a separate immutable manifest and annual checkpoints under OUT.
+srun python scripts/preprocessing/rebuild_surya_bench_zarr.py \
+  output_path="$OUT" \
+  start_year=2010 \
+  end_year=2024 \
+  selected_year="$YEAR" \
+  target_size=512 \
+  temporary_directory="$TEMP_DIR" \
+  dry_run=false

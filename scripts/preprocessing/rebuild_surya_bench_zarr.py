@@ -10,16 +10,17 @@ import re
 import sqlite3
 import tempfile
 import xml.etree.ElementTree as ET
-from contextlib import closing
+from collections.abc import Callable, Generator
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
+from contextlib import closing
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from itertools import pairwise
 from pathlib import Path
-from typing import Any, Callable, Iterator
+from typing import Any, cast
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
-import cv2
 import hdf5plugin  # noqa: F401 -- registers source NetCDF HDF5 compression filters
 import hydra
 import numpy as np
@@ -28,6 +29,7 @@ import zarr
 from loguru import logger
 from numcodecs import Blosc
 from omegaconf import DictConfig, OmegaConf
+from PIL import Image
 
 _HOURLY_FILENAME = re.compile(r"(?P<date>\d{8})_(?P<hour>\d{2})00\.nc\Z")
 
@@ -60,7 +62,7 @@ def parse_source_key(key: str) -> SourceObject | None:
     try:
         timestamp = datetime.strptime(
             f"{match.group('date')}_{match.group('hour')}", "%Y%m%d_%H"
-        ).replace(tzinfo=timezone.utc)
+        ).replace(tzinfo=UTC)
     except ValueError:
         return None
     timestamp_ns = int(timestamp.timestamp()) * 1_000_000_000
@@ -296,7 +298,7 @@ def download_object(
 
 
 def resize_netcdf(path: Path, channels: list[str], target_size: int) -> np.ndarray:
-    """Validate and resize the 13 source channels individually with INTER_AREA.
+    """Validate and resize the 13 source channels individually with Lanczos.
 
     Args:
         path: Local NetCDF file.
@@ -339,9 +341,10 @@ def resize_netcdf(path: Path, channels: list[str], target_size: int) -> np.ndarr
                 raise ValueError(
                     f"channel {name} source shape {values.shape} differs from {source_shape}"
                 )
-            output[index] = cv2.resize(
-                values, (target_size, target_size), interpolation=cv2.INTER_AREA
+            resized = Image.fromarray(values).resize(
+                (target_size, target_size), resample=Image.Resampling.LANCZOS
             )
+            output[index] = np.asarray(resized, dtype=np.float32)
     return output
 
 
@@ -459,7 +462,7 @@ def _open_year_arrays(
     schemas = {
         "images": (
             (count, 13, target_size, target_size),
-            (50, 1, target_size, target_size),
+            (1, 13, target_size, target_size),
             np.dtype("float32"),
             {"_ARRAY_DIMENSIONS": ["time", "channel", "y", "x"], "channels": channels},
         ),
@@ -519,7 +522,7 @@ def _open_year_arrays(
                 # An interrupted metadata initialization is repairable only
                 # before any rows have been marked complete.
                 array.attrs.update(missing)
-    return dataset["images"], dataset["time"]
+    return cast(zarr.Array, dataset["images"]), cast(zarr.Array, dataset["time"])
 
 
 def _resize_and_cleanup(
@@ -545,7 +548,7 @@ def _prepared_samples(
     transform_workers: int,
     max_in_flight_samples: int,
     on_start: Callable[[int], None],
-) -> Iterator[tuple[int, np.ndarray | Exception]]:
+) -> Generator[tuple[int, np.ndarray | Exception], None, None]:
     """Yield bounded prepared results; all callbacks run on the caller thread.
 
     Download and transform pools never receive Zarr or SQLite objects. A slot
@@ -579,7 +582,7 @@ def _prepared_samples(
                     timeout_seconds,
                     attempts,
                 )
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 -- retain sample failures
                 # Preparation failures use the same main-thread diagnostic
                 # path as worker failures, while allowing later slots to run.
                 future = Future()
@@ -595,7 +598,7 @@ def _prepared_samples(
             slot, path = futures[future]
             try:
                 result = future.result()
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 -- report worker failures
                 futures.pop(future)
                 yield slot, error
             else:
@@ -620,7 +623,7 @@ def _prepared_samples(
             if path is None and not future.cancelled():
                 try:
                     path = future.result()
-                except BaseException:
+                except BaseException:  # noqa: BLE001, S112 -- preserve interruption
                     continue
             if path is not None:
                 path.unlink(missing_ok=True)
@@ -676,7 +679,7 @@ def process_year(
         raise ValueError("year requires nonempty matching source objects")
     if any(
         left.timestamp_ns >= right.timestamp_ns
-        for left, right in zip(objects, objects[1:])
+        for left, right in pairwise(objects)
     ):
         raise ValueError("source timestamps must be strictly increasing and unique")
     stage = output_path / ".staging" / str(year)
@@ -748,7 +751,7 @@ def process_year(
                             "UPDATE samples SET state='complete', error=NULL WHERE slot=?",
                             (slot,),
                         )
-                except Exception as error:
+                except Exception as error:  # noqa: BLE001 -- checkpoint failures
                     failures += 1
                     with connection:
                         connection.execute(
@@ -806,7 +809,9 @@ def _read_frozen_manifest(
         raise ValueError("frozen manifest configuration identity differs")
     rows = saved.get("objects")
     if not isinstance(rows, list):
-        raise ValueError("frozen manifest objects must be a list")
+        raise ValueError(  # noqa: TRY004 -- preserve validation exception contract
+            "frozen manifest objects must be a list"
+        )
     fields = {"key", "year", "timestamp_ns", "size", "etag"}
     objects: list[SourceObject] = []
     for row in rows:
@@ -826,7 +831,7 @@ def _read_frozen_manifest(
         objects.append(SourceObject(**row))
     if any(
         left.timestamp_ns >= right.timestamp_ns
-        for left, right in zip(objects, objects[1:])
+        for left, right in pairwise(objects)
     ):
         raise ValueError("frozen manifest timestamps must be sorted and unique")
     for source in objects:
@@ -980,7 +985,9 @@ def _validate_finished_year(
     _validate_target_size(target_size)
     if not objects or any(obj.year != objects[0].year for obj in objects):
         raise ValueError("annual objects must be nonempty and from one year")
-    if any(a.timestamp_ns >= b.timestamp_ns for a, b in zip(objects, objects[1:])):
+    if any(
+        a.timestamp_ns >= b.timestamp_ns for a, b in pairwise(objects)
+    ):
         raise ValueError("annual manifest timestamps must be sorted and unique")
     checkpoint = output_path / ".checkpoints" / f"{objects[0].year}.sqlite3"
     if not checkpoint.is_file() or checkpoint.is_symlink():
@@ -1011,7 +1018,7 @@ def _validate_finished_year(
     schemas = {
         "images": (
             (len(objects), 13, target_size, target_size),
-            (50, 1, target_size, target_size),
+            (1, 13, target_size, target_size),
             "float32",
             {"_ARRAY_DIMENSIONS": ["time", "channel", "y", "x"], "channels": channels},
         ),
@@ -1040,7 +1047,10 @@ def _validate_finished_year(
             or any(array.attrs.get(key) != value for key, value in attributes.items())
         ):
             raise ValueError(f"annual {name} schema differs")
-    if not np.array_equal(dataset["time"][:], [obj.timestamp_ns for obj in objects]):
+    timestamps = cast(zarr.Array, dataset["time"])
+    if not np.array_equal(
+        cast(np.ndarray, timestamps[:]), [obj.timestamp_ns for obj in objects]
+    ):
         raise ValueError("annual timestamps differ from the manifest")
     if published:
         expected = _completion_identity(
@@ -1048,7 +1058,9 @@ def _validate_finished_year(
         )
         if dataset.attrs.get("completion") != expected:
             raise ValueError("published year completion identity differs")
-        consolidated = zarr.open_consolidated(str(dataset_path), mode="r")
+        consolidated = cast(
+            zarr.Group, zarr.open_consolidated(str(dataset_path), mode="r")
+        )
         if consolidated.attrs.get("completion") != expected:
             raise ValueError("published consolidated completion identity differs")
         if set(consolidated.keys()) != set(dataset.keys()):
@@ -1118,7 +1130,7 @@ def publish_year(
     dataset.attrs["completion"] = _completion_identity(
         objects, channels, target_size, manifest_digest, config_digest
     )
-    zarr.consolidate_metadata(str(stage / "dataset"))
+    zarr.consolidate_metadata(zarr.DirectoryStore(str(stage / "dataset")))
     os.rename(stage, final)
 
 
@@ -1154,8 +1166,8 @@ def _config_identity(cfg: DictConfig) -> dict[str, Any]:
     required = {
         "target_size": cfg.target_size,
         "dtype": "float32",
-        "resize_method": "INTER_AREA",
-        "chunks": {"images": [50, 1, cfg.target_size, cfg.target_size], "time": [50]},
+        "resize_method": "PIL.LANCZOS",
+        "chunks": {"images": [1, 13, cfg.target_size, cfg.target_size], "time": [50]},
         "compression": {"codec": "lz4", "clevel": 5, "shuffle": 1},
         "time_units": "nanoseconds since 1970-01-01",
         "time_calendar": "proleptic_gregorian",
@@ -1163,7 +1175,9 @@ def _config_identity(cfg: DictConfig) -> dict[str, Any]:
     }
     config = OmegaConf.to_container(cfg, resolve=True)
     if not isinstance(config, dict):
-        raise ValueError("build configuration must be a mapping")
+        raise ValueError(  # noqa: TRY004 -- keep configuration validation consistent
+            "build configuration must be a mapping"
+        )
     for key, expected in required.items():
         if config.get(key) != expected:
             raise ValueError(f"{key} must match the approved annual schema")
@@ -1209,9 +1223,13 @@ def run(cfg: DictConfig) -> None:
     if raw_output is not None and (
         not isinstance(raw_output, str) or not raw_output.strip()
     ):
-        raise ValueError("output_path must be an explicit nonempty path")
+        raise ValueError(
+            "output_path must be an explicit nonempty path"
+        )
     if not isinstance(cfg.dry_run, bool):
-        raise ValueError("dry_run must be a boolean")
+        raise ValueError(  # noqa: TRY004 -- keep configuration validation consistent
+            "dry_run must be a boolean"
+        )
     if not cfg.dry_run and raw_output is None:
         raise ValueError("output_path is required before writes")
     if raw_output is not None and Path(raw_output).expanduser().is_symlink():
@@ -1249,7 +1267,7 @@ def run(cfg: DictConfig) -> None:
     utc_range = (
         [
             datetime.fromtimestamp(
-                obj.timestamp_ns / 1_000_000_000, timezone.utc
+                obj.timestamp_ns / 1_000_000_000, UTC
             ).isoformat()
             for obj in (objects[0], objects[-1])
         ]
@@ -1348,7 +1366,7 @@ def run(cfg: DictConfig) -> None:
                 config_hash,
             )
             logger.info("Year {} promoted ({} samples)", year, len(annual))
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 -- continue with later years
             failures.append(year)
             logger.error("Year {} remains incomplete: {}", year, error)
     if failures:

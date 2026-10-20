@@ -8,12 +8,17 @@ import subprocess
 import sys
 from io import BytesIO
 from pathlib import Path
+from typing import Self, TypedDict, cast
+from urllib.request import Request
 
 import numpy as np
 import pytest
 import xarray as xr
 import zarr
+from numcodecs import Blosc
 from omegaconf import DictConfig
+from PIL import Image
+from zarr.attrs import Attributes
 
 import scripts.preprocessing.rebuild_surya_bench_zarr as rebuild
 from scripts.preprocessing.rebuild_surya_bench_zarr import (
@@ -81,7 +86,7 @@ class _HTTPResponse:
     def __init__(self, body: bytes):
         self.body = body
 
-    def __enter__(self) -> _HTTPResponse:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *args: object) -> None:
@@ -114,8 +119,8 @@ def test_listing_filters_years_and_paginates(monkeypatch: pytest.MonkeyPatch) ->
         ),
     ]
 
-    def fake_urlopen(request: object, timeout: int) -> _HTTPResponse:
-        requests.append(request.full_url)  # type: ignore[attr-defined]
+    def fake_urlopen(request: Request, timeout: int) -> _HTTPResponse:
+        requests.append(request.full_url)
         assert timeout == 7
         return _HTTPResponse(payloads.pop(0))
 
@@ -153,7 +158,10 @@ def test_listing_rejects_duplicate_accepted_timestamps(
 
 def test_manifest_digest_is_stable_and_covers_identities_and_config() -> None:
     objects = [SourceObject("a.nc", 2019, 1, 10, '"etag"')]
-    settings = {"channels": ["aia94", "aia131"], "size": 224}
+    settings: dict[str, object] = {
+        "channels": ["aia94", "aia131"],
+        "size": 224,
+    }
     expected = hashlib.sha256(
         json.dumps(
             {
@@ -195,6 +203,31 @@ CHANNELS = [
 ]
 
 
+def _open_group(path: Path | str, *, mode: str = "r", consolidated: bool = False) -> zarr.Group:
+    """Open a Zarr group across the Zarr 2 API's incomplete type stubs."""
+    if consolidated:
+        return cast(zarr.Group, zarr.open_consolidated(str(path), mode=mode))
+    return cast(zarr.Group, zarr.open_group(str(path), mode=mode))
+
+
+def _array(group: zarr.Group, name: str) -> zarr.Array:
+    """Narrow a group member to the array expected by the fixture schema."""
+    return cast(zarr.Array, group[name])
+
+
+def _values(array: zarr.Array) -> np.ndarray:
+    """Materialize an array slice with a concrete NumPy type."""
+    return cast(np.ndarray, array[:])
+
+
+class NetcdfOptions(TypedDict, total=False):
+    """Optional parameters accepted by the synthetic NetCDF builder."""
+
+    omit: str
+    extra: int
+    mismatch: bool
+
+
 def _netcdf(
     path: Path, *, omit: str | None = None, extra: int = 1, mismatch: bool = False
 ) -> Path:
@@ -215,15 +248,31 @@ def _netcdf(
     return path
 
 
-def test_resize_preserves_all_channel_order_and_uses_area(tmp_path: Path) -> None:
+def test_resize_preserves_all_channel_order_and_uses_pillow_lanczos(
+    tmp_path: Path,
+) -> None:
     path = _netcdf(tmp_path / "source.nc")
     result = rebuild.resize_netcdf(path, list(reversed(CHANNELS)), 224)
     assert result.shape == (13, 224, 224)
     assert result.dtype == np.float32
-    np.testing.assert_array_equal(result[:, 0, 0], np.arange(12, -1, -1) * 100)
-    # Area reduction of the four corners is the mean, not the nearest pixel.
+    source = np.arange(16, dtype=np.float32).reshape(4, 4)
+    resized_source = np.asarray(
+        Image.fromarray(source).resize(
+            (224, 224), resample=Image.Resampling.LANCZOS
+        ),
+        dtype=np.float32,
+    )
+    np.testing.assert_allclose(
+        result[:, 0, 0], resized_source[0, 0] + np.arange(12, -1, -1) * 100
+    )
     reduced = rebuild.resize_netcdf(path, CHANNELS, 2)
-    np.testing.assert_array_equal(reduced[0], [[2.5, 4.5], [10.5, 12.5]])
+    expected = np.asarray(
+        Image.fromarray(source).resize(
+            (2, 2), resample=Image.Resampling.LANCZOS
+        ),
+        dtype=np.float32,
+    )
+    np.testing.assert_array_equal(reduced[0], expected)
 
 
 @pytest.mark.parametrize(
@@ -235,7 +284,7 @@ def test_resize_preserves_all_channel_order_and_uses_area(tmp_path: Path) -> Non
     ],
 )
 def test_resize_rejects_invalid_channels_and_shapes(
-    tmp_path: Path, fixture: dict[str, object], message: str
+    tmp_path: Path, fixture: NetcdfOptions, message: str
 ) -> None:
     path = _netcdf(tmp_path / "source.nc", **fixture)
     with pytest.raises(ValueError, match=message):
@@ -253,8 +302,8 @@ class _DownloadResponse(BytesIO):
         super().__init__(body)
         self.headers = {"ETag": etag}
 
-    def read(self, size: int = -1) -> bytes:
-        assert size > 0, "downloads must use bounded streaming reads"
+    def read(self, size: int | None = -1) -> bytes:
+        assert size is not None and size > 0, "downloads must use bounded streaming reads"
         return super().read(size)
 
 
@@ -264,7 +313,7 @@ def test_download_streams_retries_and_cleans_partial_files(
     source = SourceObject("root/a b/20190101_0000.nc", 2019, 1, 4, '"a"')
     bodies = [b"bad", b"good"]
 
-    def respond(request: object, timeout: int) -> _DownloadResponse:
+    def respond(request: Request, timeout: int) -> _DownloadResponse:
         assert (
             request.full_url == "https://s3.example/bucket/root/a%20b/20190101_0000.nc"
         )
@@ -303,22 +352,48 @@ def test_download_rejects_changed_etag(
     assert not list(tmp_path.iterdir())
 
 
-def _year_args(tmp_path: Path) -> dict[str, object]:
-    return dict(
-        year=2019,
-        objects=[SourceObject("20190101_0000.nc", 2019, 1546300800000000000, 1, '"a"')],
-        bucket="bucket",
-        endpoint_url="https://s3.example",
-        output_path=tmp_path / "output",
-        checkpoint_root=tmp_path / "output" / ".checkpoints",
-        temp_dir=tmp_path / "temp",
-        channels=CHANNELS,
-        target_size=224,
-        timeout_seconds=7,
-        attempts=2,
-        manifest_digest="manifest-a",
-        config_digest="config-a",
-    )
+class YearArgs(TypedDict):
+    """Typed keyword arguments for the annual processing helper."""
+
+    year: int
+    objects: list[SourceObject]
+    bucket: str
+    endpoint_url: str
+    output_path: Path
+    checkpoint_root: Path
+    temp_dir: Path
+    channels: list[str]
+    target_size: int
+    timeout_seconds: int
+    attempts: int
+    manifest_digest: str
+    config_digest: str
+    download_workers: int
+    transform_workers: int
+    max_in_flight_samples: int
+
+
+def _year_args(tmp_path: Path) -> YearArgs:
+    return {
+        "year": 2019,
+        "objects": [
+            SourceObject("20190101_0000.nc", 2019, 1546300800000000000, 1, '"a"')
+        ],
+        "bucket": "bucket",
+        "endpoint_url": "https://s3.example",
+        "output_path": tmp_path / "output",
+        "checkpoint_root": tmp_path / "output" / ".checkpoints",
+        "temp_dir": tmp_path / "temp",
+        "channels": CHANNELS,
+        "target_size": 224,
+        "timeout_seconds": 7,
+        "attempts": 2,
+        "manifest_digest": "manifest-a",
+        "config_digest": "config-a",
+        "download_workers": 2,
+        "transform_workers": 1,
+        "max_in_flight_samples": 2,
+    }
 
 
 def _local_download(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> list[str]:
@@ -358,22 +433,22 @@ def test_process_year_writes_utc_schema_and_skips_completed_slots(
     downloaded = _local_download(monkeypatch, tmp_path)
     args = _year_args(tmp_path)
     rebuild.process_year(**args)
-    dataset = zarr.open_group(
-        str(tmp_path / "output" / ".staging" / "2019" / "dataset"), mode="r"
-    )
+    dataset = _open_group(tmp_path / "output" / ".staging" / "2019" / "dataset")
+    image_array = _array(dataset, "images")
+    time_array = _array(dataset, "time")
     assert sorted(dataset.array_keys()) == ["images", "time"]
-    assert dataset["images"].shape == (1, 13, 224, 224)
-    assert dataset["images"].dtype == np.float32
-    assert dataset["images"].chunks == (50, 1, 224, 224)
-    assert dataset["time"].chunks == (50,)
-    assert dataset["time"].dtype == np.int64
-    assert dataset["time"][:].tolist() == [1546300800000000000]
-    assert dataset["time"].attrs["units"] == "nanoseconds since 1970-01-01"
-    assert dataset["time"].attrs["calendar"] == "proleptic_gregorian"
-    assert dataset["time"].attrs["timezone"] == "UTC"
-    assert dataset["images"].attrs["_ARRAY_DIMENSIONS"] == ["time", "channel", "y", "x"]
-    assert dataset["images"].attrs["channels"] == CHANNELS
-    assert dataset["images"].compressor.get_config() == {
+    assert image_array.shape == (1, 13, 224, 224)
+    assert image_array.dtype == np.float32
+    assert image_array.chunks == (1, 13, 224, 224)
+    assert time_array.chunks == (50,)
+    assert time_array.dtype == np.int64
+    assert _values(time_array).tolist() == [1546300800000000000]
+    assert time_array.attrs["units"] == "nanoseconds since 1970-01-01"
+    assert time_array.attrs["calendar"] == "proleptic_gregorian"
+    assert time_array.attrs["timezone"] == "UTC"
+    assert image_array.attrs["_ARRAY_DIMENSIONS"] == ["time", "channel", "y", "x"]
+    assert image_array.attrs["channels"] == CHANNELS
+    assert cast(Blosc, image_array.compressor).get_config() == {
         "id": "blosc",
         "cname": "lz4",
         "clevel": 5,
@@ -406,16 +481,21 @@ def test_process_year_resumes_interrupted_writes(
         rebuild.process_year(**_year_args(tmp_path))
     assert _state(tmp_path) == [("writing", None)]
     assert not list((tmp_path / "temp").iterdir())
-    dataset = zarr.open_group(
-        str(tmp_path / "output" / ".staging" / "2019" / "dataset"), mode="r"
-    )
+    dataset = _open_group(tmp_path / "output" / ".staging" / "2019" / "dataset")
     if interrupt_at == "after_time":
-        assert dataset["time"][:].tolist() == [1546300800000000000]
+        assert _values(_array(dataset, "time")).tolist() == [1546300800000000000]
     else:
-        assert dataset["time"][:].tolist() == [0]
+        assert _values(_array(dataset, "time")).tolist() == [0]
     if interrupt_at in {"time", "after_time"}:
-        np.testing.assert_array_equal(
-            dataset["images"][0, :, 0, 0], np.arange(13) * 100
+        resized_source = np.asarray(
+            Image.fromarray(np.arange(16, dtype=np.float32).reshape(4, 4)).resize(
+                (224, 224), resample=Image.Resampling.LANCZOS
+            ),
+            dtype=np.float32,
+        )
+        np.testing.assert_allclose(
+            cast(np.ndarray, _array(dataset, "images")[0, :, 0, 0]),
+            resized_source[0, 0] + np.arange(13) * 100,
         )
     monkeypatch.setattr(zarr.Array, "__setitem__", original)
     rebuild.process_year(**_year_args(tmp_path))
@@ -492,10 +572,19 @@ def test_process_year_continues_after_failed_sample(
     _local_download(monkeypatch, tmp_path)
     local_download = rebuild.download_object
 
-    def download(source: SourceObject, *args: object) -> Path:
+    def download(
+        source: SourceObject,
+        bucket: str,
+        endpoint_url: str,
+        temp_dir: Path,
+        timeout_seconds: int,
+        attempts: int,
+    ) -> Path:
         if source.key == "20190101_0000.nc":
             raise OSError("unavailable")
-        return local_download(source, *args)
+        return local_download(
+            source, bucket, endpoint_url, temp_dir, timeout_seconds, attempts
+        )
 
     monkeypatch.setattr(rebuild, "download_object", download)
     args = _year_args(tmp_path)
@@ -553,18 +642,18 @@ def test_process_year_resumes_interrupted_array_initialization(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _local_download(monkeypatch, tmp_path)
-    original = zarr.attrs.Attributes.update
+    original = Attributes.update
 
     def interrupt(
-        attributes: zarr.attrs.Attributes, *args: object, **kwargs: object
+        attributes: Attributes, *args: object, **kwargs: object
     ) -> None:
         raise KeyboardInterrupt("initialization walltime")
 
-    monkeypatch.setattr(zarr.attrs.Attributes, "update", interrupt)
+    monkeypatch.setattr(Attributes, "update", interrupt)
     with pytest.raises(KeyboardInterrupt):
         rebuild.process_year(**_year_args(tmp_path))
     assert _state(tmp_path) == [("pending", None)]
-    monkeypatch.setattr(zarr.attrs.Attributes, "update", original)
+    monkeypatch.setattr(Attributes, "update", original)
     rebuild.process_year(**_year_args(tmp_path))
     assert _state(tmp_path) == [("complete", None)]
 
@@ -587,9 +676,12 @@ def test_rebuild_module_registers_source_lz4_hdf5_filter() -> None:
         [
             sys.executable,
             "-c",
-            "import scripts.preprocessing.rebuild_surya_bench_zarr; "
-            "import h5py; "
-            "assert h5py.h5z.filter_avail(32004), 'source LZ4 HDF5 filter is unavailable'",
+            (
+                "import scripts.preprocessing.rebuild_surya_bench_zarr; "
+                "import h5py; "
+                "assert h5py.h5z.filter_avail(32004), "
+                "'source LZ4 HDF5 filter is unavailable'"
+            ),
         ],
         cwd=Path(__file__).resolve().parents[2],
         capture_output=True,
@@ -603,9 +695,12 @@ def test_rebuild_module_registers_source_lz4_hdf5_filter() -> None:
 def _run_config(tmp_path: Path, *, dry_run: bool = False) -> DictConfig:
     from omegaconf import OmegaConf
 
-    cfg = OmegaConf.load(
-        Path(__file__).resolve().parents[2]
-        / "configs/preprocessing/rebuild_surya_bench_zarr.yaml"
+    cfg = cast(
+        DictConfig,
+        OmegaConf.load(
+            Path(__file__).resolve().parents[2]
+            / "configs/preprocessing/rebuild_surya_bench_zarr.yaml"
+        ),
     )
     cfg.output_path = str(tmp_path / "output")
     cfg.temporary_directory = str(tmp_path / "temp")
@@ -720,9 +815,9 @@ def test_publish_complete_year_consolidates_and_keeps_checkpoint(
         stage, final, args["objects"], CHANNELS, 224, "manifest-a", "config-a"
     )
     assert not stage.exists()
-    dataset = zarr.open_consolidated(str(final / "dataset"), mode="r")
+    dataset = _open_group(final / "dataset", consolidated=True)
     assert set(dataset.array_keys()) == {"images", "time"}
-    assert dataset["time"][:].tolist() == [1546300800000000000]
+    assert _values(_array(dataset, "time")).tolist() == [1546300800000000000]
     assert dataset.attrs["completion"]["manifest_digest"] == "manifest-a"
     assert (tmp_path / "output" / ".checkpoints" / "2019.sqlite3").exists()
 
@@ -800,10 +895,19 @@ def test_run_continues_later_year_and_exits_nonzero_on_failure(
     ]
     _mock_listing(monkeypatch, objects)
 
-    def download(source: SourceObject, *args: object) -> Path:
+    def download(
+        source: SourceObject,
+        bucket: str,
+        endpoint_url: str,
+        temp_dir: Path,
+        timeout_seconds: int,
+        attempts: int,
+    ) -> Path:
         if source.year == 2019:
             raise RuntimeError("synthetic failure")
-        return original_download(source, *args)
+        return original_download(
+            source, bucket, endpoint_url, temp_dir, timeout_seconds, attempts
+        )
 
     monkeypatch.setattr(rebuild, "download_object", download)
     with pytest.raises(RuntimeError, match="2019"):
@@ -862,11 +966,12 @@ def test_run_resolution_controls_published_shape_chunks_and_resume(
     if size != 224:
         cfg.target_size = size
     rebuild.run(cfg)
-    dataset = zarr.open_consolidated(
-        str(tmp_path / "output" / "2019" / "dataset"), mode="r"
+    dataset = _open_group(
+        tmp_path / "output" / "2019" / "dataset", consolidated=True
     )
-    assert dataset["images"].shape == (1, 13, size, size)
-    assert dataset["images"].chunks == (50, 1, size, size)
+    images = _array(dataset, "images")
+    assert images.shape == (1, 13, size, size)
+    assert images.chunks == (1, 13, size, size)
     assert dataset.attrs["completion"]["target_size"] == size
     cfg.target_size = 512 if size == 224 else 224
     with pytest.raises(ValueError, match="identity"):
@@ -934,7 +1039,11 @@ def test_hydra_cli_dry_run_512_creates_no_logs_or_output(tmp_path: Path) -> None
         f"runpy.run_path({str(script)!r}, run_name='__main__')\n"
     )
     result = subprocess.run(
-        [sys.executable, "-c", code], cwd=tmp_path, capture_output=True, text=True
+        [sys.executable, "-c", code],
+        check=False,
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
     )
     assert result.returncode == 0, result.stderr
     assert "13631488" in result.stderr
@@ -1018,7 +1127,14 @@ def test_default_pipeline_overlaps_download_with_transform_and_bounds_temp(
             with lock:
                 in_flight.remove(f"20190101_{slot:02d}00.nc")
 
-    def download(source: SourceObject, *args: object) -> Path:
+    def download(
+        source: SourceObject,
+        bucket: str,
+        endpoint_url: str,
+        temp_dir: Path,
+        timeout_seconds: int,
+        attempts: int,
+    ) -> Path:
         nonlocal active_downloads, max_downloads, max_files, max_samples
         with lock:
             in_flight.add(source.key)
@@ -1030,7 +1146,9 @@ def test_default_pipeline_overlaps_download_with_transform_and_bounds_temp(
             if source.key == "20190101_0100.nc":
                 assert transform_started.wait(5), "download did not overlap transform"
                 download_overlapped.set()
-            path = _pipeline_download(source, *args)
+            path = _pipeline_download(
+                source, bucket, endpoint_url, temp_dir, timeout_seconds, attempts
+            )
             with lock:
                 max_files = max(max_files, len(list(path.parent.iterdir())))
             return path
@@ -1082,14 +1200,20 @@ def test_pipeline_out_of_order_results_use_stable_slots_and_one_owner(
     original_write = zarr.Array.__setitem__
     original_checkpoint = rebuild._open_checkpoint
 
-    def checkpoint(*args: object, **kwargs: object) -> sqlite3.Connection:
-        connection = original_checkpoint(*args, **kwargs)
+    def checkpoint(
+        path: Path,
+        identity: dict[str, str],
+        objects: list[SourceObject],
+        stage_exists: bool,
+    ) -> sqlite3.Connection:
+        connection = original_checkpoint(path, identity, objects, stage_exists)
         connection.set_trace_callback(
             lambda sql: checkpoint_threads.append(threading.get_ident())
         )
         return connection
 
     def write(array: zarr.Array, slot: int, value: object) -> None:
+        assert array.basename is not None
         writes.append((array.basename, slot, threading.get_ident()))
         original_write(array, slot, value)
         if array.basename == "time" and slot == 1:
@@ -1116,11 +1240,14 @@ def test_pipeline_out_of_order_results_use_stable_slots_and_one_owner(
         ("time", 0, owner),
     ]
     assert checkpoint_threads and set(checkpoint_threads) == {owner}
-    dataset = zarr.open_group(
-        str(tmp_path / "output" / ".staging" / "2019" / "dataset"), mode="r"
+    dataset = _open_group(tmp_path / "output" / ".staging" / "2019" / "dataset")
+    np.testing.assert_array_equal(
+        cast(np.ndarray, _array(dataset, "images")[:, 0, 0, 0]), [1, 2]
     )
-    np.testing.assert_array_equal(dataset["images"][:, 0, 0, 0], [1, 2])
-    assert dataset["time"][:].tolist() == [1546300800000000000, 1546304400000000000]
+    assert _values(_array(dataset, "time")).tolist() == [
+        1546300800000000000,
+        1546304400000000000,
+    ]
     assert _state(tmp_path) == [("complete", None), ("complete", None)]
 
 
@@ -1128,10 +1255,19 @@ def test_pipeline_out_of_order_results_use_stable_slots_and_one_owner(
 def test_pipeline_failure_cleans_temp_continues_and_resumes(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, failure: str
 ) -> None:
-    def download(source: SourceObject, *args: object) -> Path:
+    def download(
+        source: SourceObject,
+        bucket: str,
+        endpoint_url: str,
+        temp_dir: Path,
+        timeout_seconds: int,
+        attempts: int,
+    ) -> Path:
         if failure == "download" and source.key == "20190101_0000.nc":
             raise OSError("download unavailable")
-        return _pipeline_download(source, *args)
+        return _pipeline_download(
+            source, bucket, endpoint_url, temp_dir, timeout_seconds, attempts
+        )
 
     def resize(path: Path, channels: list[str], target_size: int) -> np.ndarray:
         if failure == "transform" and path.name == "20190101_0000.nc":
@@ -1161,9 +1297,18 @@ def test_pipeline_failure_cleans_temp_continues_and_resumes(
     assert times[:].tolist() == [0, 1546304400000000000, 1546308000000000000]
     downloaded: list[str] = []
 
-    def retry(source: SourceObject, *args: object) -> Path:
+    def retry(
+        source: SourceObject,
+        bucket: str,
+        endpoint_url: str,
+        temp_dir: Path,
+        timeout_seconds: int,
+        attempts: int,
+    ) -> Path:
         downloaded.append(source.key)
-        return _pipeline_download(source, *args)
+        return _pipeline_download(
+            source, bucket, endpoint_url, temp_dir, timeout_seconds, attempts
+        )
 
     monkeypatch.setattr(rebuild, "download_object", retry)
     monkeypatch.setattr(rebuild, "resize_netcdf", _pipeline_resize)
@@ -1181,11 +1326,20 @@ def test_pipeline_interruption_cleans_unconsumed_download_and_resumes(
     second_started = threading.Event()
     original_write = zarr.Array.__setitem__
 
-    def download(source: SourceObject, *args: object) -> Path:
+    def download(
+        source: SourceObject,
+        bucket: str,
+        endpoint_url: str,
+        temp_dir: Path,
+        timeout_seconds: int,
+        attempts: int,
+    ) -> Path:
         if source.key == "20190101_0100.nc":
             second_started.set()
             assert interrupted.wait(5), "bounded download should be active during write"
-        return _pipeline_download(source, *args)
+        return _pipeline_download(
+            source, bucket, endpoint_url, temp_dir, timeout_seconds, attempts
+        )
 
     def write(array: zarr.Array, slot: int, value: object) -> None:
         if array.basename == "images":

@@ -42,7 +42,7 @@ channels:
 # Override at launch, e.g. target_size=512; resume requires the same size.
 target_size: 224
 dtype: float32
-resize_method: INTER_AREA
+resize_method: PIL.LANCZOS
 
 retry_count: 3
 request_timeout_seconds: 60
@@ -55,7 +55,7 @@ transform_workers: 1
 max_in_flight_samples: 2
 
 chunks:
-  images: [50, 1, "${target_size}", "${target_size}"]
+  images: [1, 13, "${target_size}", "${target_size}"]
   time: [50]
 compression:
   codec: lz4

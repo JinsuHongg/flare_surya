@@ -28,7 +28,7 @@ echo "year=$YEAR output_path=$OUT temporary_directory=$TEMP_DIR"
 
 # The builder validates the output identity and resumes matching checkpoints.
 # It writes annual Zarr datasets beneath OUT for the configured 2010-2024 range.
-srun python scripts/preprocessing/rebuild_surya_bench_zarr.py \
+srun --cpu-bind=none python scripts/preprocessing/rebuild_surya_bench_zarr.py \
   output_path="$OUT" \
   start_year=2010 \
   end_year=2024 \

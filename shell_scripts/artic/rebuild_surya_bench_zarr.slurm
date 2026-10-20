@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=surya_bench_224_v2
-#SBATCH --partition=qGPU24
-#SBATCH --array=2010-2024%4
-#SBATCH --output=surya_bench_224_v2_%A_%a.out
-#SBATCH --error=surya_bench_224_v2_%A_%a.err
-#SBATCH --time=24:00:00
+#SBATCH --job-name=surya_bench_512_lanczos
+#SBATCH --partition=qCPU120
+#SBATCH --array=2010-2024%5
+#SBATCH --output=surya_bench_512_lanczos_%A_%a.out
+#SBATCH --error=surya_bench_512_lanczos_%A_%a.err
+#SBATCH --time=5-00:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
@@ -18,7 +18,7 @@ export PYTHONPATH="$PWD/src:$PWD/scripts${PYTHONPATH:+:$PYTHONPATH}"
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate flare_surya
 
-OUT=/scratch/users/jhong36/surya-bench-224-v2.zarr
+OUT=/scratch/users/jhong36/surya-bench-512-lanczos.zarr
 TEMP_DIR="${SLURM_TMPDIR:-${TMPDIR:-/tmp}}"
 YEAR="${SLURM_ARRAY_TASK_ID:?This script must run as a year array}"
 
@@ -33,6 +33,6 @@ srun python scripts/preprocessing/rebuild_surya_bench_zarr.py \
   start_year=2010 \
   end_year=2024 \
   selected_year="$YEAR" \
-  target_size=224 \
+  target_size=512 \
   temporary_directory="$TEMP_DIR" \
   dry_run=false

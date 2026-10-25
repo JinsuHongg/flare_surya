@@ -9,7 +9,8 @@ limits it.
 The experiments use the [Surya Bench flare-forecasting dataset](https://huggingface.co/datasets/nasa-ibm-ai4science/surya-bench-flare-forecasting).
 Surya input imagery is provided separately through the associated Surya data
 release. This repository does not include the dataset, checkpoints, W&B runs,
-or generated results.
+or rendered figures. A compact CSV with the values used by the Figure 1
+plotting script is tracked for reproducibility.
 
 ## Experiment organization
 
@@ -19,15 +20,14 @@ or generated results.
   Hydra defaults.
 - `scripts/finetuning/`: Surya training and test entry points.
 - `scripts/training/`: baseline training and test entry points.
+- `scripts/analysis/`: evaluation and plotting scripts.
 - `shell_scripts/`: PBS launch scripts.
 
 The study separates a 24-hour forecasting-window historical experiment family
 from an active 2-hour forecasting-window family. “Forecasting window” is the
 prediction horizon; “sampling interval” is the frequency used to extract
-timeline samples. See [the current research state](docs/research/current_state.md),
-[24-hour experiments](docs/experiments/24h_forecasting.md), and
-[2-hour experiments](docs/experiments/2h_forecasting.md) for the evidence and
-status matrix.
+timeline samples. Research notes, manuscript drafts, and rendered figures are
+maintained locally and are not tracked in this repository.
 
 ## Running configured work
 
@@ -50,5 +50,5 @@ and test index. PBS launch scripts under `shell_scripts/nas/` encode the
 cluster execution environment.
 
 Large and local artifacts—including `data/`, `results/`, checkpoints, W&B
-files, logs, Zarr stores, and CSV outputs—are intentionally ignored. Project
-documentation under `docs/` is version controlled.
+files, logs, Zarr stores, and runtime CSV outputs—are intentionally ignored.
+The compact Figure 1 source CSV is tracked separately to reproduce the plot.

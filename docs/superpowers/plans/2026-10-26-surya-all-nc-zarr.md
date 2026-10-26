@@ -4,7 +4,7 @@
 
 **Goal:** Build a separate 512-pixel Zarr containing all timestamped Surya Bench NetCDF files from 2010 through 2024, preserving the current hourly dataset.
 
-**Architecture:** Extend the existing S3 listing and timestamp parser with an explicit all-NetCDF selection mode while retaining the legacy hourly mode and its manifest identity. Write a fresh immutable manifest and per-year checkpoints under `/scratch/users/jhong36/surya-bench-512-lanczos-all-nc.zarr`; run a one-year pilot before submitting the full qCPU120 array, capped at five simultaneous tasks and limited to nodes with verified storage access.
+**Architecture:** Extend the S3 listing and timestamp parser with an explicit all-NetCDF selection mode while retaining the legacy hourly mode and its manifest identity. Build a fresh timestamp-ordered Zarr under `/scratch/users/jhong36/surya-bench-512-lanczos-all-nc.zarr`, copying old samples only when manifest identity and finished-year validation pass; download and resize the remaining samples from S3. Run a one-year pilot before submitting the full qCPU120 array, capped at five simultaneous tasks and limited to nodes with verified storage access.
 
 **Tech Stack:** Python 3.11, Hydra/OmegaConf, urllib S3 listing, Pillow Lanczos, Zarr v2, SQLite checkpoints, SLURM qCPU120.
 
@@ -20,6 +20,8 @@
 - Production array concurrency: `--array=2010-2024%5`; never run more than five year tasks from this array concurrently.
 - Use only qCPU120 nodes that pass output-path visibility and write checks.
 - Resume only with the same frozen manifest, output root, and immutable schema.
+- Reuse an old sample only when its source key, timestamp, byte size, and ETag match the full bucket manifest and its annual Zarr passes completion validation.
+- Copy reused images into the new Zarr; do not hard-link or modify old Zarr chunks.
 - Do not modify the shared builder or its config while legacy job `4736377` is running; verify it has exited before Task 1.
 - Do not start implementation until the design document is approved.
 
@@ -30,6 +32,7 @@
 - S3 listing returns a transient 429/5xx response: bounded retry must recover without writing a partial manifest.
 - A year is interrupted during download, transform, array write, or promotion: resuming the same build must rewrite only incomplete samples and leave completed years valid.
 - A scheduled node cannot see the shared output path: preflight/constraint must keep that node out of the production array.
+- The old Zarr has an incomplete or mismatched annual output: do not reuse that year's samples; download them from S3 and record the fallback count.
 
 ---
 
@@ -46,6 +49,7 @@
 - `list_source_objects(..., source_mode: str = "hourly") -> list[SourceObject]`
 - `inventory_only: bool` is a dry-run-only CLI/config option that summarizes every candidate `.nc` key before parsing or downloading.
 - The legacy config adds `source_mode: hourly` and `inventory_only: false`; neither field changes the legacy immutable identity.
+- The new config sets `reuse_source_path: /scratch/users/jhong36/surya-bench-512-lanczos.zarr`; the new manifest identity records the source manifest digest and source schema identity.
 - `source_mode="all_nc"` accepts only `.nc` keys with a validated UTC timestamp basename; the initial expected form is `YYYYMMDD_HHMM.nc`.
 
 - [ ] **Step 1: Confirm the legacy job is no longer using the shared builder**
@@ -128,9 +132,11 @@ Expected: the all-NetCDF config and its identity are not present yet.
 - [ ] **Step 3: Add the new Hydra config and compatibility-safe identity**
 
 Keep the existing config as the legacy hourly entry point. Add the all-NetCDF
-config with the approved schema and distinct output root. Include source mode
-in the new build identity; omit that new identity field for legacy hourly mode
-so the frozen 2010–2024 hourly manifest remains resumable.
+config with the approved schema, distinct output root, and reuse source path.
+When freezing the new manifest, include the source manifest digest and
+validated source schema identity. Include source mode and reuse identity in
+the all-NetCDF identity; omit those fields for legacy hourly mode so the frozen
+2010–2024 hourly manifest remains resumable.
 
 - [ ] **Step 4: Verify legacy and new identity behavior**
 
@@ -176,7 +182,46 @@ timestamps.
 Run: `conda run -n flare_surya pytest tests/preprocessing/test_rebuild_surya_bench_zarr.py -k 'listing_retry or all_nc_resume or interruption' -q`
 Expected: transient listing and interruption recovery tests pass.
 
-### Task 4: Add the qCPU120 Array and Storage Preflight
+### Task 4: Reuse Validated Hourly Samples
+
+**Files:**
+- Modify: `scripts/preprocessing/rebuild_surya_bench_zarr.py`
+- Test: `tests/preprocessing/test_rebuild_surya_bench_zarr.py`
+
+**Interfaces:**
+- `_copy_reusable_samples(source_images: zarr.Array, source_times: zarr.Array, source_objects: list[SourceObject], destination_images: zarr.Array, destination_times: zarr.Array, destination_objects: list[SourceObject], connection: sqlite3.Connection) -> int` copies only exact source matches into destination manifest slots and returns the reused count.
+- `process_year(...)` accepts the validated old Zarr root/manifest metadata as an optional reuse source; legacy hourly invocations leave it unset.
+
+- [ ] **Step 1: Add failing reuse and fallback tests**
+
+Create small source/destination Zarr fixtures. Assert exact key, timestamp,
+size, and ETag matches copy image values into the correct all-NetCDF slot and
+mark that slot complete. Assert changed ETag, absent key, or invalid source
+year does not copy and leaves the destination slot pending for S3 download.
+Assert an interruption during a copy safely recopies only the incomplete slot.
+
+- [ ] **Step 2: Run focused reuse tests and confirm they fail**
+
+Run: `conda run -n flare_surya pytest tests/preprocessing/test_rebuild_surya_bench_zarr.py -k 'reuse_existing_sample or reuse_fallback' -q`
+Expected: reuse and fallback cases fail before the copy path exists.
+
+- [ ] **Step 3: Validate old years and copy exact matches**
+
+For each old year, call the existing finished-year validator with the old
+manifest and config identity. Reuse that year only when validation succeeds.
+Match old objects to the full bucket manifest by key, timestamp, size, and
+ETag. Copy matching image samples into the destination's full-manifest slot,
+write the exact UTC timestamp, and transition the destination checkpoint to
+complete only after both writes finish. Keep the old Zarr open read-only. Leave
+all unmatched rows pending for the normal S3 download/resize pipeline.
+
+- [ ] **Step 4: Verify copy, fallback, and resume behavior**
+
+Run: `conda run -n flare_surya pytest tests/preprocessing/test_rebuild_surya_bench_zarr.py -k 'reuse_existing_sample or reuse_fallback or all_nc_resume' -q`
+Expected: reusable slots are copied once, mismatches fall back to S3, and
+interrupted copies resume safely.
+
+### Task 5: Add the qCPU120 Array and Storage Preflight
 
 **Files:**
 - Create: `shell_scripts/artic/rebuild_surya_bench_all_nc_512_zarr.slurm`
@@ -209,13 +254,13 @@ Run: `bash -n shell_scripts/artic/rebuild_surya_bench_all_nc_512_zarr.slurm`
 Run: `conda run -n flare_surya python scripts/preprocessing/rebuild_surya_bench_zarr.py --config-name=rebuild_surya_bench_zarr_all_nc dry_run=true`
 Expected: shell syntax passes; dry-run reports 2010–2024 counts, UTC range, unique manifest digest, separate output path, and uncompressed size estimate without creating output data.
 
-### Task 5: Pilot, Submit, Resume, and Validate the Full Build
+### Task 6: Pilot, Submit, Resume, and Validate the Full Build
 
 **Files:**
 - No additional source files; use the all-NetCDF config and SLURM script from Tasks 2 and 4.
 
 **Interfaces:**
-- Pilot array: year 2010 with `%1` using the same new output root and all-NetCDF manifest.
+- Pilot array: year 2010 with `%1` using the same new output root, full manifest, and reuse source identity.
 - Production array: years 2010–2024 with `%5`, constrained to nodes verified in Task 4.
 
 - [ ] **Step 1: Recheck the active legacy build and storage quota**
@@ -228,22 +273,25 @@ quota against the manifest's uncompressed estimate plus a safety margin.
 - [ ] **Step 2: Run and validate the 2010 pilot**
 
 Submit only year 2010 with concurrency `%1`. Confirm the job uses a verified
-node, produces the expected sample count, and publishes valid ordered UTC
-timestamps, completion metadata, 13-channel schema, 512 × 512 images, and
-`(1, 13, 512, 512)` image chunks.
+node, copies its matching completed hourly samples without S3 NetCDF downloads,
+fetches and transforms only remaining timestamps, and publishes the expected
+count, ordered timestamps, completion metadata, 13-channel schema, 512 × 512
+images, and `(1, 13, 512, 512)` image chunks.
 
 - [ ] **Step 3: Exercise interruption recovery on the pilot**
 
 Use the existing tested interruption fixture for automated recovery checks.
 For the live pilot, do not deliberately kill a successful long-running job;
 verify the same-manifest resume path with the controlled fixture and inspect
-checkpoint/manifest identity before production submission.
+checkpoint, all-NetCDF manifest, and reuse-source manifest identities before
+production submission.
 
 - [ ] **Step 4: Submit the full year array**
 
 After the pilot passes, submit `--array=2010-2024%5` with the verified node
-list. Keep the same output path, source mode, channels, target size, and
-manifest identity used by the pilot. Record the SLURM job ID.
+list. Keep the same output path, source mode, channels, target size, full
+source manifest, and reuse-source manifest identity used by the pilot. Record
+the SLURM job ID.
 
 - [ ] **Step 5: Monitor and resume only failed or incomplete years**
 
@@ -257,8 +305,8 @@ nodes. Do not submit duplicate active tasks for the same year.
 Run the builder's finished-year validation for all 15 years. Confirm annual
 counts equal the frozen manifest, every timestamp is unique and strictly
 increasing, all completion markers match, and the old hourly manifest/output
-remain unchanged. Report final compressed storage use and the list of any
-failed years.
+remain unchanged. Report counts of reused and downloaded samples, estimated
+S3 source bytes avoided, final compressed storage use, and any failed years.
 
 ## Verification Commands
 

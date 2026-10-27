@@ -9,19 +9,21 @@ from __future__ import annotations
 
 import argparse
 import csv
+import math
 import re
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import wandb
 from loguru import logger
 from wandb.apis.public import Run
 from wandb.errors import CommError
 
-
 WANDB_ROOT = Path("/mnt/storage/surya/wandb")
 METRIC_KEYS = ("epoch", "val/css", "val/tss", "val/hss")
+CONFUSION_KEYS = ("val/tp", "val/fp", "val/tn", "val/fn")
+HISTORY_KEYS = (*METRIC_KEYS, *CONFUSION_KEYS)
 
 
 def parse_args() -> argparse.Namespace:
@@ -185,14 +187,20 @@ def resolve_run(
         A tuple of (Run object or None, error detail string).
     """
     try:
-        return api.run(f"{entity}/{project}/{experiment_id}"), ""
+        run = cast(Run, api.run(f"{entity}/{project}/{experiment_id}"))
+        return run, ""
     except CommError as error:
         direct_error = str(error)
 
     # Fallback: search by display name (Run Name) in target project
     try:
         runs = list(
-            api.runs(f"{entity}/{project}", filters={"display_name": experiment_id})
+            cast(
+                Iterable[Run],
+                api.runs(
+                    f"{entity}/{project}", filters={"display_name": experiment_id}
+                ),
+            )
         )
         if runs:
             runs.sort(key=lambda item: str(item.created_at), reverse=True)
@@ -204,12 +212,29 @@ def resolve_run(
 
 
 def valid_validation_rows(history: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Filter history rows that contain all required validation metrics."""
+    """Filter rows with selection metrics; confusion counts may be absent."""
     return [
         row
         for row in history
         if all(row.get(key) is not None for key in METRIC_KEYS)
     ]
+
+
+def parse_confusion_count(value: Any) -> int | None:
+    """Return an integer confusion count or None when the value is unavailable.
+
+    Args:
+        value: Raw W&B history value for one confusion-matrix count.
+
+    Returns:
+        An integer count, or None for missing, non-finite, or non-integer values.
+    """
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    numeric_value = float(value)
+    if not math.isfinite(numeric_value) or not numeric_value.is_integer():
+        return None
+    return int(numeric_value)
 
 
 def latest_validation_rows_by_epoch(
@@ -275,6 +300,11 @@ def retrieve_experiment(
         "val_css": "",
         "val_tss": "",
         "val_hss": "",
+        "val_tp": "",
+        "val_fp": "",
+        "val_tn": "",
+        "val_fn": "",
+        "confusion_counts_status": "MISSING",
         "validation_record_count": 0,
         "status": "CLOUD_MISSING",
         "detail": "No local W&B configuration supplied an entity/project path.",
@@ -296,7 +326,7 @@ def retrieve_experiment(
         # avoids scanning the high-frequency training-step records remotely while
         # retaining all expected validation records (at most 50 epochs here).
         history_records = run.history(
-            keys=list(METRIC_KEYS), samples=1_000, pandas=False
+            keys=list(HISTORY_KEYS), samples=1_000, pandas=False
         )
         rows = valid_validation_rows(history_records)
         canonical_rows = latest_validation_rows_by_epoch(rows)
@@ -322,12 +352,22 @@ def retrieve_experiment(
             canonical_rows,
             key=lambda row: (float(row["val/css"]), int(row["epoch"])),
         )
+        confusion_counts = [
+            parse_confusion_count(best.get(key)) for key in CONFUSION_KEYS
+        ]
         base_record.update(
             {
                 "best_epoch": int(best["epoch"]),
                 "val_css": float(best["val/css"]),
                 "val_tss": float(best["val/tss"]),
                 "val_hss": float(best["val/hss"]),
+                "val_tp": confusion_counts[0] if confusion_counts[0] is not None else "",
+                "val_fp": confusion_counts[1] if confusion_counts[1] is not None else "",
+                "val_tn": confusion_counts[2] if confusion_counts[2] is not None else "",
+                "val_fn": confusion_counts[3] if confusion_counts[3] is not None else "",
+                "confusion_counts_status": (
+                    "OK" if all(value is not None for value in confusion_counts) else "MISSING"
+                ),
                 "status": "OK",
                 "detail": "",
             }
@@ -358,6 +398,11 @@ def write_audit(records: list[dict[str, str | int | float]], output_path: Path) 
         "val_css",
         "val_tss",
         "val_hss",
+        "val_tp",
+        "val_fp",
+        "val_tn",
+        "val_fn",
+        "confusion_counts_status",
         "validation_record_count",
         "status",
         "detail",
@@ -383,7 +428,7 @@ def main() -> None:
     api = wandb.Api(timeout=30)
     prior_audit = args.prior_audit or args.output
     audit_paths = load_audit_paths(prior_audit)
-    records = []
+    records: list[dict[str, str | int | float]] = []
     for index, experiment in enumerate(selected, start=args.offset + 1):
         logger.info("Retrieving {}/{}: {}", index, len(experiments), experiment["ids"])
         records.append(

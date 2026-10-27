@@ -38,6 +38,12 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", type=Path, default=figure_dir / "figure1_test_css_data.csv")
     parser.add_argument("--output", type=Path, default=figure_dir / "figure1_test_css_by_interval.png")
+    parser.add_argument(
+        "--output-pdf",
+        type=Path,
+        default=None,
+        help="Vector PDF destination (defaults to the PNG path with a .pdf suffix).",
+    )
     return parser.parse_args()
 
 
@@ -138,18 +144,19 @@ def plot_panel(
             )
 
     axis.set_xticks(range(len(intervals)), labels=[str(interval) for interval in intervals])
-    axis.set_title(f"$\\geq${threshold} class")
-    axis.set_xlabel("Sampling interval (h)" if show_x_label else "")
-    axis.set_ylabel("CSS" if show_y_label else "")
+    axis.set_title(f"$\\geq${threshold} class", fontsize=18)
+    axis.set_xlabel("Sampling interval (h)" if show_x_label else "", fontsize=16)
+    axis.set_ylabel("CSS" if show_y_label else "", fontsize=16)
+    axis.tick_params(axis="both", labelsize=14)
     axis.set_ylim(0, 1 if threshold != "X" else 0.4)
     axis.grid(axis="y", color="#D9DEE5", linewidth=0.6)
     for spine in ("top", "right"):
         axis.spines[spine].set_visible(False)
 
 
-def create_figure(rows: list[ResultRow], output: Path) -> None:
-    """Render the six-panel test CSS figure."""
-    figure, axes = plt.subplots(2, 3, figsize=(12, 7.2))
+def create_figure(rows: list[ResultRow], output: Path, output_pdf: Path) -> None:
+    """Render the six-panel test CSS figure as PNG and vector PDF."""
+    figure, axes = plt.subplots(2, 3, figsize=(14, 8))
     for row_index, horizon in enumerate(FORECAST_HOURS):
         for column_index, threshold in enumerate(THRESHOLDS):
             axis = axes[row_index, column_index]
@@ -169,24 +176,29 @@ def create_figure(rows: list[ResultRow], output: Path) -> None:
                     rotation=90,
                     ha="center",
                     va="center",
-                    fontsize=10,
+                    fontsize=16,
                     fontweight="bold",
                 )
             if axis.lines:
-                axis.legend(frameon=False, fontsize=8)
+                axis.legend(frameon=False, fontsize=13)
 
     figure.subplots_adjust(left=0.1, right=0.99, bottom=0.12, top=0.91, hspace=0.38, wspace=0.3)
     output.parent.mkdir(parents=True, exist_ok=True)
     figure.savefig(output, dpi=300, bbox_inches="tight")
+    output_pdf.parent.mkdir(parents=True, exist_ok=True)
+    with plt.rc_context({"pdf.fonttype": 42}):
+        figure.savefig(output_pdf, format="pdf", dpi=300, bbox_inches="tight")
     plt.close(figure)
-    logger.info("Saved test CSS figure to {}", output)
+    logger.info("Saved 300 dpi test CSS PNG to {}", output)
+    logger.info("Saved vector test CSS PDF to {}", output_pdf)
 
 
 def main() -> None:
     """Load experiment results and save the figure."""
     args = parse_args()
     rows = read_rows(args.data)
-    create_figure(rows, args.output)
+    output_pdf = args.output_pdf or args.output.with_suffix(".pdf")
+    create_figure(rows, args.output, output_pdf)
 
 
 if __name__ == "__main__":

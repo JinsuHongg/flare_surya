@@ -180,7 +180,8 @@ def create_figure(rows: list[ResultRow], output: Path, output_pdf: Path) -> None
                     fontweight="bold",
                 )
             if axis.lines:
-                axis.legend(frameon=False, fontsize=13)
+                legend_fontsize = 11 if horizon == 24 and threshold == "M" else 13
+                axis.legend(frameon=False, fontsize=legend_fontsize)
 
     figure.subplots_adjust(left=0.1, right=0.99, bottom=0.12, top=0.91, hspace=0.38, wspace=0.3)
     output.parent.mkdir(parents=True, exist_ok=True)

@@ -9,6 +9,7 @@ import os
 import re
 import sqlite3
 import tempfile
+import time
 import xml.etree.ElementTree as ET
 from collections.abc import Callable, Generator
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
@@ -18,6 +19,7 @@ from datetime import UTC, datetime
 from itertools import pairwise
 from pathlib import Path
 from typing import Any, cast
+from urllib.error import HTTPError
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
@@ -32,6 +34,7 @@ from omegaconf import DictConfig, OmegaConf
 from PIL import Image
 
 _HOURLY_FILENAME = re.compile(r"(?P<date>\d{8})_(?P<hour>\d{2})00\.nc\Z")
+_ALL_NC_FILENAME = re.compile(r"(?P<date>\d{8})_(?P<hour>\d{2})(?P<minute>\d{2})\.nc\Z")
 
 
 @dataclass(frozen=True)
@@ -45,23 +48,30 @@ class SourceObject:
     etag: str
 
 
-def parse_source_key(key: str) -> SourceObject | None:
-    """Parse an exact hourly NetCDF basename as a UTC timestamp.
+def parse_source_key(key: str, source_mode: str = "hourly") -> SourceObject | None:
+    """Parse an hourly or minute-cadence NetCDF basename as UTC.
 
     Args:
         key: Full object key from the bucket listing.
+        source_mode: ``hourly`` preserves the old HH00 selection; ``all_nc``
+            accepts every valid minute in the timestamp basename.
 
     Returns:
         A source identity with placeholder listing metadata, or ``None`` when
         the basename does not match the required hourly filename pattern.
     """
+    if source_mode not in {"hourly", "all_nc"}:
+        raise ValueError("source_mode must be 'hourly' or 'all_nc'")
     basename = key.rsplit("/", 1)[-1]
-    match = _HOURLY_FILENAME.fullmatch(basename)
+    match = (
+        _HOURLY_FILENAME if source_mode == "hourly" else _ALL_NC_FILENAME
+    ).fullmatch(basename)
     if match is None:
         return None
     try:
         timestamp = datetime.strptime(
-            f"{match.group('date')}_{match.group('hour')}", "%Y%m%d_%H"
+            f"{match.group('date')}_{match.group('hour')}{match.groupdict().get('minute', '')}",
+            "%Y%m%d_%H%M" if source_mode == "all_nc" else "%Y%m%d_%H",
         ).replace(tzinfo=UTC)
     except ValueError:
         return None
@@ -77,6 +87,130 @@ def _xml_child(element: ET.Element, name: str) -> str | None:
     return None
 
 
+def _list_page(
+    request: Request,
+    timeout_seconds: int,
+    retry_count: int,
+    retry_backoff_seconds: float,
+    max_retry_backoff_seconds: float,
+) -> bytes:
+    """Fetch one S3 listing page, retrying only bounded transient HTTP errors."""
+    for attempt in range(retry_count + 1):
+        try:
+            with urlopen(request, timeout=timeout_seconds) as response:
+                return response.read()
+        except HTTPError as error:
+            if error.code != 429 and not 500 <= error.code <= 599:
+                raise
+            if attempt == retry_count:
+                raise
+            time.sleep(
+                min(retry_backoff_seconds * (2**attempt), max_retry_backoff_seconds)
+            )
+    raise RuntimeError("unreachable listing retry state")
+
+
+def _list_netcdf_keys(
+    bucket: str,
+    endpoint_url: str,
+    prefix: str,
+    start_year: int,
+    end_year: int,
+    timeout_seconds: int,
+    retry_count: int = 5,
+    retry_backoff_seconds: float = 2,
+    max_retry_backoff_seconds: float = 30,
+) -> list[tuple[str, int, str]]:
+    """List all NetCDF keys in a year range without parsing their basenames."""
+    if start_year > end_year:
+        raise ValueError("start_year must be less than or equal to end_year")
+    if not endpoint_url.startswith("https://"):
+        raise ValueError("endpoint_url must use HTTPS")
+    if retry_count < 0 or retry_backoff_seconds < 0 or max_retry_backoff_seconds < 0:
+        raise ValueError("listing retry settings must be nonnegative")
+    base_url = endpoint_url.rstrip("/") + "/" + bucket
+    continuation_token: str | None = None
+    accepted: list[tuple[str, int, str]] = []
+    while True:
+        params = {"list-type": "2", "prefix": prefix}
+        if continuation_token is not None:
+            params["continuation-token"] = continuation_token
+        request = Request(
+            base_url + "?" + urlencode(params), headers={"User-Agent": "flare-surya"}
+        )
+        root = ET.fromstring(
+            _list_page(
+                request,
+                timeout_seconds,
+                retry_count,
+                retry_backoff_seconds,
+                max_retry_backoff_seconds,
+            )
+        )
+        for entry in root.iter():
+            if entry.tag.rsplit("}", 1)[-1] != "Contents":
+                continue
+            key = _xml_child(entry, "Key")
+            size_text = _xml_child(entry, "Size")
+            etag = _xml_child(entry, "ETag")
+            if key is None or size_text is None or etag is None:
+                raise ValueError(
+                    "malformed S3 listing entry: missing Key, Size, or ETag"
+                )
+            if not key.endswith(".nc"):
+                continue
+            year = _year_from_key(key)
+            if year is not None and not start_year <= year <= end_year:
+                continue
+            try:
+                size = int(size_text)
+            except ValueError as error:
+                raise ValueError(f"invalid object size for {key!r}") from error
+            accepted.append((key, size, etag))
+        if _xml_child(root, "IsTruncated") != "true":
+            break
+        continuation_token = _xml_child(root, "NextContinuationToken")
+        if not continuation_token:
+            raise ValueError("truncated S3 listing omitted NextContinuationToken")
+    return sorted(accepted, key=lambda row: row[0])
+
+
+def _year_from_key(key: str) -> int | None:
+    """Find a four-digit year path segment or timestamp year in an object key."""
+    for segment in key.split("/"):
+        if re.fullmatch(r"\d{4}", segment):
+            return int(segment)
+    match = _ALL_NC_FILENAME.fullmatch(key.rsplit("/", 1)[-1])
+    if match is not None:
+        return int(match.group("date")[:4])
+    return None
+
+
+def list_netcdf_keys(
+    bucket: str,
+    endpoint_url: str,
+    prefix: str,
+    start_year: int,
+    end_year: int,
+    timeout_seconds: int,
+    retry_count: int = 5,
+    retry_backoff_seconds: float = 2,
+    max_retry_backoff_seconds: float = 30,
+) -> list[tuple[str, int, str]]:
+    """Public interface for a format-independent, paginated NetCDF inventory."""
+    return _list_netcdf_keys(
+        bucket,
+        endpoint_url,
+        prefix,
+        start_year,
+        end_year,
+        timeout_seconds,
+        retry_count,
+        retry_backoff_seconds,
+        max_retry_backoff_seconds,
+    )
+
+
 def list_source_objects(
     bucket: str,
     endpoint_url: str,
@@ -84,6 +218,10 @@ def list_source_objects(
     start_year: int,
     end_year: int,
     timeout_seconds: int,
+    source_mode: str = "hourly",
+    retry_count: int = 5,
+    retry_backoff_seconds: float = 2,
+    max_retry_backoff_seconds: float = 30,
 ) -> list[SourceObject]:
     """List matching public S3 objects anonymously and return stable ordering.
 
@@ -103,6 +241,41 @@ def list_source_objects(
             two accepted keys map to the same timestamp.
         OSError: If an HTTP request fails.
     """
+    if source_mode not in {"hourly", "all_nc"}:
+        raise ValueError("source_mode must be 'hourly' or 'all_nc'")
+    if source_mode == "all_nc":
+        listed = list_netcdf_keys(
+            bucket,
+            endpoint_url,
+            prefix,
+            start_year,
+            end_year,
+            timeout_seconds,
+            retry_count,
+            retry_backoff_seconds,
+            max_retry_backoff_seconds,
+        )
+        accepted: list[SourceObject] = []
+        unsupported: list[str] = []
+        for key, size, etag in listed:
+            parsed = parse_source_key(key, source_mode="all_nc")
+            if parsed is None:
+                unsupported.append(key)
+                continue
+            accepted.append(
+                SourceObject(key, parsed.year, parsed.timestamp_ns, size, etag)
+            )
+        if unsupported:
+            raise ValueError(f"unsupported NetCDF object names: {unsupported[:20]}")
+        accepted.sort(key=lambda obj: (obj.timestamp_ns, obj.key))
+        seen: dict[int, str] = {}
+        for obj in accepted:
+            if obj.timestamp_ns in seen:
+                raise ValueError(
+                    f"duplicate timestamp {obj.timestamp_ns}: {seen[obj.timestamp_ns]!r} and {obj.key!r}"
+                )
+            seen[obj.timestamp_ns] = obj.key
+        return accepted
     if start_year > end_year:
         raise ValueError("start_year must be less than or equal to end_year")
     if not endpoint_url.startswith("https://"):
@@ -118,8 +291,15 @@ def list_source_objects(
         request = Request(
             base_url + "?" + urlencode(params), headers={"User-Agent": "flare-surya"}
         )
-        with urlopen(request, timeout=timeout_seconds) as response:
-            root = ET.fromstring(response.read())
+        root = ET.fromstring(
+            _list_page(
+                request,
+                timeout_seconds,
+                retry_count,
+                retry_backoff_seconds,
+                max_retry_backoff_seconds,
+            )
+        )
         for entry in root.iter():
             if entry.tag.rsplit("}", 1)[-1] != "Contents":
                 continue
@@ -525,6 +705,52 @@ def _open_year_arrays(
     return cast(zarr.Array, dataset["images"]), cast(zarr.Array, dataset["time"])
 
 
+def _copy_reusable_samples(
+    source_images: zarr.Array,
+    source_times: zarr.Array,
+    source_objects: list[SourceObject],
+    destination_images: zarr.Array,
+    destination_times: zarr.Array,
+    destination_objects: list[SourceObject],
+    connection: sqlite3.Connection,
+) -> int:
+    """Copy exact manifest matches and checkpoint only after both array writes."""
+    source_by_key = {obj.key: (slot, obj) for slot, obj in enumerate(source_objects)}
+    states = dict(connection.execute("SELECT slot, state FROM samples"))
+    copied = 0
+    for destination_slot, destination in enumerate(destination_objects):
+        source = source_by_key.get(destination.key)
+        if source is None or states[destination_slot] == "complete":
+            continue
+        source_slot, source_object = source
+        if source_object != destination:
+            continue
+        if int(source_times[source_slot]) != source_object.timestamp_ns:
+            continue
+        with connection:
+            connection.execute(
+                "UPDATE samples SET state='writing', error=NULL WHERE slot=?",
+                (destination_slot,),
+            )
+        try:
+            destination_images[destination_slot] = source_images[source_slot]
+            destination_times[destination_slot] = destination.timestamp_ns
+            with connection:
+                connection.execute(
+                    "UPDATE samples SET state='complete', error=NULL WHERE slot=?",
+                    (destination_slot,),
+                )
+            copied += 1
+        except Exception as error:
+            with connection:
+                connection.execute(
+                    "UPDATE samples SET state='failed', error=? WHERE slot=?",
+                    (f"{type(error).__name__}: {error}", destination_slot),
+                )
+            raise
+    return copied
+
+
 def _resize_and_cleanup(
     path: Path, channels: list[str], target_size: int
 ) -> np.ndarray:
@@ -646,6 +872,7 @@ def process_year(
     download_workers: int = 2,
     transform_workers: int = 1,
     max_in_flight_samples: int = 2,
+    reuse_source: tuple[zarr.Array, zarr.Array, list[SourceObject]] | None = None,
 ) -> None:
     """Write one year into staging with a durable SQLite completion checkpoint.
 
@@ -667,6 +894,7 @@ def process_year(
         transform_workers: Maximum concurrent NetCDF resize operations.
         max_in_flight_samples: Shared bound across downloads, transforms, and
             prepared results awaiting the single Zarr writer.
+        reuse_source: Optional read-only old-year arrays and their source manifest.
 
     Raises:
         ValueError: If source order, schema, or saved resume identity is invalid.
@@ -678,8 +906,7 @@ def process_year(
     if not objects or any(obj.year != year for obj in objects):
         raise ValueError("year requires nonempty matching source objects")
     if any(
-        left.timestamp_ns >= right.timestamp_ns
-        for left, right in pairwise(objects)
+        left.timestamp_ns >= right.timestamp_ns for left, right in pairwise(objects)
     ):
         raise ValueError("source timestamps must be strictly increasing and unique")
     stage = output_path / ".staging" / str(year)
@@ -708,6 +935,19 @@ def process_year(
                 raise ValueError(
                     f"completed timestamp differs from manifest at slot {slot}"
                 )
+        if reuse_source is not None:
+            reused = _copy_reusable_samples(
+                reuse_source[0],
+                reuse_source[1],
+                reuse_source[2],
+                images,
+                times,
+                objects,
+                connection,
+            )
+            if reused:
+                logger.info("Year {} reused {} validated samples", year, reused)
+            states = dict(connection.execute("SELECT slot, state FROM samples"))
 
         def start(slot: int) -> None:
             with connection:
@@ -830,12 +1070,13 @@ def _read_frozen_manifest(
             raise ValueError("invalid frozen manifest source row")
         objects.append(SourceObject(**row))
     if any(
-        left.timestamp_ns >= right.timestamp_ns
-        for left, right in pairwise(objects)
+        left.timestamp_ns >= right.timestamp_ns for left, right in pairwise(objects)
     ):
         raise ValueError("frozen manifest timestamps must be sorted and unique")
     for source in objects:
-        parsed = parse_source_key(source.key)
+        parsed = parse_source_key(
+            source.key, source_mode=str(identity.get("source_mode", "hourly"))
+        )
         if (
             parsed is None
             or parsed.year != source.year
@@ -848,9 +1089,10 @@ def _read_frozen_manifest(
             raise ValueError("frozen manifest source identity is invalid")
     manifest_hash = manifest_digest(objects, identity)
     config_hash = manifest_digest([], identity)
-    if saved.get("manifest_digest") != manifest_hash or saved.get(
-        "config_digest"
-    ) != config_hash:
+    if (
+        saved.get("manifest_digest") != manifest_hash
+        or saved.get("config_digest") != config_hash
+    ):
         raise ValueError("frozen manifest digest differs")
     validate_output_root(output, manifest_hash, config_hash, allow_initialize=False)
     return objects, manifest_hash, config_hash
@@ -865,6 +1107,10 @@ def _load_or_create_frozen_manifest(
     start_year: int,
     end_year: int,
     timeout_seconds: int,
+    source_mode: str = "hourly",
+    retry_count: int = 5,
+    retry_backoff_seconds: float = 2,
+    max_retry_backoff_seconds: float = 30,
 ) -> tuple[list[SourceObject], str, str]:
     """Serialize manifest initialization and reuse it across year-array tasks."""
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -884,6 +1130,10 @@ def _load_or_create_frozen_manifest(
             start_year=start_year,
             end_year=end_year,
             timeout_seconds=timeout_seconds,
+            source_mode=source_mode,
+            retry_count=retry_count,
+            retry_backoff_seconds=retry_backoff_seconds,
+            max_retry_backoff_seconds=max_retry_backoff_seconds,
         )
         manifest_hash = manifest_digest(objects, identity)
         config_hash = manifest_digest([], identity)
@@ -985,9 +1235,7 @@ def _validate_finished_year(
     _validate_target_size(target_size)
     if not objects or any(obj.year != objects[0].year for obj in objects):
         raise ValueError("annual objects must be nonempty and from one year")
-    if any(
-        a.timestamp_ns >= b.timestamp_ns for a, b in pairwise(objects)
-    ):
+    if any(a.timestamp_ns >= b.timestamp_ns for a, b in pairwise(objects)):
         raise ValueError("annual manifest timestamps must be sorted and unique")
     checkpoint = output_path / ".checkpoints" / f"{objects[0].year}.sqlite3"
     if not checkpoint.is_file() or checkpoint.is_symlink():
@@ -1157,6 +1405,38 @@ def _validate_worker_limits(
             raise ValueError(f"{name} must be a positive integer")
 
 
+def _reuse_source_identity(source_path: Path) -> tuple[str, str, dict[str, Any]]:
+    """Validate the legacy frozen manifest and return its digest and schema."""
+    manifest_path = source_path / ".checkpoints" / "manifest.json"
+    if source_path.is_symlink() or manifest_path.is_symlink():
+        raise ValueError("reuse source manifest must not be a symbolic link")
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        source_identity = payload["config_identity"]
+    except (OSError, KeyError, TypeError, ValueError) as error:
+        raise ValueError("reuse source has no valid frozen manifest") from error
+    if not isinstance(source_identity, dict):
+        raise TypeError("reuse source configuration identity is invalid")
+    saved = _read_frozen_manifest(source_path, source_identity)
+    if saved is None or saved[1] != payload.get("manifest_digest"):
+        raise ValueError("reuse source manifest digest is invalid")
+    schema_keys = (
+        "channels",
+        "target_size",
+        "dtype",
+        "resize_method",
+        "chunks",
+        "compression",
+        "time_units",
+        "time_calendar",
+        "time_timezone",
+    )
+    schema = {key: source_identity.get(key) for key in schema_keys}
+    if schema["target_size"] != 512:
+        raise ValueError("reuse source must contain 512-pixel images")
+    return saved[1], json.dumps(schema, sort_keys=True), source_identity
+
+
 def _config_identity(cfg: DictConfig) -> dict[str, Any]:
     """Validate immutable output settings and omit operational retry settings."""
     _validate_target_size(cfg.target_size)
@@ -1178,6 +1458,11 @@ def _config_identity(cfg: DictConfig) -> dict[str, Any]:
         raise ValueError(  # noqa: TRY004 -- keep configuration validation consistent
             "build configuration must be a mapping"
         )
+    source_mode = config.get("source_mode", "hourly")
+    if source_mode not in {"hourly", "all_nc"}:
+        raise ValueError("source_mode must be 'hourly' or 'all_nc'")
+    if not isinstance(config.get("inventory_only", False), bool):
+        raise TypeError("inventory_only must be a boolean")
     for key, expected in required.items():
         if config.get(key) != expected:
             raise ValueError(f"{key} must match the approved annual schema")
@@ -1193,7 +1478,7 @@ def _config_identity(cfg: DictConfig) -> dict[str, Any]:
     for key in ("retry_count", "request_timeout_seconds", "download_timeout_seconds"):
         if int(config[key]) < 1:
             raise ValueError(f"{key} must be positive")
-    return {
+    identity = {
         key: config[key]
         for key in [
             "bucket",
@@ -1205,6 +1490,25 @@ def _config_identity(cfg: DictConfig) -> dict[str, Any]:
             *required,
         ]
     }
+    if source_mode == "all_nc":
+        if config.get("inventory_only", False):
+            identity["source_mode"] = "all_nc"
+            return identity
+        reuse_path = config.get("reuse_source_path")
+        if not isinstance(reuse_path, str) or not reuse_path.strip():
+            raise ValueError("all_nc mode requires reuse_source_path")
+        source_digest, source_schema, _source_identity = _reuse_source_identity(
+            Path(reuse_path).expanduser().resolve()
+        )
+        identity.update(
+            {
+                "source_mode": "all_nc",
+                "reuse_source_path": str(Path(reuse_path).expanduser().resolve()),
+                "reuse_source_manifest_digest": source_digest,
+                "reuse_source_schema_identity": source_schema,
+            }
+        )
+    return identity
 
 
 def run(cfg: DictConfig) -> None:
@@ -1219,23 +1523,78 @@ def run(cfg: DictConfig) -> None:
         RuntimeError: If any year remains incomplete after processing later years.
     """
     identity = _config_identity(cfg)
+    source_mode = str(cfg.get("source_mode", "hourly"))
+    inventory_only = bool(cfg.get("inventory_only", False))
     raw_output = cfg.output_path
     if raw_output is not None and (
         not isinstance(raw_output, str) or not raw_output.strip()
     ):
-        raise ValueError(
-            "output_path must be an explicit nonempty path"
-        )
+        raise ValueError("output_path must be an explicit nonempty path")
     if not isinstance(cfg.dry_run, bool):
         raise ValueError(  # noqa: TRY004 -- keep configuration validation consistent
             "dry_run must be a boolean"
         )
     if not cfg.dry_run and raw_output is None:
         raise ValueError("output_path is required before writes")
+    if inventory_only and not cfg.dry_run:
+        raise ValueError("inventory_only requires dry_run=true")
     if raw_output is not None and Path(raw_output).expanduser().is_symlink():
         raise ValueError("output_path must not be a symbolic link")
     output = Path(raw_output).expanduser().resolve() if raw_output is not None else None
+    if source_mode == "all_nc" and not inventory_only and output is not None:
+        reuse_path = Path(str(cfg.reuse_source_path)).expanduser().resolve()
+        if output == reuse_path:
+            raise ValueError("all-NC output must be separate from the reuse source")
     selected_year = cfg.get("selected_year")
+    if inventory_only:
+        listed = list_netcdf_keys(
+            str(cfg.bucket),
+            str(cfg.endpoint_url),
+            str(cfg.prefix),
+            int(cfg.start_year),
+            int(cfg.end_year),
+            int(cfg.request_timeout_seconds),
+            int(cfg.get("listing_retry_count", 5)),
+            float(cfg.get("retry_backoff_seconds", 2)),
+            float(cfg.get("max_retry_backoff_seconds", 30)),
+        )
+        counts: dict[int, int] = {}
+        patterns: dict[str, int] = {}
+        unsupported: list[str] = []
+        timestamp_keys: dict[int, str] = {}
+        duplicates: list[str] = []
+        for key, _size, _etag in listed:
+            year = _year_from_key(key)
+            if year is not None:
+                counts[year] = counts.get(year, 0) + 1
+            parsed = parse_source_key(key, source_mode="all_nc")
+            pattern = "YYYYMMDD_HHMM.nc" if parsed is not None else "unrecognized"
+            patterns[pattern] = patterns.get(pattern, 0) + 1
+            if parsed is None:
+                unsupported.append(key)
+            elif parsed.timestamp_ns in timestamp_keys:
+                duplicates.append(f"{timestamp_keys[parsed.timestamp_ns]} <> {key}")
+            else:
+                timestamp_keys[parsed.timestamp_ns] = key
+        logger.info(
+            "NetCDF inventory: {}",
+            json.dumps(
+                {
+                    "inventory_only": True,
+                    "candidate_count_by_year": counts,
+                    "basename_patterns": patterns,
+                    "unsupported_keys": unsupported,
+                    "duplicate_timestamps": duplicates,
+                    "source_bytes": sum(row[1] for row in listed),
+                    "estimated_uncompressed_image_bytes": len(listed)
+                    * len(cfg.channels)
+                    * int(cfg.target_size) ** 2
+                    * np.dtype(str(cfg.dtype)).itemsize,
+                },
+                sort_keys=True,
+            ),
+        )
+        return
     if selected_year is not None and not cfg.dry_run:
         assert output is not None
         objects, manifest_hash, config_hash = _load_or_create_frozen_manifest(
@@ -1247,6 +1606,10 @@ def run(cfg: DictConfig) -> None:
             int(cfg.start_year),
             int(cfg.end_year),
             int(cfg.request_timeout_seconds),
+            source_mode=source_mode,
+            retry_count=int(cfg.get("listing_retry_count", 5)),
+            retry_backoff_seconds=float(cfg.get("retry_backoff_seconds", 2)),
+            max_retry_backoff_seconds=float(cfg.get("max_retry_backoff_seconds", 30)),
         )
     else:
         objects = list_source_objects(
@@ -1256,19 +1619,35 @@ def run(cfg: DictConfig) -> None:
             start_year=int(cfg.start_year),
             end_year=int(cfg.end_year),
             timeout_seconds=int(cfg.request_timeout_seconds),
+            source_mode=source_mode,
+            retry_count=int(cfg.get("listing_retry_count", 5)),
+            retry_backoff_seconds=float(cfg.get("retry_backoff_seconds", 2)),
+            max_retry_backoff_seconds=float(cfg.get("max_retry_backoff_seconds", 30)),
         )
         manifest_hash = manifest_digest(objects, identity)
         config_hash = manifest_digest([], identity)
     years: dict[int, list[SourceObject]] = {}
     for obj in objects:
         years.setdefault(obj.year, []).append(obj)
+    reuse_root: Path | None = None
+    reuse_objects_by_year: dict[int, list[SourceObject]] = {}
+    reuse_manifest: tuple[list[SourceObject], str, str] | None = None
+    if source_mode == "all_nc":
+        reuse_root = Path(str(cfg.reuse_source_path)).expanduser().resolve()
+        source_manifest_path = reuse_root / ".checkpoints" / "manifest.json"
+        source_manifest = json.loads(source_manifest_path.read_text(encoding="utf-8"))
+        reuse_manifest = _read_frozen_manifest(
+            reuse_root, source_manifest["config_identity"]
+        )
+        if reuse_manifest is None:
+            raise ValueError("reuse source manifest is missing")
+        for source in reuse_manifest[0]:
+            reuse_objects_by_year.setdefault(source.year, []).append(source)
     if selected_year is not None and selected_year not in years:
         raise ValueError(f"selected_year {selected_year} has no source objects")
     utc_range = (
         [
-            datetime.fromtimestamp(
-                obj.timestamp_ns / 1_000_000_000, UTC
-            ).isoformat()
+            datetime.fromtimestamp(obj.timestamp_ns / 1_000_000_000, UTC).isoformat()
             for obj in (objects[0], objects[-1])
         ]
         if objects
@@ -1338,6 +1717,33 @@ def run(cfg: DictConfig) -> None:
                 raise ValueError(
                     "staging and checkpoint paths must not be symbolic links"
                 )
+            reuse_source = None
+            old_annual = reuse_objects_by_year.get(year, [])
+            if reuse_root is not None and reuse_manifest is not None and old_annual:
+                old_final = reuse_root / str(year)
+                try:
+                    _validate_finished_year(
+                        old_final,
+                        reuse_root,
+                        old_annual,
+                        list(cfg.channels),
+                        int(cfg.target_size),
+                        reuse_manifest[1],
+                        reuse_manifest[2],
+                        True,
+                    )
+                    old_dataset = zarr.open_group(str(old_final / "dataset"), mode="r")
+                    reuse_source = (
+                        cast(zarr.Array, old_dataset["images"]),
+                        cast(zarr.Array, old_dataset["time"]),
+                        old_annual,
+                    )
+                except (OSError, ValueError, KeyError) as error:
+                    logger.warning(
+                        "Year {} source is not reusable; downloading its samples: {}",
+                        year,
+                        error,
+                    )
             process_year(
                 year,
                 annual,
@@ -1355,6 +1761,7 @@ def run(cfg: DictConfig) -> None:
                 download_workers=int(cfg.download_workers),
                 transform_workers=int(cfg.transform_workers),
                 max_in_flight_samples=int(cfg.max_in_flight_samples),
+                reuse_source=reuse_source,
             )
             publish_year(
                 output / ".staging" / str(year),

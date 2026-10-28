@@ -1,0 +1,10 @@
+defaults:
+  - rebuild_surya_bench_zarr
+  - _self_
+
+source_mode: all_nc
+inventory_only: false
+target_size: 512
+output_path: /scratch/users/jhong36/surya-bench-512-lanczos-all-nc.zarr
+reuse_source_path: /scratch/users/jhong36/surya-bench-512-lanczos.zarr
+dry_run: true

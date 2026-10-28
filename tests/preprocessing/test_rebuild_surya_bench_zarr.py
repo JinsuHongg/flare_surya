@@ -6,9 +6,11 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+from email.message import Message
 from io import BytesIO
 from pathlib import Path
 from typing import Self, TypedDict, cast
+from urllib.error import HTTPError
 from urllib.request import Request
 
 import numpy as np
@@ -49,6 +51,45 @@ def test_parse_exact_hourly_key_as_utc() -> None:
         size=0,
         etag="",
     )
+
+
+def test_parse_all_nc_mode_accepts_nonzero_minutes() -> None:
+    result = parse_source_key("surya/20100513_0112.nc", source_mode="all_nc")
+
+    assert result == SourceObject(
+        key="surya/20100513_0112.nc",
+        year=2010,
+        timestamp_ns=1273713120000000000,
+        size=0,
+        etag="",
+    )
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "surya/20100230_0100.nc",
+        "surya/20100513_0160.nc",
+        "surya/20100513_2400.nc",
+        "surya/20100513_0100.txt",
+    ],
+)
+def test_parse_all_nc_mode_rejects_invalid_or_non_netcdf_keys(key: str) -> None:
+    assert parse_source_key(key, source_mode="all_nc") is None
+
+
+@pytest.mark.parametrize(
+    ("key", "timestamp_ns"),
+    [
+        ("surya/20101231_2359.nc", 1293839940000000000),
+        ("surya/20110101_0000.nc", 1293840000000000000),
+    ],
+)
+def test_parse_all_nc_mode_handles_year_boundary(key: str, timestamp_ns: int) -> None:
+    result = parse_source_key(key, source_mode="all_nc")
+
+    assert result is not None
+    assert result.timestamp_ns == timestamp_ns
 
 
 @pytest.mark.parametrize(
@@ -138,6 +179,107 @@ def test_listing_filters_years_and_paginates(monkeypatch: pytest.MonkeyPatch) ->
     assert [(obj.size, obj.etag) for obj in objects] == [(11, '"b"'), (13, '"c"')]
 
 
+def test_netcdf_inventory_lists_all_nc_keys_without_parsing_names(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requests: list[str] = []
+    payloads = [
+        _response(
+            [
+                ("2019/01/20190101_0112.nc", 12, '"b"'),
+                ("2019/01/unrecognized-name.nc", 13, '"unknown"'),
+                ("2019/01/20190101_0130.txt", 14, '"ignored"'),
+            ],
+            truncated=True,
+            token="second-page",
+        ),
+        _response(
+            [
+                ("2019/01/20190101_0100.nc", 10, '"a"'),
+                ("2020/01/20200101_0000.nc", 20, '"other-year"'),
+            ],
+            truncated=False,
+        ),
+    ]
+
+    def fake_urlopen(request: Request, timeout: int) -> _HTTPResponse:
+        requests.append(request.full_url)
+        assert timeout == 7
+        return _HTTPResponse(payloads.pop(0))
+
+    monkeypatch.setattr(rebuild, "urlopen", fake_urlopen)
+    objects = rebuild.list_netcdf_keys(
+        "bucket", "https://s3.example", "", 2019, 2019, 7
+    )
+
+    assert len(requests) == 2
+    assert "continuation-token=second-page" in requests[1]
+    assert objects == [
+        ("2019/01/20190101_0100.nc", 10, '"a"'),
+        ("2019/01/20190101_0112.nc", 12, '"b"'),
+        ("2019/01/unrecognized-name.nc", 13, '"unknown"'),
+    ]
+
+
+def test_netcdf_inventory_retries_transient_listing_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+    body = _response([("2019/20190101_0100.nc", 10, '"a"')], truncated=False)
+
+    def fake_urlopen(request: Request, timeout: int) -> _HTTPResponse:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise HTTPError(request.full_url, 503, "unavailable", Message(), None)
+        return _HTTPResponse(body)
+
+    monkeypatch.setattr(rebuild, "urlopen", fake_urlopen)
+    monkeypatch.setattr(rebuild.time, "sleep", lambda seconds: None)
+
+    objects = rebuild.list_netcdf_keys(
+        "bucket", "https://s3.example", "", 2019, 2019, 7, 1, 0, 0
+    )
+
+    assert attempts == 2
+    assert objects == [("2019/20190101_0100.nc", 10, '"a"')]
+
+
+def test_listing_all_nc_mode_sorts_nonzero_minutes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    body = _response(
+        [
+            ("root/20190101_0112.nc", 12, '"b"'),
+            ("root/20190101_0100.nc", 10, '"a"'),
+            ("root/20190101_0112.txt", 99, '"ignored"'),
+        ],
+        truncated=False,
+    )
+    monkeypatch.setattr(
+        rebuild, "urlopen", lambda request, timeout: _HTTPResponse(body)
+    )
+
+    objects = list_source_objects(
+        "bucket",
+        "https://s3.example",
+        "root/",
+        2019,
+        2019,
+        7,
+        source_mode="all_nc",
+    )
+
+    assert [obj.key for obj in objects] == [
+        "root/20190101_0100.nc",
+        "root/20190101_0112.nc",
+    ]
+    assert [obj.timestamp_ns for obj in objects] == [
+        1546304400000000000,
+        1546305120000000000,
+    ]
+
+
 def test_listing_rejects_duplicate_accepted_timestamps(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -154,6 +296,35 @@ def test_listing_rejects_duplicate_accepted_timestamps(
 
     with pytest.raises(ValueError, match="duplicate timestamp"):
         list_source_objects("bucket", "https://s3.example", "root/", 2019, 2019, 7)
+
+
+def test_listing_all_nc_mode_reports_both_duplicate_keys(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    keys = [
+        "root/a/20190101_0112.nc",
+        "root/b/20190101_0112.nc",
+    ]
+    body = _response(
+        [(key, index + 1, f'"{index}"') for index, key in enumerate(keys)],
+        truncated=False,
+    )
+    monkeypatch.setattr(
+        rebuild, "urlopen", lambda request, timeout: _HTTPResponse(body)
+    )
+
+    with pytest.raises(ValueError) as error:
+        list_source_objects(
+            "bucket",
+            "https://s3.example",
+            "root/",
+            2019,
+            2019,
+            7,
+            source_mode="all_nc",
+        )
+
+    assert all(key in str(error.value) for key in keys)
 
 
 def test_manifest_digest_is_stable_and_covers_identities_and_config() -> None:
@@ -203,7 +374,9 @@ CHANNELS = [
 ]
 
 
-def _open_group(path: Path | str, *, mode: str = "r", consolidated: bool = False) -> zarr.Group:
+def _open_group(
+    path: Path | str, *, mode: str = "r", consolidated: bool = False
+) -> zarr.Group:
     """Open a Zarr group across the Zarr 2 API's incomplete type stubs."""
     if consolidated:
         return cast(zarr.Group, zarr.open_consolidated(str(path), mode=mode))
@@ -257,9 +430,7 @@ def test_resize_preserves_all_channel_order_and_uses_pillow_lanczos(
     assert result.dtype == np.float32
     source = np.arange(16, dtype=np.float32).reshape(4, 4)
     resized_source = np.asarray(
-        Image.fromarray(source).resize(
-            (224, 224), resample=Image.Resampling.LANCZOS
-        ),
+        Image.fromarray(source).resize((224, 224), resample=Image.Resampling.LANCZOS),
         dtype=np.float32,
     )
     np.testing.assert_allclose(
@@ -267,9 +438,7 @@ def test_resize_preserves_all_channel_order_and_uses_pillow_lanczos(
     )
     reduced = rebuild.resize_netcdf(path, CHANNELS, 2)
     expected = np.asarray(
-        Image.fromarray(source).resize(
-            (2, 2), resample=Image.Resampling.LANCZOS
-        ),
+        Image.fromarray(source).resize((2, 2), resample=Image.Resampling.LANCZOS),
         dtype=np.float32,
     )
     np.testing.assert_array_equal(reduced[0], expected)
@@ -303,7 +472,9 @@ class _DownloadResponse(BytesIO):
         self.headers = {"ETag": etag}
 
     def read(self, size: int | None = -1) -> bytes:
-        assert size is not None and size > 0, "downloads must use bounded streaming reads"
+        assert size is not None and size > 0, (
+            "downloads must use bounded streaming reads"
+        )
         return super().read(size)
 
 
@@ -460,6 +631,73 @@ def test_process_year_writes_utc_schema_and_skips_completed_slots(
     assert not (tmp_path / "output" / "2019").exists()
     rebuild.process_year(**args)
     assert downloaded == ["20190101_0000.nc"]
+
+
+def test_copy_reusable_samples_requires_exact_manifest_identity(
+    tmp_path: Path,
+) -> None:
+    source_group = _open_group(tmp_path / "source", mode="w")
+    destination_group = _open_group(tmp_path / "destination", mode="w")
+    source_images = cast(
+        zarr.Array,
+        source_group.create_dataset(
+            "images", shape=(2, 13, 2, 2), chunks=(1, 13, 2, 2), dtype="f4"
+        ),
+    )
+    source_times = cast(
+        zarr.Array, source_group.create_dataset("time", shape=(2,), dtype="i8")
+    )
+    destination_images = cast(
+        zarr.Array,
+        destination_group.create_dataset(
+            "images", shape=(2, 13, 2, 2), chunks=(1, 13, 2, 2), dtype="f4"
+        ),
+    )
+    destination_times = cast(
+        zarr.Array, destination_group.create_dataset("time", shape=(2,), dtype="i8")
+    )
+    source_images[0] = np.full((13, 2, 2), 5, dtype=np.float32)
+    source_images[1] = np.full((13, 2, 2), 8, dtype=np.float32)
+    objects = [
+        SourceObject("20190101_0000.nc", 2019, 1546300800000000000, 10, '"a"'),
+        SourceObject("20190101_0112.nc", 2019, 1546305120000000000, 12, '"b"'),
+    ]
+    source_times[:] = [obj.timestamp_ns for obj in objects]
+    destination_objects = [
+        objects[0],
+        SourceObject(
+            objects[1].key,
+            objects[1].year,
+            objects[1].timestamp_ns,
+            objects[1].size,
+            '"changed"',
+        ),
+    ]
+    with sqlite3.connect(":memory:") as connection:
+        connection.execute(
+            "CREATE TABLE samples (slot INTEGER PRIMARY KEY, state TEXT, error TEXT)"
+        )
+        connection.executemany(
+            "INSERT INTO samples VALUES (?, 'pending', NULL)", [(0,), (1,)]
+        )
+
+        copied = rebuild._copy_reusable_samples(
+            source_images,
+            source_times,
+            objects,
+            destination_images,
+            destination_times,
+            destination_objects,
+            connection,
+        )
+
+        assert copied == 1
+        assert connection.execute(
+            "SELECT state FROM samples ORDER BY slot"
+        ).fetchall() == [("complete",), ("pending",)]
+    np.testing.assert_array_equal(destination_images[0], source_images[0])
+    assert int(destination_times[0]) == objects[0].timestamp_ns
+    assert int(destination_times[1]) == 0
 
 
 @pytest.mark.parametrize("interrupt_at", ["images", "time", "after_time"])
@@ -644,9 +882,7 @@ def test_process_year_resumes_interrupted_array_initialization(
     _local_download(monkeypatch, tmp_path)
     original = Attributes.update
 
-    def interrupt(
-        attributes: Attributes, *args: object, **kwargs: object
-    ) -> None:
+    def interrupt(attributes: Attributes, *args: object, **kwargs: object) -> None:
         raise KeyboardInterrupt("initialization walltime")
 
     monkeypatch.setattr(Attributes, "update", interrupt)
@@ -751,6 +987,44 @@ def test_dry_run_reports_summary_without_downloads_or_writes(
     for fragment in ["2019", "2019-01-01", "2609152", str(tmp_path / "output")]:
         assert fragment in summary
     assert "manifest" in summary
+
+
+def test_inventory_only_dry_run_reports_unparsed_keys_without_writes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    cfg = _run_config(tmp_path, dry_run=True)
+    cfg.start_year = 2019
+    cfg.end_year = 2019
+    cfg.inventory_only = True
+    cfg.source_mode = "all_nc"
+    inventory = [
+        ("2019/01/20190101_0100.nc", 10, '"a"'),
+        ("2019/01/unrecognized.nc", 15, '"b"'),
+    ]
+    monkeypatch.setattr(
+        rebuild,
+        "list_netcdf_keys",
+        lambda bucket, endpoint_url, prefix, start_year, end_year, timeout_seconds, retry_count, retry_backoff_seconds, max_retry_backoff_seconds: (
+            inventory
+        ),
+        raising=False,
+    )
+    messages: list[str] = []
+    sink = rebuild.logger.add(lambda message: messages.append(str(message)))
+    try:
+        rebuild.run(cfg)
+    finally:
+        rebuild.logger.remove(sink)
+
+    assert not list(tmp_path.iterdir())
+    summary = "".join(messages)
+    for fragment in [
+        '"inventory_only": true',
+        '"2019": 2',
+        "unrecognized.nc",
+        "estimated_uncompressed_image_bytes",
+    ]:
+        assert fragment in summary
 
 
 def test_run_selects_one_year_and_reuses_the_frozen_manifest(
@@ -966,9 +1240,7 @@ def test_run_resolution_controls_published_shape_chunks_and_resume(
     if size != 224:
         cfg.target_size = size
     rebuild.run(cfg)
-    dataset = _open_group(
-        tmp_path / "output" / "2019" / "dataset", consolidated=True
-    )
+    dataset = _open_group(tmp_path / "output" / "2019" / "dataset", consolidated=True)
     images = _array(dataset, "images")
     assert images.shape == (1, 13, size, size)
     assert images.chunks == (1, 13, size, size)

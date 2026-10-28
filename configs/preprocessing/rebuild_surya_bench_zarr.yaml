@@ -15,6 +15,8 @@ hydra:
 bucket: nasa-surya-bench
 endpoint_url: https://s3.us-west-2.amazonaws.com
 prefix: ""
+source_mode: hourly
+inventory_only: false
 start_year: 2010
 end_year: 2024
 # Optional per-job selector. Keep the full source range above unchanged so all
@@ -45,6 +47,9 @@ dtype: float32
 resize_method: PIL.LANCZOS
 
 retry_count: 3
+listing_retry_count: 5
+retry_backoff_seconds: 2
+max_retry_backoff_seconds: 30
 request_timeout_seconds: 60
 download_timeout_seconds: 300
 

@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+#SBATCH --job-name=surya_allnc_512
+#SBATCH --partition=qCPU120
+#SBATCH --array=2010-2024%5
+#SBATCH --output=surya_allnc_512_%A_%a.out
+#SBATCH --error=surya_allnc_512_%A_%a.err
+#SBATCH --time=5-00:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=64G
+
+set -euo pipefail
+
+cd "${SLURM_SUBMIT_DIR:-$PWD}"
+export PYTHONPATH="$PWD/src:$PWD/scripts${PYTHONPATH:+:$PYTHONPATH}"
+
+source "$(conda info --base)/etc/profile.d/conda.sh"
+conda activate flare_surya
+
+OUT=/scratch/users/jhong36/surya-bench-512-lanczos-all-nc.zarr
+TEMP_DIR="${SLURM_TMPDIR:-${TMPDIR:-/tmp}}"
+YEAR="${SLURM_ARRAY_TASK_ID:?This script must run as a year array}"
+
+echo "hostname=$(hostname) job_id=${SLURM_JOB_ID:-unset} cwd=$PWD"
+echo "python=$(command -v python) conda_env=${CONDA_DEFAULT_ENV:-unset}"
+echo "year=$YEAR output_path=$OUT temporary_directory=$TEMP_DIR"
+
+srun python scripts/preprocessing/rebuild_surya_bench_zarr.py \
+  --config-name=rebuild_surya_bench_zarr_all_nc \
+  output_path="$OUT" \
+  selected_year="$YEAR" \
+  temporary_directory="$TEMP_DIR" \
+  dry_run=false
